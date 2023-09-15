@@ -22,11 +22,16 @@ To access WSL2 through VSCode, download the "WSL" extension.
    ```
 4. Install the RealSense SDK following steps 2 and 3 [outlined here](https://github.com/IntelRealSense/realsense-ros).
    1. Make sure to get the "optional" developer and debug packages
-5. Build the ROS2 workspace using
+
+5. Clone this repository to a location of your choice using
+   ```bash
+   git clone --recurse-submodules https://github.com/ut-ras/robomaster_cv.git
+   ```
+6. Build the ROS2 workspace using
    ```bash
    colcon build
    ```
-6. Start the RealSense camera node using
+7. Start the RealSense camera node using
    ```bash
    ros2 run realsense2_camera realsense2_camera_node
    ```
