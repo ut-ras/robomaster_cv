@@ -1,0 +1,70 @@
+[0.010s] Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera
+[0.054s] -- The C compiler identification is GNU 11.4.0
+[0.098s] -- The CXX compiler identification is GNU 11.4.0
+[0.104s] -- Detecting C compiler ABI info
+[0.161s] -- Detecting C compiler ABI info - done
+[0.167s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.167s] -- Detecting C compile features
+[0.168s] -- Detecting C compile features - done
+[0.170s] -- Detecting CXX compiler ABI info
+[0.235s] -- Detecting CXX compiler ABI info - done
+[0.242s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.242s] -- Detecting CXX compile features
+[0.243s] -- Detecting CXX compile features - done
+[0.243s] -- Create Release Build.
+[0.244s] -- Found ament_cmake: 1.3.5 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.374s] -- Found Python3: /usr/bin/python3.10 (found version "3.10.12") found components: Interpreter 
+[0.442s] -- Found builtin_interfaces: 1.2.1 (/opt/ros/humble/share/builtin_interfaces/cmake)
+[0.467s] -- Found rosidl_generator_c: 3.1.5 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.470s] -- Found rosidl_adapter: 3.1.5 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.476s] -- Found rosidl_generator_cpp: 3.1.5 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.487s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.510s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.528s] -- Found cv_bridge: 3.2.1 (/opt/ros/humble/share/cv_bridge/cmake)
+[0.720s] -- Found image_transport: 3.1.7 (/opt/ros/humble/share/image_transport/cmake)
+[0.782s] -- Found rmw_implementation_cmake: 6.1.1 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.785s] -- Found rmw_fastrtps_cpp: 6.2.3 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.898s] -- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+[0.922s] -- Found FastRTPS: /opt/ros/humble/include  
+[0.961s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.971s] -- Looking for pthread.h
+[1.032s] -- Looking for pthread.h - found
+[1.032s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+[1.090s] -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+[1.090s] -- Found Threads: TRUE  
+[1.256s] -- Found rclcpp_components: 16.0.5 (/opt/ros/humble/share/rclcpp_components/cmake)
+[1.308s] -- Found realsense2_camera_msgs: 4.54.1 (/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/cmake)
+[1.393s] -- Found nav_msgs: 4.2.3 (/opt/ros/humble/share/nav_msgs/cmake)
+[1.467s] -- Found tf2_ros: 0.25.3 (/opt/ros/humble/share/tf2_ros/cmake)
+[1.703s] -- Found diagnostic_updater: 3.1.2 (/opt/ros/humble/share/diagnostic_updater/cmake)
+[1.771s] [33mCMake Warning at CMakeLists.txt:119 (find_package):
+[1.771s]   By not providing "Findrealsense2.cmake" in CMAKE_MODULE_PATH this project
+[1.771s]   has asked CMake to find a package configuration file provided by
+[1.772s]   "realsense2", but CMake did not find one.
+[1.772s] 
+[1.772s]   Could not find a package configuration file provided by "realsense2"
+[1.772s]   (requested version 2.54.1) with any of the following names:
+[1.772s] 
+[1.772s]     realsense2Config.cmake
+[1.772s]     realsense2-config.cmake
+[1.773s] 
+[1.773s]   Add the installation prefix of "realsense2" to CMAKE_PREFIX_PATH or set
+[1.773s]   "realsense2_DIR" to a directory containing one of the above files.  If
+[1.773s]   "realsense2" provides a separate development package or SDK, be sure it has
+[1.773s]   been installed.
+[1.773s] 
+[1.773s] [0m
+[1.774s] [31mCMake Error at CMakeLists.txt:121 (message):
+[1.774s]   
+[1.774s] 
+[1.774s]   
+[1.774s] 
+[1.774s]    Intel RealSense SDK 2.0 is missing, please install it from https://github.com/IntelRealSense/librealsense/releases
+[1.774s] 
+[1.774s]   
+[1.775s] 
+[1.775s] 
+[1.775s] [0m
+[1.775s] -- Configuring incomplete, errors occurred!
+[1.775s] See also "/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera/CMakeFiles/CMakeOutput.log".
+[1.780s] Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera' returned '1': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera

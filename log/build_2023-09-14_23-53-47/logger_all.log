@@ -1,0 +1,282 @@
+[0.216s] DEBUG:colcon:Command line arguments: ['/usr/bin/colcon', 'build']
+[0.216s] DEBUG:colcon:Parsed command line arguments: Namespace(log_base=None, log_level=None, verb_name='build', build_base='build', install_base='install', merge_install=False, symlink_install=False, test_result_base=None, continue_on_error=False, executor='parallel', parallel_workers=16, event_handlers=None, ignore_user_meta=False, metas=['./colcon.meta'], base_paths=['.'], packages_ignore=None, packages_ignore_regex=None, paths=None, packages_up_to=None, packages_up_to_regex=None, packages_above=None, packages_above_and_dependencies=None, packages_above_depth=None, packages_select_by_dep=None, packages_skip_by_dep=None, packages_skip_up_to=None, packages_select_build_failed=False, packages_skip_build_finished=False, packages_select_test_failures=False, packages_skip_test_passed=False, packages_select=None, packages_skip=None, packages_select_regex=None, packages_skip_regex=None, packages_start=None, packages_end=None, allow_overriding=[], cmake_args=None, cmake_target=None, cmake_target_skip_unavailable=False, cmake_clean_cache=False, cmake_clean_first=False, cmake_force_configure=False, ament_cmake_args=None, catkin_cmake_args=None, catkin_skip_building_tests=False, verb_parser=<colcon_defaults.argument_parser.defaults.DefaultArgumentsDecorator object at 0x7f74334bcac0>, verb_extension=<colcon_core.verb.build.BuildVerb object at 0x7f7433cb5e40>, main=<bound method BuildVerb.main of <colcon_core.verb.build.BuildVerb object at 0x7f7433cb5e40>>)
+[0.243s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) check parameters
+[0.244s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) check parameters
+[0.244s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) check parameters
+[0.244s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) check parameters
+[0.244s] Level 1:colcon.colcon_core.package_discovery:discover_packages(colcon_meta) discover
+[0.244s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) discover
+[0.244s] INFO:colcon.colcon_core.package_discovery:Crawling recursively for packages in '/home/eddie/Documents/GitHub/robomaster_cv'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ignore', 'ignore_ament_install']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ignore_ament_install'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_pkg']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_pkg'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['colcon_meta']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'colcon_meta'
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['ros']
+[0.244s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'ros'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['cmake', 'python']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'cmake'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extensions ['python_setup_py']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(.) by extension 'python_setup_py'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extensions ['ignore', 'ignore_ament_install']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(build) by extension 'ignore'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(build) ignored
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extensions ['ignore', 'ignore_ament_install']
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(install) by extension 'ignore'
+[0.253s] Level 1:colcon.colcon_core.package_identification:_identify(install) ignored
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extensions ['ignore', 'ignore_ament_install']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(log) by extension 'ignore'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(log) ignored
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ignore', 'ignore_ament_install']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ignore_ament_install'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_pkg']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_pkg'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['colcon_meta']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'colcon_meta'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['ros']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'ros'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['cmake', 'python']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'cmake'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extensions ['python_setup_py']
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src) by extension 'python_setup_py'
+[0.254s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extensions ['ignore', 'ignore_ament_install']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'ignore'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'ignore_ament_install'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extensions ['colcon_pkg']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'colcon_pkg'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extensions ['colcon_meta']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'colcon_meta'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extensions ['ros']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'ros'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extensions ['cmake', 'python']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'cmake'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'python'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extensions ['python_setup_py']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros) by extension 'python_setup_py'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extensions ['ignore', 'ignore_ament_install']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extension 'ignore'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extension 'ignore_ament_install'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extensions ['colcon_pkg']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extension 'colcon_pkg'
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extensions ['colcon_meta']
+[0.255s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extension 'colcon_meta'
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extensions ['ros']
+[0.256s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera) by extension 'ros'
+[0.258s] DEBUG:colcon.colcon_core.package_identification:Package 'src/realsense-ros/realsense2_camera' with type 'ros.ament_cmake' and name 'realsense2_camera'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extensions ['ignore', 'ignore_ament_install']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extension 'ignore'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extension 'ignore_ament_install'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extensions ['colcon_pkg']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extension 'colcon_pkg'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extensions ['colcon_meta']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extension 'colcon_meta'
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extensions ['ros']
+[0.259s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_camera_msgs) by extension 'ros'
+[0.259s] DEBUG:colcon.colcon_core.package_identification:Package 'src/realsense-ros/realsense2_camera_msgs' with type 'ros.ament_cmake' and name 'realsense2_camera_msgs'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extensions ['ignore', 'ignore_ament_install']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extension 'ignore'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extension 'ignore_ament_install'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extensions ['colcon_pkg']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extension 'colcon_pkg'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extensions ['colcon_meta']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extension 'colcon_meta'
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extensions ['ros']
+[0.260s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/realsense2_description) by extension 'ros'
+[0.261s] DEBUG:colcon.colcon_core.package_identification:Package 'src/realsense-ros/realsense2_description' with type 'ros.ament_cmake' and name 'realsense2_description'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extensions ['ignore', 'ignore_ament_install']
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'ignore'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'ignore_ament_install'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extensions ['colcon_pkg']
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'colcon_pkg'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extensions ['colcon_meta']
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'colcon_meta'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extensions ['ros']
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'ros'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extensions ['cmake', 'python']
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'cmake'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'python'
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extensions ['python_setup_py']
+[0.261s] Level 1:colcon.colcon_core.package_identification:_identify(src/realsense-ros/scripts) by extension 'python_setup_py'
+[0.261s] Level 1:colcon.colcon_core.package_discovery:discover_packages(recursive) using defaults
+[0.261s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) discover
+[0.261s] Level 1:colcon.colcon_core.package_discovery:discover_packages(ignore) using defaults
+[0.261s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) discover
+[0.261s] Level 1:colcon.colcon_core.package_discovery:discover_packages(path) using defaults
+[0.279s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) check parameters
+[0.279s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) discover
+[0.281s] DEBUG:colcon.colcon_installed_package_information.package_discovery:Found 273 installed packages in /opt/ros/humble
+[0.282s] Level 1:colcon.colcon_core.package_discovery:discover_packages(prefix_path) using defaults
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'cmake_args' from command line to 'None'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'cmake_target' from command line to 'None'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'cmake_clean_cache' from command line to 'False'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'cmake_clean_first' from command line to 'False'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'cmake_force_configure' from command line to 'False'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'ament_cmake_args' from command line to 'None'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'catkin_cmake_args' from command line to 'None'
+[0.324s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera_msgs' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.324s] DEBUG:colcon.colcon_core.verb:Building package 'realsense2_camera_msgs' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs', 'merge_install': False, 'path': '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera_msgs', 'symlink_install': False, 'test_result_base': None}
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'cmake_args' from command line to 'None'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'cmake_target' from command line to 'None'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'cmake_clean_cache' from command line to 'False'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'cmake_clean_first' from command line to 'False'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'cmake_force_configure' from command line to 'False'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'ament_cmake_args' from command line to 'None'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'catkin_cmake_args' from command line to 'None'
+[0.325s] Level 5:colcon.colcon_core.verb:set package 'realsense2_camera' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.325s] DEBUG:colcon.colcon_core.verb:Building package 'realsense2_camera' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera', 'merge_install': False, 'path': '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera', 'symlink_install': False, 'test_result_base': None}
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'cmake_args' from command line to 'None'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'cmake_target' from command line to 'None'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'cmake_target_skip_unavailable' from command line to 'False'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'cmake_clean_cache' from command line to 'False'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'cmake_clean_first' from command line to 'False'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'cmake_force_configure' from command line to 'False'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'ament_cmake_args' from command line to 'None'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'catkin_cmake_args' from command line to 'None'
+[0.326s] Level 5:colcon.colcon_core.verb:set package 'realsense2_description' build argument 'catkin_skip_building_tests' from command line to 'False'
+[0.326s] DEBUG:colcon.colcon_core.verb:Building package 'realsense2_description' with the following arguments: {'ament_cmake_args': None, 'build_base': '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description', 'catkin_cmake_args': None, 'catkin_skip_building_tests': False, 'cmake_args': None, 'cmake_clean_cache': False, 'cmake_clean_first': False, 'cmake_force_configure': False, 'cmake_target': None, 'cmake_target_skip_unavailable': False, 'install_base': '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description', 'merge_install': False, 'path': '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_description', 'symlink_install': False, 'test_result_base': None}
+[0.326s] INFO:colcon.colcon_core.executor:Executing jobs using 'parallel' executor
+[0.329s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete
+[0.329s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera_msgs' with build type 'ament_cmake'
+[0.329s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera_msgs'
+[0.332s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_core.shell.bat': Not used on non-Windows systems
+[0.333s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[0.333s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[0.347s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera_msgs -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs
+[2.109s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera_msgs -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs
+[2.111s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs -- -j16 -l16
+[5.264s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs -- -j16 -l16
+[5.368s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs
+[5.433s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(realsense2_camera_msgs)
+[5.434s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs
+[5.439s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs' for CMake module files
+[5.439s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs' for CMake config files
+[5.440s] Level 1:colcon.colcon_core.shell:create_environment_hook('realsense2_camera_msgs', 'cmake_prefix_path')
+[5.440s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/cmake_prefix_path.ps1'
+[5.441s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/cmake_prefix_path.dsv'
+[5.441s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/cmake_prefix_path.sh'
+[5.442s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib'
+[5.442s] Level 1:colcon.colcon_core.shell:create_environment_hook('realsense2_camera_msgs', 'ld_library_path_lib')
+[5.443s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/ld_library_path_lib.ps1'
+[5.444s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/ld_library_path_lib.dsv'
+[5.444s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/ld_library_path_lib.sh'
+[5.444s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/bin'
+[5.444s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib/pkgconfig/realsense2_camera_msgs.pc'
+[5.444s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib/python3.10/site-packages'
+[5.444s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/bin'
+[5.446s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.ps1'
+[5.446s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.dsv'
+[5.447s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.sh'
+[5.447s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.bash'
+[5.448s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.zsh'
+[5.448s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/colcon-core/packages/realsense2_camera_msgs)
+[5.541s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(realsense2_camera_msgs)
+[5.543s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs' for CMake module files
+[5.543s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs' for CMake config files
+[5.543s] Level 1:colcon.colcon_core.shell:create_environment_hook('realsense2_camera_msgs', 'cmake_prefix_path')
+[5.544s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/cmake_prefix_path.ps1'
+[5.545s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/cmake_prefix_path.dsv'
+[5.545s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/cmake_prefix_path.sh'
+[5.545s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib'
+[5.546s] Level 1:colcon.colcon_core.shell:create_environment_hook('realsense2_camera_msgs', 'ld_library_path_lib')
+[5.546s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/ld_library_path_lib.ps1'
+[5.547s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/ld_library_path_lib.dsv'
+[5.547s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/hook/ld_library_path_lib.sh'
+[5.547s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/bin'
+[5.547s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib/pkgconfig/realsense2_camera_msgs.pc'
+[5.547s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib/python3.10/site-packages'
+[5.548s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/bin'
+[5.548s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.ps1'
+[5.549s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.dsv'
+[5.549s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.sh'
+[5.549s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.bash'
+[5.550s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/package.zsh'
+[5.550s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/colcon-core/packages/realsense2_camera_msgs)
+[5.550s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera' with build type 'ament_cmake'
+[5.550s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera'
+[5.552s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[5.552s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[5.556s] INFO:colcon.colcon_ros.task.ament_cmake.build:Building ROS package in '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_description' with build type 'ament_cmake'
+[5.556s] INFO:colcon.colcon_cmake.task.cmake.build:Building CMake package in '/home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_description'
+[5.558s] INFO:colcon.colcon_core.shell:Skip shell extension 'powershell' for command environment: Not usable outside of PowerShell
+[5.558s] DEBUG:colcon.colcon_core.shell:Skip shell extension 'dsv' for command environment
+[5.564s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera
+[5.567s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_description -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description
+[6.064s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description' returned '0': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_description -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description
+[6.066s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description -- -j16 -l16
+[6.102s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description' returned '0': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description -- -j16 -l16
+[6.120s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description
+[6.186s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(realsense2_description)
+[6.187s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description' for CMake module files
+[6.188s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description' returned '0': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_description
+[6.188s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description' for CMake config files
+[6.188s] Level 1:colcon.colcon_core.shell:create_environment_hook('realsense2_description', 'cmake_prefix_path')
+[6.190s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/hook/cmake_prefix_path.ps1'
+[6.190s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/hook/cmake_prefix_path.dsv'
+[6.190s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/hook/cmake_prefix_path.sh'
+[6.190s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/bin'
+[6.190s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/lib/pkgconfig/realsense2_description.pc'
+[6.191s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/lib/python3.10/site-packages'
+[6.191s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/bin'
+[6.192s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.ps1'
+[6.192s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.dsv'
+[6.193s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.sh'
+[6.193s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.bash'
+[6.193s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.zsh'
+[6.193s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/colcon-core/packages/realsense2_description)
+[6.213s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(realsense2_description)
+[6.214s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description' for CMake module files
+[6.215s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description' for CMake config files
+[6.215s] Level 1:colcon.colcon_core.shell:create_environment_hook('realsense2_description', 'cmake_prefix_path')
+[6.216s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/hook/cmake_prefix_path.ps1'
+[6.216s] INFO:colcon.colcon_core.shell:Creating environment descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/hook/cmake_prefix_path.dsv'
+[6.216s] INFO:colcon.colcon_core.shell:Creating environment hook '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/hook/cmake_prefix_path.sh'
+[6.217s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/bin'
+[6.217s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/lib/pkgconfig/realsense2_description.pc'
+[6.217s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/lib/python3.10/site-packages'
+[6.217s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/bin'
+[6.218s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.ps1'
+[6.219s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.dsv'
+[6.219s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.sh'
+[6.219s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.bash'
+[6.219s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/realsense2_description/package.zsh'
+[6.220s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_description/share/colcon-core/packages/realsense2_description)
+[7.334s] DEBUG:colcon.colcon_core.event_handler.log_command:Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera' returned '1': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera
+[7.347s] Level 1:colcon.colcon_core.environment:create_environment_scripts_only(realsense2_camera)
+[7.350s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera' for CMake module files
+[7.351s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera' for CMake config files
+[7.351s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/bin'
+[7.352s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/lib/pkgconfig/realsense2_camera.pc'
+[7.352s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/lib/python3.10/site-packages'
+[7.352s] Level 1:colcon.colcon_core.environment:checking '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/bin'
+[7.354s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/package.ps1'
+[7.355s] INFO:colcon.colcon_core.shell:Creating package descriptor '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/package.dsv'
+[7.355s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/package.sh'
+[7.356s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/package.bash'
+[7.356s] INFO:colcon.colcon_core.shell:Creating package script '/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/package.zsh'
+[7.357s] Level 1:colcon.colcon_core.environment:create_file_with_runtime_dependencies(/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/colcon-core/packages/realsense2_camera)
+[7.367s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:closing loop
+[7.368s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:loop closed
+[7.368s] DEBUG:colcon.colcon_parallel_executor.executor.parallel:run_until_complete finished with '1'
+[7.368s] DEBUG:colcon.colcon_core.event_reactor:joining thread
+[7.376s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.notify_send': Could not find 'notify-send'
+[7.376s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.terminal_notifier': Not used on non-Darwin systems
+[7.376s] INFO:colcon.colcon_core.plugin_system:Skipping extension 'colcon_notification.desktop_notification.win32': Not used on non-Windows systems
+[7.376s] INFO:colcon.colcon_notification.desktop_notification:Sending desktop notification using 'notify2'
+[7.404s] DEBUG:colcon.colcon_core.event_reactor:joined thread
+[7.406s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/eddie/Documents/GitHub/robomaster_cv/install/local_setup.ps1'
+[7.408s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/eddie/Documents/GitHub/robomaster_cv/install/_local_setup_util_ps1.py'
+[7.410s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/eddie/Documents/GitHub/robomaster_cv/install/setup.ps1'
+[7.412s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/eddie/Documents/GitHub/robomaster_cv/install/local_setup.sh'
+[7.413s] INFO:colcon.colcon_core.shell:Creating prefix util module '/home/eddie/Documents/GitHub/robomaster_cv/install/_local_setup_util_sh.py'
+[7.414s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/eddie/Documents/GitHub/robomaster_cv/install/setup.sh'
+[7.415s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/eddie/Documents/GitHub/robomaster_cv/install/local_setup.bash'
+[7.416s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/eddie/Documents/GitHub/robomaster_cv/install/setup.bash'
+[7.418s] INFO:colcon.colcon_core.shell:Creating prefix script '/home/eddie/Documents/GitHub/robomaster_cv/install/local_setup.zsh'
+[7.419s] INFO:colcon.colcon_core.shell:Creating prefix chain script '/home/eddie/Documents/GitHub/robomaster_cv/install/setup.zsh'
