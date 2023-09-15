@@ -1,0 +1,117 @@
+[0.009s] Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera
+[0.021s] -- Create Release Build.
+[0.022s] -- Found ament_cmake: 1.3.5 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.148s] -- Found builtin_interfaces: 1.2.1 (/opt/ros/humble/share/builtin_interfaces/cmake)
+[0.172s] -- Found rosidl_generator_c: 3.1.5 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.175s] -- Found rosidl_adapter: 3.1.5 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.181s] -- Found rosidl_generator_cpp: 3.1.5 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.193s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.208s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.221s] -- Found cv_bridge: 3.2.1 (/opt/ros/humble/share/cv_bridge/cmake)
+[0.401s] -- Found image_transport: 3.1.7 (/opt/ros/humble/share/image_transport/cmake)
+[0.455s] -- Found rmw_implementation_cmake: 6.1.1 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.456s] -- Found rmw_fastrtps_cpp: 6.2.3 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.572s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.731s] -- Found rclcpp_components: 16.0.5 (/opt/ros/humble/share/rclcpp_components/cmake)
+[0.782s] -- Found realsense2_camera_msgs: 4.54.1 (/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/share/realsense2_camera_msgs/cmake)
+[0.867s] -- Found nav_msgs: 4.2.3 (/opt/ros/humble/share/nav_msgs/cmake)
+[0.938s] -- Found tf2_ros: 0.25.3 (/opt/ros/humble/share/tf2_ros/cmake)
+[1.171s] -- Found diagnostic_updater: 3.1.2 (/opt/ros/humble/share/diagnostic_updater/cmake)
+[1.231s] -- Build for ROS2 Humble
+[1.236s] -- Found ament_cmake_gtest: 1.3.5 (/opt/ros/humble/share/ament_cmake_gtest/cmake)
+[1.238s] -- Found gtest sources under '/opt/ros/humble/src/gtest_vendor': C++ tests using 'Google Test' will be built
+[1.243s] -- Found ament_cmake_pytest: 1.3.5 (/opt/ros/humble/share/ament_cmake_pytest/cmake)
+[3.608s] -- Configuring done
+[3.628s] -- Generating done
+[3.630s] -- Build files have been written to: /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera
+[3.640s] Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera' returned '0': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake /home/eddie/Documents/GitHub/robomaster_cv/src/realsense-ros/realsense2_camera -DCMAKE_INSTALL_PREFIX=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera
+[3.642s] Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera -- -j16 -l16
+[3.688s] [  4%] [32mBuilding CXX object gtest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o[0m
+[3.688s] [ 18%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/base_realsense_node.cpp.o[0m
+[3.688s] [ 18%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/realsense_node_factory.cpp.o[0m
+[3.688s] [ 22%] [32mBuilding CXX object CMakeFiles/realsense2_camera_node.dir/rclcpp_components/node_main_realsense2_camera_node.cpp.o[0m
+[3.689s] [ 22%] [32mBuilding CXX object gtest/CMakeFiles/gtest.dir/src/gtest-all.cc.o[0m
+[3.691s] [ 31%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/ros_sensor.cpp.o[0m
+[3.692s] [ 31%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/parameters.cpp.o[0m
+[3.692s] [ 59%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/named_filter.cpp.o[0m
+[3.692s] [ 59%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/ros_utils.cpp.o[0m
+[3.692s] [ 63%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/image_publisher.cpp.o[0m
+[3.693s] [ 63%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/rs_node_setup.cpp.o[0m
+[3.693s] [ 63%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/dynamic_params.cpp.o[0m
+[3.693s] [ 63%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/profile_manager.cpp.o[0m
+[3.693s] [ 63%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/sensor_params.cpp.o[0m
+[3.693s] [ 68%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/tfs.cpp.o[0m
+[3.694s] [ 72%] [32mBuilding CXX object CMakeFiles/realsense2_camera.dir/src/ros_param_backend_foxy.cpp.o[0m
+[4.699s] [ 77%] [32m[1mLinking CXX static library libgtest_main.a[0m
+[4.772s] [ 77%] Built target gtest_main
+[10.324s] [ 81%] [32m[1mLinking CXX executable realsense2_camera_node[0m
+[10.624s] [ 81%] Built target realsense2_camera_node
+[14.943s] [ 86%] [32m[1mLinking CXX static library libgtest.a[0m
+[14.992s] [ 86%] Built target gtest
+[15.019s] [ 90%] [32mBuilding CXX object CMakeFiles/gtest_template.dir/test/gtest_template.cpp.o[0m
+[15.968s] [ 95%] [32m[1mLinking CXX executable gtest_template[0m
+[16.093s] [ 95%] Built target gtest_template
+[21.925s] [100%] [32m[1mLinking CXX shared library librealsense2_camera.so[0m
+[22.339s] [100%] Built target realsense2_camera
+[22.350s] Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera' returned '0': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera -- -j16 -l16
+[22.393s] Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera
+[22.399s] -- Install configuration: "Release"
+[22.399s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/lib/realsense2_camera/realsense2_camera_node
+[22.399s] -- Set runtime path of "/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/lib/realsense2_camera/realsense2_camera_node" to ""
+[22.400s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/lib/librealsense2_camera.so
+[22.402s] -- Set runtime path of "/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/lib/librealsense2_camera.so" to ""
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/named_filter.h
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/constants.h
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/ros_param_backend.h
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/dynamic_params.h
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/image_publisher.h
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/sensor_params.h
+[22.402s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/ros_sensor.h
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/realsense_node_factory.h
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/ros_utils.h
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/profile_manager.h
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/include/base_realsense_node.h
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/launch
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/launch/rs_launch.py
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/launch/default.rviz
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/launch/rs_intra_process_demo_launch.py
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/launch/rs_multi_camera_launch.py
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/launch_params_from_file
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/launch_params_from_file/config.yaml
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/launch_params_from_file/rs_launch_get_params_from_yaml.py
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/pointcloud
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/pointcloud/rs_pointcloud_launch.py
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/pointcloud/urdf_pointcloud.rviz
+[22.403s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/pointcloud/rs_d455_pointcloud_launch.py
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/pointcloud/pointcloud.rviz
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/dual_camera
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/dual_camera/dual_camera_pointcloud.rviz
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/dual_camera/rs_dual_camera_launch.py
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/launch_from_rosbag
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/launch_from_rosbag/rs_launch_from_rosbag.py
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/align_depth
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/examples/align_depth/rs_align_depth_launch.py
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/environment/library_path.sh
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/environment/library_path.dsv
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/ament_index/resource_index/package_run_dependencies/realsense2_camera
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/ament_index/resource_index/parent_prefix_path/realsense2_camera
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/environment/ament_prefix_path.sh
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/environment/ament_prefix_path.dsv
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/environment/path.sh
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/environment/path.dsv
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/local_setup.bash
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/local_setup.sh
+[22.404s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/local_setup.zsh
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/local_setup.dsv
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/package.dsv
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/ament_index/resource_index/packages/realsense2_camera
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/ament_index/resource_index/rclcpp_components/realsense2_camera
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/cmake/ament_cmake_export_include_directories-extras.cmake
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/cmake/ament_cmake_export_libraries-extras.cmake
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/cmake/ament_cmake_export_dependencies-extras.cmake
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/cmake/realsense2_cameraConfig.cmake
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/cmake/realsense2_cameraConfig-version.cmake
+[22.405s] -- Installing: /home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera/share/realsense2_camera/package.xml
+[22.407s] Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera' returned '0': AMENT_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:${AMENT_PREFIX_PATH} CMAKE_PREFIX_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs:/opt/ros/humble LD_LIBRARY_PATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/lib:${LD_LIBRARY_PATH} PYTHONPATH=/home/eddie/Documents/GitHub/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:${PYTHONPATH} /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera
