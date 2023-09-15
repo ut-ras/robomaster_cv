@@ -1,4 +1,0 @@
-Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs -- -j16 -l16
-Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --build /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs -- -j16 -l16
-Invoking command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs
-Invoked command in '/home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs' returned '0': CMAKE_PREFIX_PATH=/opt/ros/humble /usr/bin/cmake --install /home/eddie/Documents/GitHub/robomaster_cv/build/realsense2_camera_msgs
