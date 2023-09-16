@@ -33,7 +33,7 @@ To access WSL2 through VSCode, download the "WSL" extension.
    ```
 7. Install the ros RealSense camera package
    ```bash
-      sudo apt-get install ros-foxy-realsense2-camera
+   sudo apt-get install ros-foxy-realsense2-camera
    ```
 8. Start the RealSense camera node using
    ```bash
