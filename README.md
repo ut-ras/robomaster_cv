@@ -66,12 +66,13 @@ After it finishes building, you should see a new terminal pop up that gives acce
 
 6. Reopen XQuartz
 
-7. Run `./start.sh` to open the Docker container
+7. In a local terminal, run `xhost +localhost`
 
-8. On every window you want to use X11 on, run `export DISPLAY=docker.for.mac.host.internal:0`
+8. Run `./start.sh` to open the Docker container
+
+9. On every window you want to use X11 on, run `export DISPLAY=docker.for.mac.host.internal:0`
 
 
 #### References
 
 https://gist.github.com/sorny/969fe55d85c9b0035b0109a31cbcb088
-
