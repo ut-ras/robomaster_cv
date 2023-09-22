@@ -51,3 +51,27 @@ Then, run the startup script in a terminal window.
 `./start.sh`
 
 After it finishes building, you should see a new terminal pop up that gives access to the Docker container. This terminal forwards the local directory to the directory `/robomaster_cv`. From here, you can build and run the system as normal using `colcon build`. When you need to exit, simply run `exit` or press `Ctrl+D`.
+
+### Mac Docker X11 Setup
+
+1. Install XQuartz
+
+2. Start XQuartz by opening the application (Cmd + Space -> Search for XQuartz)
+
+3. Open XQuartz settings and navigate to the security tab
+
+4. Check "Allow connections from network clients"
+
+5. Quit XQuartz (make sure it is completely closed and gone from your taskbar)
+
+6. Reopen XQuartz
+
+7. Run `./start.sh` to open the Docker container
+
+8. On every window you want to use X11 on, run `export DISPLAY=docker.for.mac.host.internal:0`
+
+
+#### References
+
+https://gist.github.com/sorny/969fe55d85c9b0035b0109a31cbcb088
+
