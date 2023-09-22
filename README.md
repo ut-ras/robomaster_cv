@@ -1,7 +1,8 @@
 # UT RoboMaster CV
 
 ## Pre-requisites
-You will need **Ubuntu 22.04**. If you do not want to dual-boot (or switch to Ubuntu entirely), WSL2 would be a good option.
+
+If you would like to install the toolchain locally, you will need **Ubuntu 22.04**. If you do not want to dual-boot (or switch to Ubuntu entirely), WSL2 would be a good option. Additionally, there is a Dockerfile that can be used to run the toolchain, but it might not be able to flash to the board.
 
 To install Ubuntu 22.04 on WSL2, run the following in a Windows Terminal:
 ```cmd
@@ -10,7 +11,8 @@ wsl --install -d Ubuntu-22.04
 
 To access WSL2 through VSCode, download the "WSL" extension.
 
-## Setup
+## Local Setup
+
 1. Install ROS2 Humble by following [these instructions](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
 2. Add the `setup.bash` file to your shell startup script by running the following command in a terminal:
    ```bash
@@ -39,3 +41,13 @@ To access WSL2 through VSCode, download the "WSL" extension.
    ```bash
    ros2 run realsense2_camera realsense2_camera_node
    ```
+
+## Docker Setup
+
+First, ensure that you have Docker installed and running. If not, you can download it (here)[https://www.docker.com/]. You may need to also install Docker Compose if you are on linux. Instructions for installing the compose plugin should already be included with the default Docker install.
+
+Then, run the startup script in a terminal window.
+
+`./start.sh`
+
+After it finishes building, you should see a new terminal pop up that gives access to the Docker container. This terminal forwards the local directory to the directory `/robomaster_cv`. From here, you can build and run the system as normal using `colcon build`. When you need to exit, simply run `exit` or press `Ctrl+D`.
