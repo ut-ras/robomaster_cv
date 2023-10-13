@@ -13,3 +13,16 @@ Approaches
 ## Going with Particle Filter Approach / keeping what we had last year
 
 # Stories
+
+Lets first write the prototypes of each of these and leave header comments for each function so other people know how to structure them.
+
+## Migrating Object Log from Python to C++
+
+- Armor Plate class:
+  * Tanay
+  * Luiz
+- Object Log class
+  * David
+
+## Other tasks:
+- Testing code
