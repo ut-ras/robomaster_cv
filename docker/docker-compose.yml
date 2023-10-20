@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  robomaster_cv:
+    stdin_open: true
+    tty: true
+    entrypoint: /bin/bash
+    working_dir: /robomaster_cv
+    build:
+      context: .
+      dockerfile: Dockerfile
+      #target: librealsense
+    volumes:
+      - /dev:/dev
+      - ../:/robomaster_cv
+    device_cgroup_rules:
+      - 'c 81:* rmw'
+      - 'c 189:* rmw'
