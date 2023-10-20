@@ -1,7 +1,13 @@
 #ifndef _OBJECTLOG_H
 #define _OBJECTLOG_H
 
-#include "boundingbox.h" // name may be subject to change
+#include <tuple>
+#include <vector>
+#include <ctime>
+#include <time.h>
+
+#include "BoundingBox.h" // name may be subject to change
+#include "ArmorPlate.h" 
 
 const int MAX_X = 150;
 const int MAX_Y = 150;
@@ -18,10 +24,7 @@ error_margin = 0; // to be fine tuned
 kill_threshold = -1; // to be fine tuned
 
 class ObjectLog {
-    private:
-        std::vector<ArmorPlate> plates;
-        int idAssign;
-        FILE *outputLog;
+    
     public:
         ObjectLog();
 
@@ -33,7 +36,7 @@ class ObjectLog {
         the plates unless the closest distance is greater than some margin of error
         returns -1 if failure and 0 if success
         */
-        int boxes_input(std::vector<BoundingBox> boxList, float currTime);
+        int boxes_input(std::vector<BoundingBox> boxList, time_t currTime);
 
         /*
         Checks and returns if the armor plate's area is significant enough to be targeted
@@ -51,9 +54,9 @@ class ObjectLog {
         /*
         Get_Distance returns the distance in pixels between two points
         input is two 3x1 matrices, each representing point in (x,y,z)
-        Output is a float which is the distance between the two objects 
+        Output is a double which is the distance between the two objects 
         */
-        float get_distance(std::vector<int> p1, std::vector<int> p2);
+        double get_distance(std::tuple<double, double, double> p1, std::tuple<double, double, double> p2);
 
         //kill all plates and 
         void kill_all();
@@ -61,6 +64,6 @@ class ObjectLog {
         std::vector<ArmorPlate> get_plates();
 
         void kill_plate(int id);
-}
+};
 
 #endif
