@@ -4,6 +4,6 @@
 [submodule "src/transport_tool"]
 	path = src/transport_tool
 	url = https://github.com/ros-drivers/transport_drivers.git
-[submodule "src/transport"]
-	path = src/transport
-	url = https://github.com/ros-drivers/transport_drivers.git
+[submodule "src/isaac_ros_common"]
+	path = src/isaac_ros_common
+	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
