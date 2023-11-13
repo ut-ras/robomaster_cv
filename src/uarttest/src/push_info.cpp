@@ -17,7 +17,7 @@ class MinimalPublisher : public rclcpp::Node
     MinimalPublisher()
     : Node("minimal_publisher"), count_(0)
     {
-      publisher_ = this->create_publisher<std_msgs::msg::String>("serial_write", 10);
+      publisher_ = this->create_publisher<std_msgs::msg::UInt8MultiArray>("serial_write", 10);
       timer_ = this->create_wall_timer(
       500ms, std::bind(&MinimalPublisher::timer_callback, this));
     }
@@ -25,8 +25,12 @@ class MinimalPublisher : public rclcpp::Node
   private:
     void timer_callback()
     {
-      auto message = std_msgs::msg::String();
-      message.data = "Hello, world! " + std::to_string(count_++);
+      std_msgs::msg::UInt8MultiArray message = std_msgs::msg::UInt8MultiArray;
+      message.data[0] = "h";
+      message.data[1] = "e";
+      message.data[2] = "l";
+      message.data[3] = "l";
+      message.data[4] = "o";
       RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
       publisher_->publish(message);
     }
