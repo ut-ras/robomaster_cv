@@ -1,6 +1,0 @@
-[submodule "src/realsense-ros"]
-	path = src/realsense-ros
-	url = https://github.com/IntelRealSense/realsense-ros.git
-[submodule "src/isaac_ros_common"]
-	path = src/isaac_ros_common
-	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
