@@ -25,13 +25,13 @@ class MinimalPublisher : public rclcpp::Node
   private:
     void timer_callback()
     {
-      std_msgs::msg::UInt8MultiArray message = std_msgs::msg::UInt8MultiArray;
+      std_msgs::msg::UInt8MultiArray message = new std_msgs::msg::UInt8MultiArray();
+      message.data = new uint8_t[5];
       message.data[0] = "h";
       message.data[1] = "e";
       message.data[2] = "l";
       message.data[3] = "l";
       message.data[4] = "o";
-      RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
       publisher_->publish(message);
     }
     rclcpp::TimerBase::SharedPtr timer_;
