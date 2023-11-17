@@ -1,3 +1,18 @@
+[submodule "src/isaac_ros/isaac_ros_common"]
+	path = src/isaac_ros/isaac_ros_common
+	url = https://github.com/ut-ras/isaac_ros_common.git
+[submodule "src/isaac_ros/isaac_ros_object_detection"]
+	path = src/isaac_ros/isaac_ros_object_detection
+	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_object_detection.git
+[submodule "src/isaac_ros/isaac_ros_dnn_inference"]
+	path = src/isaac_ros/isaac_ros_dnn_inference
+	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_inference.git
+[submodule "src/isaac_ros/isaac_ros_image_pipeline"]
+	path = src/isaac_ros/isaac_ros_image_pipeline
+	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git
+[submodule "src/isaac_ros/isaac_ros_nitros"]
+	path = src/isaac_ros/isaac_ros_nitros
+	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros.git
 [submodule "src/realsense-ros"]
 	path = src/realsense-ros
 	url = https://github.com/IntelRealSense/realsense-ros.git
