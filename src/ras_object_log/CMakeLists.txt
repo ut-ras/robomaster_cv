@@ -64,7 +64,7 @@ ament_target_dependencies(object_log
 )
 target_link_libraries( object_log
 ${catkin_LIBRARIES}
-cuda
+# cuda
 ${CMAKE_SOURCE_DIR}/src/object-log/libobjectlog.so
 )
 

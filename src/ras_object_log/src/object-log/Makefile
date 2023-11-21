@@ -1,6 +1,6 @@
 CXX=nvcc
 FLAGS=-lcublas -c -Xcompiler -fPIC 
-FLAGS_EXEC = -lcublas -g
+FLAGS_EXEC = -lcublas
 all: clean armor-plate bounding-box object-log kalman shared
 
 object-log-exec.o: ObjectLog.cu ObjectLog.h ArmorPlate.cu ArmorPlate.h BoundingBox.cu BoundingBox.h Kalman.cu Kalman.h
@@ -16,7 +16,7 @@ object-log: ObjectLog.cu ObjectLog.h
 kalman: Kalman.cu Kalman.h
 	$(CXX) $(FLAGS) Kalman.cu -o kalman.o
 shared: ObjectLog.cu ObjectLog.h ArmorPlate.cu ArmorPlate.h BoundingBox.cu BoundingBox.h Kalman.cu Kalman.h
-	$(CXX) armor-plate.o bounding-box.o object-log.o kalman.o -shared -o libobjectlog.so
+	$(CXX) -lcublas -G armor-plate.o bounding-box.o object-log.o kalman.o -shared -o libobjectlog.so
 clean:
 	rm -f armor-plate.o
 	rm -f bounding-box.o

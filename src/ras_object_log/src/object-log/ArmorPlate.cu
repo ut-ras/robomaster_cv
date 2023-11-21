@@ -3,6 +3,7 @@
 #include "ArmorPlate.h"
 #include "cublas_v2.h"
 #include <iostream>
+#include <chrono>
 
 ArmorPlate::ArmorPlate(int id)
     : _id(id),
@@ -28,6 +29,10 @@ ArmorPlate::ArmorPlate(int id)
      * activity, boolean on the plate on if it is currently alive
      */
 }
+
+// ArmorPlate::~ArmorPlate() {
+//     delete _kalmanFilter;
+// }
 
 int ArmorPlate::getId()
 {
@@ -64,7 +69,7 @@ std::tuple<float, float, float> ArmorPlate::getNextPosition()
     return _delta_position;
 }
 
-time_t ArmorPlate::getLastTime()
+uint64_t ArmorPlate::getLastTime()
 {
     return _lastTime;
 }
@@ -84,7 +89,7 @@ void ArmorPlate::setId(int id)
     ArmorPlate::_id = id;
 }
 
-void ArmorPlate::setPosition(std::tuple<float, float, float> position, time_t currentTime)
+void ArmorPlate::setPosition(std::tuple<float, float, float> position, uint64_t currentTime)
 {
     printf("Current Time: %ld\n", currentTime);
     printf("Last Time: %ld\n", _lastTime);
@@ -112,7 +117,17 @@ void ArmorPlate::setPosition(std::tuple<float, float, float> position, time_t cu
         this->setVelocity(new_velocity);
         this->setAcceleration(new_accelaration);
     }
-    printf("Predicted Position: %f, %f, %f\n", std::get<0>(ArmorPlate::_delta_position), std::get<1>(ArmorPlate::_delta_position), std::get<2>(ArmorPlate::_delta_position));
+    printf("Predicted delta Position: %f, %f, %f\n", std::get<0>(ArmorPlate::_delta_position), std::get<1>(ArmorPlate::_delta_position), std::get<2>(ArmorPlate::_delta_position));
+    std::tuple<float, float, float> new_position = std::tuple<float, float, float>((std::get<0>(position) + std::get<0>(ArmorPlate::_delta_position)),
+                                                                                   (std::get<1>(position) + std::get<1>(ArmorPlate::_delta_position)),
+                                                                                   (std::get<2>(position) + std::get<2>(ArmorPlate::_delta_position)));
+    printf("New Predicted Position: %f, %f, %f\n", std::get<0>(new_position), std::get<1>(new_position), std::get<2>(new_position));
+    
+    // set the position to the average of new_position and position
+    ArmorPlate::_position = std::tuple<float, float, float>((std::get<0>(new_position) + std::get<0>(position)) / 2,
+                                                            (std::get<1>(new_position) + std::get<1>(position)) / 2,
+                                                            (std::get<2>(new_position) + std::get<2>(position)) / 2);
+    printf("Final Position: %f, %f, %f\n", std::get<0>(ArmorPlate::_position), std::get<1>(ArmorPlate::_position), std::get<2>(ArmorPlate::_position));
 }
 
 void ArmorPlate::setVelocity(std::tuple<float, float, float> velocity)
@@ -140,7 +155,7 @@ void ArmorPlate::setNextPosition(std::tuple<float, float, float> next_position)
     ArmorPlate::_delta_position = next_position;
 }
 
-void ArmorPlate::setLastTime(time_t lastTime)
+void ArmorPlate::setLastTime(uint64_t lastTime)
 {
     ArmorPlate::_lastTime = lastTime;
 }
@@ -195,12 +210,12 @@ void ArmorPlate::updatePositionVelAcc()
  * @brief Predicts the position of the armor plate at the current time
  * Uses the kalman filter to do so
  */
-void ArmorPlate::predictPosition(time_t currentTime)
+void ArmorPlate::predictPosition(uint64_t currentTime)
 {
 
     // get the predicted position from kalman filter
     // set the position to the predicted value
-    time_t timeDiff = currentTime - ArmorPlate::_lastTime;
+    uint64_t timeDiff = currentTime - ArmorPlate::_lastTime;
     // kinematics ut + 0.5at^2
     std::tuple<float, float, float> deltaVel = std::tuple<float, float, float>(0, 0, 0);
     float *velocity, *acceleration, *deltaVel_h;

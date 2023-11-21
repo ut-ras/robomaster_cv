@@ -327,7 +327,7 @@ class Classical : public rclcpp::Node
             bbox.center_x = armor_plates[i].center.x;
             bbox.center_y = armor_plates[i].center.y;
             bbox.width = armor_plates[i].br.x - armor_plates[i].tl.x;
-            bbox.height = armor_plates[i].br.y - armor_plates[i].br.y;
+            bbox.height = armor_plates[i].br.y - armor_plates[i].tl.y;
             bbox.depth = depth_img.at<uint16_t>(armor_plates[i].center);
             output_msg.boxes.push_back(bbox);
         }

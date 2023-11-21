@@ -24,10 +24,32 @@ public:
   }
 
 private:
-  void constructMessage(std::vector<BoundingBox> boxList) {
-    _objectlog.boxesInput(boxList, std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+  void constructMessage(std::vector<BoundingBox> boxList)
+  {
+    // boxes input handles all the computation done by the object log
+    _objectlog.boxesInput(boxList, std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
     auto message = stampede_msgs::msg::TurretData();
+
+    RCLCPP_INFO(this->get_logger(), "calling getFinalArmorPlateState()");
+    // printf("calling getFinalArmorPlateState()");
+    // getFinalArmorPlateState selects one plate to shoot at
     std::vector<float> target = _objectlog.getFinalArmorPlateState();
+
+    if (target.size() <= 0) {
+      message.xpos = 0;
+      message.ypos = 0;
+      message.zpos = 0;
+      message.xvel = 0;
+      message.yvel = 0;
+      message.zvel = 0;
+      message.xacc = 0;
+      message.yacc = 0;
+      message.zacc = 0;
+      message.has_target = false;
+      RCLCPP_INFO(this->get_logger(), "No plates found");
+      publisher_->publish(message);
+      return;
+    }
     message.xpos = target[0];
     message.ypos = target[1];
     message.zpos = target[2];
@@ -49,8 +71,11 @@ private:
                 message.zacc);
     publisher_->publish(message);
   }
-  void topic_callback(const stampede_msgs::msg::ObjectLogInput &msg) 
+
+  // Callback function to handle any messages inputted to the object log
+  void topic_callback(const stampede_msgs::msg::ObjectLogInput &msg)
   {
+    RCLCPP_INFO(this->get_logger(), "Received: %d", msg.boxes.size());
     std::vector<BoundingBox> boxList;
     for (int i = 0; i < msg.boxes.size(); i++)
     {
@@ -62,6 +87,8 @@ private:
       box.setHeight(msg.boxes[i].height);
       boxList.push_back(box);
     }
+
+    // this is where the object log is called
     constructMessage(boxList);
   }
   rclcpp::Subscription<stampede_msgs::msg::ObjectLogInput>::SharedPtr subscription_;
@@ -71,7 +98,10 @@ private:
 
 int main(int argc, char *argv[])
 {
+  // ! Node gets blocked infinitely and I get no output
   rclcpp::init(argc, argv);
+  // auto logger = rclcpp::get_logger("main_logger");
+  // RCLCPP_INFO(logger, "Node is Running\n");
   rclcpp::spin(std::make_shared<MinimalSubscriber>());
   rclcpp::shutdown();
   return 0;
