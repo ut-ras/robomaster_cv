@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="ras_object_log" exec="object_log"/>
+</launch>

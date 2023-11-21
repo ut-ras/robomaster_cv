@@ -8,6 +8,7 @@
 #include <cmath>
 #include <limits>
 #include <stdio.h>
+#include <chrono>
 
 // #include "object-log/ArmorPlate.h"
 // #include "object-log/BoundingBox.h"
@@ -26,7 +27,7 @@ const int FRAME_HEIGHT = 720;
 // minimum area allowed
 const int MIN_AREA = 10;
 
-const int KILL_THRESHOLD = 60;
+const int KILL_THRESHOLD = 250;
 
 const float MARGIN_OF_ERR = 4; // to be fine tuned
 
@@ -60,7 +61,7 @@ public:
         - timestamp: timestamp of the boundingBoxes
                      the plates unless the closest distance is greater than some margin of error
     */
-    int boxesInput(std::vector<BoundingBox> boxList, time_t currTime);
+    int boxesInput(std::vector<BoundingBox> boxList, uint64_t currTime);
 
     /*
     Checks and returns if the armor plate's area is significant enough to be targeted

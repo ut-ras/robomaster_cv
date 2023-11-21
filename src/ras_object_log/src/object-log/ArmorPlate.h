@@ -5,6 +5,7 @@
 #include <vector>
 #include <ctime>
 #include <time.h>
+#include <chrono>
 // #include "object-log/BoundingBox.h"
 // #include "object-log/Kalman.h"
 #include "BoundingBox.h"
@@ -23,6 +24,7 @@ class ArmorPlate
 public:
     // **** Constructors ****
     ArmorPlate(int id);
+    // ~ArmorPlate();
 
     // **** Getters ****
     int getId();
@@ -33,19 +35,19 @@ public:
     bool getIsActive();
     bool getSeenThisIteration();
     std::tuple<float, float, float> getNextPosition();
-    time_t getLastTime();
+    uint64_t getLastTime();
     std::vector<BoundingBox> getAssociatedBoxes();
     // KalmanFilter getKalmanFilter();
 
     // **** Setters ****
     void setId(int id);
-    void setPosition(std::tuple<float, float, float> position, time_t currTime);
+    void setPosition(std::tuple<float, float, float> position, uint64_t currTime);
     void setVelocity(std::tuple<float, float, float> velocity);
     void setAcceleration(std::tuple<float, float, float> acceleration);
     void setIsActive(bool isActive);
     void setSeenThisIteration(bool seenThisIteration);
     void setNextPosition(std::tuple<float, float, float> next_position);
-    void setLastTime(time_t lastTime);
+    void setLastTime(uint64_t lastTime);
     // void setAssociatedBoxes(std::vector<BoundingBox> associatedBoxes);
     // void setKalmanFilter(KalmanFilter kalmanFilter);
 
@@ -66,7 +68,7 @@ public:
      * this method is subject to change depending on how PVA is implemented (currently assumed to be world positions)
      * assumes that time is being kept track of in per second units while velocity/acceleration are per millisecond units.
      */
-    void predictPosition(time_t currentTime);
+    void predictPosition(uint64_t currentTime);
 
     // ! TOOO update_box takes in a boundingBox and updates all the status variables involved
     // void updateBox(BoundingBox boundingBox, time_t currentTime);
@@ -85,7 +87,7 @@ private:
     bool _isActive;
     bool _seenThisIteration;
     std::tuple<float, float, float> _delta_position;
-    time_t _lastTime;
+    uint64_t _lastTime;
     std::vector<BoundingBox> _associatedBoxes;
     Kalman *_kalmanFilter;
 };
