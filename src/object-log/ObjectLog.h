@@ -6,7 +6,7 @@
 #include <ctime>
 #include <time.h>
 
-#include "BoundingBox.h" // name may be subject to change
+// #include "BoundingBox.h" // name may be subject to change
 #include "ArmorPlate.h" 
 
 const int MAX_X = 150;
