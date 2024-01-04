@@ -1,31 +1,20 @@
 #include <stdio.h>
 #include "ArmorPlate.h"
-class ArmorPlate
-{
-    /*
-     * ArmorPlate class for Stampede Robomasters Team - 2023
-     * Written by Tanay Garg
-     *
-     * Initializes an Armor Plate object that can be used to store information about a single armor plate based on CV data gathered from a
-     * classifier and a predictor model.
-     */
+#include "cublas.h"
 
-private:
-    int id;
-    std::tuple<double, double, double> position;
-    std::tuple<double, double, double> velocity;
-    std::tuple<double, double, double> acceleration;
-    // BoundingBox boundingBox;
-    bool isActive;
-    bool seenThisIteration;
-    std::tuple<double, double, double> next_position;
-    time_t lastTime;
-    
-    // std::vector<BoundingBox> associatedBoxes;
-    // KalmanFilter kalmanFilter;
 
-public:
-    ArmorPlate(int id)
+    ArmorPlate::ArmorPlate(int id) 
+    : _id(id), 
+    _position(std::tuple<double, double, double>(0, 0, 0)), 
+    _velocity(std::tuple<double, double, double>(0, 0, 0)), 
+    _acceleration(std::tuple<double, double, double>(0, 0, 0)), 
+    // _boundingBox(BoundingBox()), 
+    _isActive(true), 
+    _seenThisIteration(false), 
+    _next_position(std::tuple<double, double, double>(0, 0, 0)), 
+    _lastTime(time(0))
+    // _associatedBoxes(std::vector<BoundingBox>()), 
+    // _kalmanFilter(new KalmanFilter())
     {
         /*
          * Initializes the armor plate
@@ -38,105 +27,105 @@ public:
          * activity, boolean on the plate on if it is currently alive
          */
 
-        this->id = id;
-        this->position = std::tuple<double, double, double>(0, 0, 0);
-        this->velocity = std::tuple<double, double, double>(0, 0, 0);
-        this->acceleration = std::tuple<double, double, double>(0, 0, 0);
+        // this->id = id;
+        // this->position = std::tuple<double, double, double>(0, 0, 0);
+        // this->velocity = std::tuple<double, double, double>(0, 0, 0);
+        // this->acceleration = std::tuple<double, double, double>(0, 0, 0);
         // this->boundingBox = boundingBox;
-        this->isActive = true;
-        this->seenThisIteration = false;
-        this->next_position = std::tuple<double, double, double>(0, 0, 0);
-        this->lastTime = time(0);
+        // this->isActive = true;
+        // this->seenThisIteration = false;
+        // this->next_position = std::tuple<double, double, double>(0, 0, 0);
+        // this->lastTime = time(0);
         // this->associatedBoxes = std::vector<BoundingBox>();
         // this->kalmanFilter = new KalmanFilter();
     }
 
-    int getId()
+    int ArmorPlate::getId()
     {
-        return this->id;
+        return _id;
     }
 
-    std::tuple<double, double, double> getPosition()
+    std::tuple<double, double, double> ArmorPlate::getPosition()
     {
-        return this->position;
+        return _position;
     }
 
-    std::tuple<double, double, double> getVelocity()
+    std::tuple<double, double, double> ArmorPlate::getVelocity()
     {
-        return this->velocity;
+        return _velocity;
     }
 
-    std::tuple<double, double, double> getAcceleration()
+    std::tuple<double, double, double> ArmorPlate::getAcceleration()
     {
-        return this->acceleration;
+        return _acceleration;
     }
 
-    bool getIsActive()
+    bool ArmorPlate::getIsActive()
     {
-        return this->isActive;
+        return _isActive;
     }
 
-    bool getSeenThisIteration()
+    bool ArmorPlate::getSeenThisIteration()
     {
-        return this->seenThisIteration;
+        return _seenThisIteration;
     }
 
-    std::tuple<double, double, double> getNextPosition()
+    std::tuple<double, double, double> ArmorPlate::getNextPosition()
     {
-        return this->next_position;
+        return _next_position;
     }
 
-    time_t getLastTime()
+    time_t ArmorPlate::getLastTime()
     {
-        return this->lastTime;
+        return _lastTime;
     }
 
     // BoundingBox getBoundingBox()
 
-    void setId(int id)
+    void ArmorPlate::setId(int id)
     {
-        this->id = id;
+        ArmorPlate::_id = id;
     }
 
-    void setPosition(std::tuple<double, double, double> position)
+    void ArmorPlate::setPosition(std::tuple<double, double, double> position)
     {
-        this->position = position;
+        ArmorPlate::_position = position;
     }
 
-    void setVelocity(std::tuple<double, double, double> velocity)
+    void ArmorPlate::setVelocity(std::tuple<double, double, double> velocity)
     {
-        this->velocity = velocity;
+        ArmorPlate::_velocity = velocity;
     }
 
-    void setAcceleration(std::tuple<double, double, double> acceleration)
+    void ArmorPlate::setAcceleration(std::tuple<double, double, double> acceleration)
     {
-        this->acceleration = acceleration;
+        ArmorPlate::_acceleration = acceleration;
     }
 
-    void setIsActive(bool isActive)
+    void ArmorPlate::setIsActive(bool isActive)
     {
-        this->isActive = isActive;
+        ArmorPlate::_isActive = isActive;
     }
 
-    void setSeenThisIteration(bool seenThisIteration)
+    void ArmorPlate::setSeenThisIteration(bool seenThisIteration)
     {
-        this->seenThisIteration = seenThisIteration;
+        ArmorPlate::_seenThisIteration = seenThisIteration;
     }
 
-    void setNextPosition(std::tuple<double, double, double> next_position)
+    void ArmorPlate::setNextPosition(std::tuple<double, double, double> next_position)
     {
-        this->next_position = next_position;
+        ArmorPlate::_next_position = next_position;
     }
 
-    void setLastTime(time_t lastTime)
+    void ArmorPlate::setLastTime(time_t lastTime)
     {
-        this->lastTime = lastTime;
+        ArmorPlate::_lastTime = lastTime;
     }
 
     // void setBoundingBox(BoundingBox boundingBox) {}
     // void setKalmanFilter(KalmanFilter kalmanFilter) {}
 
-    void updatePositionVelAcc()
+    void ArmorPlate::updatePositionVelAcc()
     {
         /*
          * Updates the position, velocity, and acceleration of the armor plate
@@ -149,7 +138,7 @@ public:
         // set the position, vel, and acc to the predicted values
     }
 
-    void predictPosition(time_t currentTime)
+    void ArmorPlate::predictPosition(time_t currentTime)
     {
         /*
          * Predicts the position of the armor plate at the current time
@@ -159,7 +148,7 @@ public:
         // ! TODO implement this
         // get the predicted position from kalman filter
         // set the position to the predicted value
-        time_t timeDiff = currentTime - this->lastTime;
+        time_t timeDiff = currentTime - ArmorPlate::_lastTime;
         // kinematics ut + 0.5at^2
         std::tuple<double, double, double> deltaVel = std::tuple<double, double, double>(0, 0, 0);
         // ? I am thinking about implementing LAPACK to do matrix multiplication but there is a curve to it imo
@@ -173,4 +162,3 @@ public:
     {
         return 0;
     }
-};
