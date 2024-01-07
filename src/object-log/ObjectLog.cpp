@@ -1,178 +1,166 @@
-#include <cmath>
-#include <limits>
-#include <stdio.h>
-#include "ObjectLog.h"
+
 #include "ArmorPlate.h"
+#include "ObjectLog.h"
 
-class ObjectLog
+ObjectLog::ObjectLog() : _plates(), _idAssign(0), _outputLog(fopen("ObjectLog.txt", "w")) {}
 {
+    // this->plates = {};
+    // this->idAssign = 0;
+    // this->outputLog = fopen("ObjectLog.txt", "w");
+}
 
-private:
-    std::vector<ArmorPlate> plates;
-    int idAssign;
-    FILE *outputLog;
-
-public:
-    ObjectLog()
+void boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
+{
+    if (boxList.empty())
     {
-        this->plates = {};
-        this->idAssign = 0;
-        this->outputLog = fopen("ObjectLog.txt", "w");
+        return -1;
     }
 
-    void boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
+    if (this->plates.empty())
     {
-        if (boxList.empty())
+        for (int i = 0; i < boxList.size(); i++)
         {
-            return -1;
-        }
-
-        if (this->plates.empty())
-        {
-            for (int i = 0; i < boxList.size(); i++)
+            box = box[i];
+            if (!sizeCheck(box))
+                continue;
+            if ((box.get_x_value() < 0) || (box.get_y_value() < 0) || (box.get_depth() < 0) || (box.get_height() < 0) || (box.get_width() < 0))
             {
-                box = box[i];
-                if (!sizeCheck(box))
-                    continue;
-                if ((box.get_x_value() < 0) || (box.get_y_value() < 0) || (box.get_depth() < 0) || (box.get_height() < 0) || (box.get_width() < 0))
-                {
-                    return -1; // maybe change to just a continue?
-                }
-                ArmorPlate newPlate = new ArmorPlate(box, this->idAssign);
-                newPlate.addArmorPlate(newPlate, currTime);
-                this->plates.push_back(newPlate);
-                this->idAssign++;
+                return -1; // maybe change to just a continue?
             }
+            ArmorPlate newPlate = new ArmorPlate(box, this->idAssign);
+            newPlate.addArmorPlate(newPlate, currTime);
+            this->plates.push_back(newPlate);
+            this->idAssign++;
         }
-        else
+    }
+    else
+    {
+        for (int i = 0; i < boxList.size(); i++)
         {
-            for (int i = 0; i < boxList.size(); i++)
+            box = box[i];
+            // std::cout << box << std::endl; //C++ does not have the same printing properties as Python so prints may be useless
+            if (!sizeCheck(boxList[i]))
+                continue;
+
+            if ((boxList[i].get_x_value() < 0) || (boxList[i].get_y_value() < 0) || (boxList[i].get_depth() < 0) || (boxList[i].get_height() < 0) || (boxList[i].get_width() < 0))
             {
-                box = box[i];
-                // std::cout << box << std::endl; //C++ does not have the same printing properties as Python so prints may be useless
-                if (!sizeCheck(boxList[i]))
-                    continue;
+                return -1; // maybe change to just a continue?
+            }
+            int assoc = assign_plate(&box, this->plates);
+            ArmorPlate newAP = new ArmorPlate(box, this->idAssign);
 
-                if ((boxList[i].get_x_value() < 0) || (boxList[i].get_y_value() < 0) || (boxList[i].get_depth() < 0) || (boxList[i].get_height() < 0) || (boxList[i].get_width() < 0))
+            if (assoc == -1)
+            {
+                if (this->plates.size() < 9)
                 {
-                    return -1; // maybe change to just a continue?
-                }
-                int assoc = assign_plate(&box, this->plates);
-                ArmorPlate newAP = new ArmorPlate(box, this->idAssign);
-
-                if (assoc == -1)
-                {
-                    if (this->plates.size() < 9)
-                    {
-                        this->plates.push_back(newAP);
-                        this->idAssign++;
-                    }
-                    else
-                    {
-                        std::cout << "need space" << std::endl;
-                    }
-                }
-                else if (assoc == -2)
-                {
-                    std::cout << "panic" << std::endl;
-                }
-                else if (assoc == -3)
-                {
-                    std::cout << "out of range" << std::endl;
+                    this->plates.push_back(newAP);
+                    this->idAssign++;
                 }
                 else
                 {
-                    ArmorPlate assocPlate = this->plates[assoc];
-                    assocPlate.addArmorPlate(newAP, currTime);
-                    assocPlate.timeBuffer = 0;
-                    this->idAssign++;
+                    std::cout << "need space" << std::endl;
                 }
             }
-
-            for (int i = 0; i < this->plates.size(); i++)
+            else if (assoc == -2)
             {
-                plate = this->plates[i];
-                if (plate.timeBuffer != 0)
+                std::cout << "panic" << std::endl;
+            }
+            else if (assoc == -3)
+            {
+                std::cout << "out of range" << std::endl;
+            }
+            else
+            {
+                ArmorPlate assocPlate = this->plates[assoc];
+                assocPlate.addArmorPlate(newAP, currTime);
+                assocPlate.timeBuffer = 0;
+                this->idAssign++;
+            }
+        }
+
+        for (int i = 0; i < this->plates.size(); i++)
+        {
+            plate = this->plates[i];
+            if (plate.timeBuffer != 0)
+            {
+                plate.timeBuffer++;
+                if (plate.timeBuffer == kill_threshold)
                 {
-                    plate.timeBuffer++;
-                    if (plate.timeBuffer == kill_threshold)
-                    {
-                        kill_plate(plate.getID()); // originally kill_plate(i) but I think that is wrong
-                    }
+                    kill_plate(plate.getID()); // originally kill_plate(i) but I think that is wrong
                 }
             }
         }
     }
+}
 
-    // Basic check to see if a bounding box meets the basic requirements (size does matter)
-    bool size_check(BoundingBox * box)
+// Basic check to see if a bounding box meets the basic requirements (size does matter)
+bool size_check(BoundingBox *box)
+{
+    return box->get_height() * box->get_width() >= MIN_AREA;
+}
+
+int assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
+{
+    if (box == NULL || plates == NULL)
+        return -2;
+
+    std::tuple<double, double, double> position = box->get_position();
+    float shortest_dist = std::numeric_limits<float>::max();
+    int shortest_plate = -1;
+
+    if (((position[0] + margin_of_err) > MAX_X) || ((position[1] + margin_of_err) > MAX_Y) || ((position[2] + margin_of_err) > MAX_Z) || ((position[0] - margin_of_err) < MIN_X) || ((position[1] - margin_of_err) < MIN_Y) || ((position[2] - margin_of_err) < MIN_Z))
     {
-        return box->get_height() * box->get_width() >= MIN_AREA;
+        return -3;
     }
 
-    int assign_plate(BoundingBox * box, std::vector<ArmorPlate> plates)
+    for (int i = 0; i < plates.size(); i++)
     {
-        if (box == NULL || plates == NULL)
-            return -2;
-
-        std::tuple<double, double, double> position = box->get_position();
-        float shortest_dist = std::numeric_limits<float>::max();
-        int shortest_plate = -1;
-
-        if (((position[0] + margin_of_err) > MAX_X) || ((position[1] + margin_of_err) > MAX_Y) || ((position[2] + margin_of_err) > MAX_Z) || ((position[0] - margin_of_err) < MIN_X) || ((position[1] - margin_of_err) < MIN_Y) || ((position[2] - margin_of_err) < MIN_Z))
+        double dist = get_distance(position, plates[i].getPosition());
+        if (dist < shortest_dist)
         {
-            return -3;
-        }
-
-        for (int i = 0; i < plates.size(); i++)
-        {
-            double dist = get_distance(position, plates[i].getPosition());
-            if (dist < shortest_dist)
-            {
-                shortest_plate = i;
-                shortest_dist = dist;
-            }
-        }
-
-        if (shortest_dist > margin_of_error)
-        {
-            return -1;
-        }
-
-        return shortest_plate;
-    }
-
-    // Distance formula (basically Pythagorean theorem in 3D space)
-    double det_distance(std::tuple<double, double, double> p1, std::tuple<double, double, double> p2)
-    {
-        return sqrt(pow((std::get<0>(p1) - std::get<0>(p2)), 2) + pow((std::get<1>(p1) - std::get<1>(p2)), 2) + pow((std::get<2>(p1) - std::get<2>(p2)), 2));
-    }
-
-    void kill_all()
-    {
-        for (int i = 0; i < this->plates.size(); i++)
-        {
-            this->plate[i].writeToHistory(this->outputLog)
-        }
-        this->plates.clear();
-        fclose(this->outputLog) return;
-    }
-
-    std::vector<ArmorPlate> get_plates()
-    {
-        return plates;
-    }
-
-    void kill_plate(int id)
-    {
-        for (int i = 0; i < this->plates.size(); i++)
-        {
-            if (this->plates[i].getID() == id)
-            {
-                this->plates[i].writeToHistory(this->outputLog);
-                this->plates.erase(i);
-                break;
-            }
+            shortest_plate = i;
+            shortest_dist = dist;
         }
     }
-};
+
+    if (shortest_dist > margin_of_error)
+    {
+        return -1;
+    }
+
+    return shortest_plate;
+}
+
+// Distance formula (basically Pythagorean theorem in 3D space)
+double det_distance(std::tuple<double, double, double> p1, std::tuple<double, double, double> p2)
+{
+    return sqrt(pow((std::get<0>(p1) - std::get<0>(p2)), 2) + pow((std::get<1>(p1) - std::get<1>(p2)), 2) + pow((std::get<2>(p1) - std::get<2>(p2)), 2));
+}
+
+void kill_all()
+{
+    for (int i = 0; i < this->plates.size(); i++)
+    {
+        this->plate[i].writeToHistory(this->outputLog)
+    }
+    this->plates.clear();
+    fclose(this->outputLog) return;
+}
+
+std::vector<ArmorPlate> get_plates()
+{
+    return plates;
+}
+
+void kill_plate(int id)
+{
+    for (int i = 0; i < this->plates.size(); i++)
+    {
+        if (this->plates[i].getID() == id)
+        {
+            this->plates[i].writeToHistory(this->outputLog);
+            this->plates.erase(i);
+            break;
+        }
+    }
+}
