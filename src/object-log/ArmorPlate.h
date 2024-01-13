@@ -1,9 +1,12 @@
 #ifndef ARMORPLATE_H
 #define ARMORPLATE_H
+#define IDX2C(i,j,ld) (((j)*(ld))+(i))
 #include <tuple>
 #include <vector>
 #include <ctime>
 #include <time.h>
+#include "BoundingBox.h"
+
 
 class ArmorPlate
 {
@@ -20,27 +23,27 @@ public:
 
     // **** Getters ****
     int getId();
-    std::tuple<double, double, double> getPosition();
-    std::tuple<double, double, double> getVelocity();
-    std::tuple<double, double, double> getAcceleration();
-    // BoundingBox getBoundingBox();
+    std::tuple<float, float, float> getPosition();
+    std::tuple<float, float, float> getVelocity();
+    std::tuple<float, float, float> getAcceleration();
+    BoundingBox getBoundingBox();
     bool getIsActive();
     bool getSeenThisIteration();
-    std::tuple<double, double, double> getNextPosition();
+    std::tuple<float, float, float> getNextPosition();
     time_t getLastTime();
-    // std::vector<> getAssociatedBoxes();
+    std::vector<BoundingBox> getAssociatedBoxes();
     // KalmanFilter getKalmanFilter();
 
     // **** Setters ****
     void setId(int id);
-    void setPosition(std::tuple<double, double, double> position);
-    void setVelocity(std::tuple<double, double, double> velocity);
-    void setAcceleration(std::tuple<double, double, double> acceleration);
+    void setPosition(std::tuple<float, float, float> position);
+    void setVelocity(std::tuple<float, float, float> velocity);
+    void setAcceleration(std::tuple<float, float, float> acceleration);
     void setIsActive(bool isActive);
     void setSeenThisIteration(bool seenThisIteration);
-    void setNextPosition(std::tuple<double, double, double> next_position);
+    void setNextPosition(std::tuple<float, float, float> next_position);
     void setLastTime(time_t lastTime);
-    // void setAssociatedBoxes(std::vector<> associatedBoxes);
+    // void setAssociatedBoxes(std::vector<BoundingBox> associatedBoxes);
     // void setKalmanFilter(KalmanFilter kalmanFilter);
 
     /*  *  Velocity and acceleration are sets of three values.
@@ -67,16 +70,15 @@ public:
 
 private:
     int _id;
-    std::tuple<double, double, double> _position;
-    std::tuple<double, double, double> _velocity;
-    std::tuple<double, double, double> _acceleration;
-    // BoundingBox boundingBox;
+    std::tuple<float, float, float> _position;
+    std::tuple<float, float, float> _velocity;
+    std::tuple<float, float, float> _acceleration;
+    BoundingBox _boundingBox;
     bool _isActive;
     bool _seenThisIteration;
-    std::tuple<double, double, double> _next_position;
+    std::tuple<float, float, float> _next_position;
     time_t _lastTime;
-
-    // std::vector<BoundingBox> _associatedBoxes;
+    std::vector<BoundingBox> _associatedBoxes;
     // KalmanFilter _kalmanFilter;
 };
 #endif

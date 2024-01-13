@@ -2,21 +2,16 @@
 #include "ArmorPlate.h"
 #include "ObjectLog.h"
 
-ObjectLog::ObjectLog() : _plates(), _idAssign(0), _outputLog(fopen("ObjectLog.txt", "w")) {}
-{
-    // this->plates = {};
-    // this->idAssign = 0;
-    // this->outputLog = fopen("ObjectLog.txt", "w");
-}
+ObjectLog::ObjectLog() : _plates(std::vector<ArmorPlate>()), _idAssign(0), _outputLog(fopen("ObjectLog.txt", "w")) {}
 
-void boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
+int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
 {
     if (boxList.empty())
     {
         return -1;
     }
 
-    if (this->plates.empty())
+    if (_plates.empty())
     {
         for (int i = 0; i < boxList.size(); i++)
         {
@@ -94,9 +89,9 @@ void boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
 }
 
 // Basic check to see if a bounding box meets the basic requirements (size does matter)
-bool size_check(BoundingBox *box)
+bool ObjectLog::sizeCheck(BoundingBox *box)
 {
-    return box->get_height() * box->get_width() >= MIN_AREA;
+    return (box->getHeight() * box->getWidth()) >= MIN_AREA;
 }
 
 int assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
