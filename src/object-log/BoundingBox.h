@@ -1,5 +1,5 @@
-#ifndef ARMORPLATE_H
-#define ARMORPLATE_H
+#ifndef BOUNDINGBOX_H
+#define BOUNDINGBOX_H
 #include <tuple>
 #include <vector>
 #include <ctime>

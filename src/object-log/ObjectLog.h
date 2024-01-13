@@ -9,8 +9,8 @@
 #include <limits>
 #include <stdio.h>
 
-// #include "BoundingBox.h" // name may be subject to change
 #include "ArmorPlate.h"
+#include "BoundingBox.h"
 
 const int MAX_X = 150;
 const int MAX_Y = 150;
@@ -32,21 +32,33 @@ class ObjectLog
 public:
     ObjectLog();
 
-    /*
-    Input from depth module
-    Input:
-    - boxList: an array of of bounding box objects
-    - timestamp: timestamp of the boundingBoxes
-    the plates unless the closest distance is greater than some margin of error
-    returns -1 if failure and 0 if success
+    /**
+    Object Log:
+    Purpose: System to hold current value of armor plate.
+    Fields:
+        - plates: array of currently active armor plates (armor plate objects)
+        - id: ID associated with them
+        - Timestamp: The last timestamp they have.
+    Primary functions in pipeline:
+        - Take in input from depth/ML and associate armor plates
+        - Filter out old plates
+        - Write to a log file
     */
-    int boxes_input(std::vector<BoundingBox> boxList, time_t currTime);
+    
+    /* *
+     * Input from depth
+     * Input: 
+        - boxList: an array of of bounding box objects
+        - timestamp: timestamp of the boundingBoxes
+                     the plates unless the closest distance is greater than some margin of error
+    */
+    int boxesInput(std::vector<BoundingBox> boxList, time_t currTime);
 
     /*
     Checks and returns if the armor plate's area is significant enough to be targeted
     and added/associated into the list of active armor plates
     */
-    bool size_check(BoundingBox *box);
+    bool sizeCheck(BoundingBox *box);
 
     /*
     Takes in an armor plate, makes sure that it is valid and not predicted to be out of
@@ -65,14 +77,13 @@ public:
     // kill all plates and
     void kill_all();
 
-    std::vector<ArmorPlate> get_plates();
-
     void kill_plate(int id);
 
 private:
     std::vector<ArmorPlate> _plates;
     int _idAssign;
     FILE *_outputLog;
+    double margin_of_error;
 };
 
 #endif

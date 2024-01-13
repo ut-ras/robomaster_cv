@@ -1,8 +1,16 @@
-all: clean armor-plate 
+CXX=nvcc
+FLAGS=-lcublas
+all: clean object-log 
 
-armor-plate: ArmorPlate.cpp ArmorPlate.h
-	g++ ArmorPlate.cpp -o armor-plate
-
+armor-plate: ArmorPlate.cu ArmorPlate.h BoundingBox.cpp BoundingBox.h
+	$(CXX) $(FLAGS) ArmorPlate.cu BoundingBox.cpp -o armor-plate.o
+bounding-box: BoundingBox.cpp BoundingBox.h
+	$(CXX) $(FLAGS) BoundingBox.cpp -o bounding-box.o
+object-log: ObjectLog.cpp ObjectLog.h
+	$(CXX) $(FLAGS) ObjectLog.cpp ArmorPlate.cpp BoundingBox.cpp -o object-log.o
 clean:
 	rm -f armor-plate.o
+	rm -f bounding-box.o
+	rm -f object-log.o
+	rm -f out.o
 	
