@@ -1,0 +1,2 @@
+ros2 run isaac_ros_dnn_image_encoder dnn_image_encoder --ros-args -r encoded_tensor:=tensor_pub -p input_image_width:=640 -p input_image_height:=640 -p network_image_width:=640 -p network_image_height:=640 -p image_mean:=[0.0,0.0,0.0] -p image_stddev:=[1.0,1.0,1.0] --log-level DEBUG
+ros2 run isaac_ros_tensor_rt tensor_rt --ros-args -p model_file_path:=/workspaces/isaac_ros-dev/models/12_1_23-87_8.onnx -p engine_file_path:=/workspaces/isaac_ros-dev/models/12_1_23-87_8.plan -p output_binding_names:=['output0'] -p output_tensor_names
