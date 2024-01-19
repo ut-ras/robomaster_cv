@@ -142,8 +142,6 @@ void ArmorPlate::predictPosition(time_t currentTime)
      * Predicts the position of the armor plate at the current time
      * Uses the kalman filter to do so
      */
-
-    // ! TODO implement this
     // get the predicted position from kalman filter
     // set the position to the predicted value
     time_t timeDiff = currentTime - ArmorPlate::_lastTime;
