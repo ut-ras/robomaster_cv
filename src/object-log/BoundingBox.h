@@ -16,30 +16,30 @@ class BoundingBox
      * Initializes a Bounding box object used by the ObjectLog and ArmorPlate classes
      */
 private:
-    double _xCenter;
-    double _yCenter;
-    double _depthVal;
-    double _width;
-    double _height;
-    std::tuple<double, double, double> _position;
+    float _xCenter;
+    float _yCenter;
+    float _depthVal;
+    float _width;
+    float _height;
+    std::tuple<float, float, float> _position;
     time_t _timeStamp;
 
 public:
-    BoundingBox(double xCenter, double yCenter, double depthVal, double width, double height);
+    BoundingBox(float xCenter, float yCenter, float depthVal, float width, float height);
     BoundingBox();
-    void setXCenter(double xCenter);
-    void setYCenter(double yCenter);
-    void setDepthVal(double depthVal);
-    void setWidth(double width);
-    void setHeight(double height);
-    void setPosition(std::tuple<double, double, double> position);
+    void setXCenter(float xCenter);
+    void setYCenter(float yCenter);
+    void setDepthVal(float depthVal);
+    void setWidth(float width);
+    void setHeight(float height);
+    void setPosition(std::tuple<float, float, float> position);
     void setTimeStamp(time_t timeStamp);
-    double getXCenter();
-    double getYCenter();
-    double getDepthVal();
-    double getWidth();
-    double getHeight();
-    std::tuple<double, double, double> getPosition();
+    float getXCenter();
+    float getYCenter();
+    float getDepthVal();
+    float getWidth();
+    float getHeight();
+    std::tuple<float, float, float> getPosition();
     time_t getTimeStamp();
     int main();
 
