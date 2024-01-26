@@ -16,6 +16,3 @@
 [submodule "src/realsense-ros"]
 	path = src/realsense-ros
 	url = https://github.com/IntelRealSense/realsense-ros.git
-[submodule "src/transport_drivers"]
-	path = src/transport_drivers
-	url = https://github.com/ros-drivers/transport_drivers.git
