@@ -1,22 +1,50 @@
 cmake_minimum_required(VERSION 3.8)
 project(uart)
-
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
  
-# find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
+# Dependencies
+set(DEPENDENCIES
+  ament_cmake
+  rclcpp
+  std_msgs
+)
 
-add_executable(uart_tx src/uart_tx.cpp)
-ament_target_dependencies(uart_tx rclcpp std_msgs)
+foreach(pkg ${DEPENDENCIES})
+  find_package(${pkg} REQUIRED)
+endforeach()
+ament_export_dependencies(${DEPENDENCIES})
 
-target_include_directories(uart
+include_directories(include)
+
+# Serialib
+add_library(serialib SHARED
+  src/serial/serialib.cpp
+)
+target_include_directories(serialib
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_export_targets(serialib HAS_LIBRARY_TARGET)
+install(
+  TARGETS serialib
+  EXPORT serialib
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
+)
+
+# uart_tx executable
+add_executable(uart_tx 
+  src/uart_tx.cpp
+)
+ament_target_dependencies(uart_tx 
+  ${DEPENDENCIES}
+)
+target_link_libraries(uart_tx
+  serialib
+)
+
+target_include_directories(uart_tx
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
@@ -25,16 +53,9 @@ install(TARGETS
   uart_tx
   DESTINATION lib/${PROJECT_NAME})
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+install(
+  DIRECTORY include/
+  DESTINATION lib
+)
 
 ament_package()
