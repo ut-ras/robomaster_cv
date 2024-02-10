@@ -16,17 +16,18 @@ ament_export_dependencies(${DEPENDENCIES})
 include_directories(include)
 
 # Serialib
-add_library(serialib SHARED
-  src/serial/serialib.cpp
+add_library(serial SHARED
+  src/serial/serial.cc
+  src/serial/impl/unix.cc
 )
-target_include_directories(serialib
+target_include_directories(serial
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-ament_export_targets(serialib HAS_LIBRARY_TARGET)
+ament_export_targets(serial HAS_LIBRARY_TARGET)
 install(
-  TARGETS serialib
-  EXPORT serialib
+  TARGETS serial
+  EXPORT serial
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
@@ -41,7 +42,7 @@ ament_target_dependencies(uart_tx
   ${DEPENDENCIES}
 )
 target_link_libraries(uart_tx
-  serialib
+  serial
 )
 
 target_include_directories(uart_tx
