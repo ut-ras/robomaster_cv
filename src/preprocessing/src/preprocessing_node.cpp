@@ -7,24 +7,25 @@
 
 using std::placeholders::_1;
 
+constexpr char INPUT_TOPIC_NAME[] = "/camera/camera/rgbd";
+constexpr char OUTPUT_TOPIC_NAME[] = "/preprocessing/rgbd";
+
 class PreprocessingNode : public rclcpp::Node {
-  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr rgb_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr depth_publisher_;
+  rclcpp::Publisher<realsense2_camera_msgs::msg::RGBD>::SharedPtr rgbd_publisher_;
   rclcpp::Subscription<realsense2_camera_msgs::msg::RGBD>::SharedPtr subscription_;
 
 public:
   PreprocessingNode() : Node("preprocessing_node") {
-    rgb_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/preprocessing/rgb", 10);
-    depth_publisher_ = this->create_publisher<sensor_msgs::msg::Image>("/preprocessing/depth", 10);
-    subscription_ = this->create_subscription<realsense2_camera_msgs::msg::RGBD>("/camera/camera/rgbd", 10, std::bind(&PreprocessingNode::rgbd_callback, this, _1));
+    rgbd_publisher_ = this->create_publisher<realsense2_camera_msgs::msg::RGBD>(OUTPUT_TOPIC_NAME, 1);
+    subscription_ = this->create_subscription<realsense2_camera_msgs::msg::RGBD>(INPUT_TOPIC_NAME, 1, std::bind(&PreprocessingNode::rgbd_callback, this, _1));
   }
 
 private:
   void rgbd_callback(const realsense2_camera_msgs::msg::RGBD::SharedPtr msg) {
       auto rgb = msg->rgb;
       auto depth = msg->depth;
-      rgb_publisher_->publish(rgb);
-      depth_publisher_->publish(depth);
+      // TODO: Perform Preprocessing here
+      rgbd_publisher_->publish(*msg);
   }
 };
 
