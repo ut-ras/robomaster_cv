@@ -7,7 +7,8 @@
 
 using std::placeholders::_1;
 
-constexpr char YOLO_INPUT_TOPIC_NAME[] = "/image";
+constexpr char INPUT_TOPIC_NAME[] = "/camera/camera/rgbd";
+constexpr char OUTPUT_TOPIC_NAME[] = "/preprocessing/rgbd";
 
 class PreprocessingNode : public rclcpp::Node {
   rclcpp::Publisher<realsense2_camera_msgs::msg::RGBD>::SharedPtr rgbd_publisher_;
@@ -15,8 +16,8 @@ class PreprocessingNode : public rclcpp::Node {
 
 public:
   PreprocessingNode() : Node("preprocessing_node") {
-    rgbd_publisher_ = this->create_publisher<realsense2_camera_msgs::msg::RGBD>("/preprocessing/rgbd", 1);
-    subscription_ = this->create_subscription<realsense2_camera_msgs::msg::RGBD>("/camera/camera/rgbd", 1, std::bind(&PreprocessingNode::rgbd_callback, this, _1));
+    rgbd_publisher_ = this->create_publisher<realsense2_camera_msgs::msg::RGBD>(OUTPUT_TOPIC_NAME, 1);
+    subscription_ = this->create_subscription<realsense2_camera_msgs::msg::RGBD>(INPUT_TOPIC_NAME, 1, std::bind(&PreprocessingNode::rgbd_callback, this, _1));
   }
 
 private:
