@@ -50,8 +50,25 @@ target_include_directories(uart_tx
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
 
+# uart_rx executable
+add_executable(uart_rx
+  src/uart_rx.cpp
+)
+ament_target_dependencies(uart_rx 
+  ${DEPENDENCIES}
+)
+target_link_libraries(uart_rx
+  serial
+)
+
+target_include_directories(uart_rx
+  PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
+
 install(TARGETS
   uart_tx
+  uart_rx
   DESTINATION lib/${PROJECT_NAME})
 
 install(

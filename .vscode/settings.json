@@ -3,7 +3,9 @@
         "array": "cpp",
         "string": "cpp",
         "string_view": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "*.tcc": "cpp",
+        "system_error": "cpp"
     },
     "cmake.configureOnOpen": false
 }
