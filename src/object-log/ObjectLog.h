@@ -22,6 +22,10 @@ const int MIN_Z = -1;
 // minimum area allowed
 const int MIN_AREA = 10;
 
+const int KILL_THRESHOLD = 60;
+
+const float MARGIN_OF_ERR = 0.5; //to be fine tuned
+
 // const double error_margin = 0; // to be fine tuned
 
 // const int kill_threshold = -1; // to be fine tuned
@@ -74,7 +78,9 @@ public:
     */
     double get_distance(std::tuple<double, double, double> p1, std::tuple<double, double, double> p2);
 
-    // kill all plates and
+    std::vector<ArmorPlate> get_plates();
+
+    // kill all plates and log it
     void kill_all();
 
     void kill_plate(int id);
@@ -83,7 +89,6 @@ private:
     std::vector<ArmorPlate> _plates;
     int _idAssign;
     FILE *_outputLog;
-    double margin_of_error;
 };
 
 #endif
