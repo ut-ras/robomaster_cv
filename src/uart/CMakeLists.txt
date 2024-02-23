@@ -8,13 +8,15 @@ set(DEPENDENCIES
   std_msgs
 )
 
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${uart}
+  "TurretData.msg"
+  "OdometryData.msg"
+)
+
 foreach(pkg ${DEPENDENCIES})
   find_package(${pkg} REQUIRED)
-
-  rosidl_generate_interfaces(${uart}
-  "msg/turret_data.msg"
-  "msg/odometry_data.msg"
- )
 endforeach()
 ament_export_dependencies(${DEPENDENCIES})
 
