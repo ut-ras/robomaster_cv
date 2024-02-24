@@ -1,0 +1,1 @@
+ros2 run isaac_ros_image_proc isaac_ros_image_proc --ros-args -r /image_raw:=/robot/rs2/color/image_raw -r /image_rect_color:=/image --ros-args -r /camera_info:=/robot/rs2/color/camera_info -p height:=640 -p width:=640
