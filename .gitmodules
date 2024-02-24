@@ -3,7 +3,7 @@
 	url = https://github.com/ut-ras/isaac_ros_common.git
 [submodule "src/isaac_ros/isaac_ros_object_detection"]
 	path = src/isaac_ros/isaac_ros_object_detection
-	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_object_detection.git
+	url = https://github.com/ut-ras/isaac_ros_object_detection.git
 [submodule "src/isaac_ros/isaac_ros_dnn_inference"]
 	path = src/isaac_ros/isaac_ros_dnn_inference
 	url = https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_inference.git
