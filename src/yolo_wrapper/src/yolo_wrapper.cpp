@@ -8,9 +8,13 @@
 #include <realsense2_camera_msgs/msg/rgbd.hpp>
 
 using namespace std::chrono_literals;
+using std::placeholders::_1;
 
-constexpr char INPUT_TOPIC_NAME[] = "/preprocessing/rgbd";
-constexpr char OUTPUT_TOPIC_NAME[] = "/yolo/output";
+constexpr char INPUT_TOPIC_NAME[] = "/preprocessing/rgbd"; // realsense2_camera_msgs/msg/RGBD
+constexpr char YOLO_INPUT_TOPIC_NAME[] = "/image"; // sensor_msgs/msg/Image
+constexpr char YOLO_OUTPUT_TOPIC_NAME[] = "/detections_output"; // vision_msgs/msg/Detection2DArray
+constexpr char YOLO_OUTPUT_IMAGE_TOPIC_NAME[] = "/yolov8_processed_image"; // sensor_msgs/msg/Image
+constexpr char OUTPUT_TOPIC_NAME[] = "/yolo/output"; // yolo_wrapper/msg/YoloOutput
 
 /* This example creates a subclass of Node and uses std::bind() to register a
 * member function as a callback from the timer. */
@@ -18,26 +22,37 @@ constexpr char OUTPUT_TOPIC_NAME[] = "/yolo/output";
 class YOLOWrapper : public rclcpp::Node
 {
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
-  rclcpp::Publisher<realsense2_camera_msgs::msg::RGBD>::SharedPtr subscriber_;
-  size_t count_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr output_publisher_;
+  rclcpp::Publisher<std_msgs::msg::Image>::SharedPtr yolo_publisher_;
+  rclcpp::Subscription<realsense2_camera_msgs::msg::RGBD>::SharedPtr input_subscriber_;
+  rclcpp::Subscription<realsense2_camera_msgs::msg::RGBD>::SharedPtr yolo_subscriber_;
+
+  realsense2_camera_msgs::msg::RGBD::SharedPtr latest_received;
+  realsense2_camera_msgs::msg::RGBD::SharedPtr latest_sent;
 
   public:
     YOLOWrapper()
-    : Node("yolo_wrapper"), count_(0)
+    : Node("yolo_wrapper")
     {
-      publisher_ = this->create_publisher<std_msgs::msg::String>(OUTPUT_TOPIC_NAME, 10);
-      subscriber_ = this->create_publisher<realsense2_camera_msgs::msg::RGBD>(INPUT_TOPIC_NAME, 1);
-      timer_ = this->create_wall_timer(500ms, std::bind(&YOLOWrapper::timer_callback, this));
+      output_publisher_ = this->create_publisher<std_msgs::msg::String>(OUTPUT_TOPIC_NAME, 10);
+      yolo_publisher_ = this->create_publisher<std_msgs::msg::Image>(YOLO_INPUT_TOPIC_NAME, 1);
+      yolo_subscriber_ = this->create_subscription<realsense2_camera_msgs::msg::RGBD>(YOLO_OUTPUT_TOPIC_NAME, 1, std::bind(&YOLOWrapper::input_callback, this, _1));
+      input_subscriber_ = this->create_subscription<realsense2_camera_msgs::msg::RGBD>(INPUT_TOPIC_NAME, 1, std::bind(&YOLOWrapper::input_callback, this, _1));
     }
 
   private:
-    void timer_callback()
+    void input_callback(const realsense2_camera_msgs::msg::RGBD::SharedPtr msg)
     {
-      auto message = std_msgs::msg::String();
-      message.data = "Hello, world! " + std::to_string(count_++);
-      RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
-      publisher_->publish(message);
+      if(latest_sent == nullptr) {
+        latest_sent = msg;
+        yolo_publisher_->publish(msg->rgb);
+      } else {
+        latest_received = msg;
+      }
+    }
+
+    void yolo_callback(const realsense2_camera_msgs::msg::RGBD::SharedPtr msg) {
+
     }
 };
 
