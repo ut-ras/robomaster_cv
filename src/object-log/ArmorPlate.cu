@@ -148,6 +148,8 @@ void ArmorPlate::predictPosition(time_t currentTime)
     // kinematics ut + 0.5at^2
     std::tuple<float, float, float> deltaVel = std::tuple<float, float, float>(0, 0, 0);
     float *velocity, *acceleration, *deltaVel_h;
+
+    // TODO we need to get velocity and acceleration from the kalman filter
     velocity = (float *)malloc(3 * sizeof(float));
     acceleration = (float *)malloc(3 * sizeof(float));
     deltaVel_h = (float *)malloc(3 * sizeof(float));

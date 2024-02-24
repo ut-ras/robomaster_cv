@@ -36,7 +36,7 @@ public:
     void setTimeStamp(time_t timeStamp);
     float getXCenter();
     float getYCenter();
-    float getDepthVal();
+    float getDepthVal();                                               
     float getWidth();
     float getHeight();
     std::tuple<float, float, float> getPosition();
