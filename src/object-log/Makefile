@@ -8,6 +8,11 @@ bounding-box: BoundingBox.cpp BoundingBox.h
 	$(CXX) $(FLAGS) BoundingBox.cpp -o bounding-box.o
 object-log: ObjectLog.cpp ObjectLog.h
 	$(CXX) $(FLAGS) ObjectLog.cpp ArmorPlate.cpp BoundingBox.cpp -o object-log.o
+kalman: Kalman.cu Kalman.h
+	$(CXX) $(FLAGS) Kalman.cu -o kalman.o
+
+
+
 clean:
 	rm -f armor-plate.o
 	rm -f bounding-box.o

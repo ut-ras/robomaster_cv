@@ -179,7 +179,7 @@ void ArmorPlate::predictPosition(time_t currentTime)
     cublasSetVector(3, sizeof(float), deltaVel_h, 1, deltaVel_d, 1);
 
     float alpha = 0.5 * timeDiff * timeDiff;
-    float beta = 0.0;
+    
     cublasSaxpy_v2_64(handle, 3, &alpha, acceleration_d, 1, deltaVel_d, 1);
 
     alpha = timeDiff;
@@ -222,7 +222,7 @@ int experimentCUDA(int n)
         h_B[i] = rand() / (float)RAND_MAX;
     }
 
-    // * Copy host vectors to device]
+    // * Copy host vectors to device
     cublasSetVector(n, sizeof(float), h_A, 1, d_A, 1);
     cublasSetVector(n, sizeof(float), h_B, 1, d_B, 1);
 
@@ -230,7 +230,7 @@ int experimentCUDA(int n)
 
     // * Perform vector addition
     float alpha = 1.0;
-    float beta = 0.0;
+   
 
     time_t start = time(0);
     std::cout << "Starting GPU" << start << std::endl;
@@ -277,11 +277,11 @@ int main()
     // * Size of vector
     int n = 500000000;
     int step = 10000;
-    // for (int i = 0; i < 100; i++)
-    // {
-    //     std::cout<< "n: " << n << std::endl;
-    //     experimentCUDA(n);
-    //     n += step;
-    // }
+    for (int i = 0; i < 100; i++)
+    {
+        std::cout<< "n: " << n << std::endl;
+        experimentCUDA(n);
+        n += step;
+    }
     return 0;
 }
