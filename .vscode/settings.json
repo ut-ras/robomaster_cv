@@ -5,7 +5,10 @@
         "string_view": "cpp",
         "ranges": "cpp",
         "*.tcc": "cpp",
-        "system_error": "cpp"
+        "system_error": "cpp",
+        "xlocale": "cpp",
+        "xlocinfo": "cpp",
+        "xstring": "cpp"
     },
     "cmake.configureOnOpen": false
 }
