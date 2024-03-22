@@ -10,11 +10,6 @@ set(DEPENDENCIES
 
 find_package(rosidl_default_generators REQUIRED)
 
-rosidl_generate_interfaces(${uart}
-  "TurretData.msg"
-  "OdometryData.msg"
-)
-
 foreach(pkg ${DEPENDENCIES})
   find_package(${pkg} REQUIRED)
 endforeach()

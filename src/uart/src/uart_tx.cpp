@@ -2,6 +2,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "stampede_msg/msg/Uart.hpp"
 
 #include "serial/serial.h"
 
@@ -18,18 +19,18 @@ class UartTX : public rclcpp::Node
         ser.open();
         int status = ser.isOpen();
         RCLCPP_INFO(this->get_logger(), "Open Device Status: '%d'", status);
-        subscription_ = this->create_subscription<std_msgs::msg::String>(
+        subscription_ = this->create_subscription<stampede_msg::msg::Uart>(
             "data_tx", 10, std::bind(&UartTX::topic_callback, this, _1));
     }
 
   private:
-    void topic_callback(const std_msgs::msg::String & msg)
+    void topic_callback(const stampede_msg::msg::Uart & msg)
     {
-        RCLCPP_INFO(this->get_logger(), "Sending: '%s'", msg.data.c_str());
-        int status = ser.write(msg.data.c_str());
+        RCLCPP_INFO(this->get_logger(), "Sending: '%s'", msg);
+        int status = ser.write(msg);
         RCLCPP_INFO(this->get_logger(), "Status: '%d'", status);
     }
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscription_;
+    rclcpp::Subscription<stampede_msg::msg::Uart>::SharedPtr subscription_;
     serial::Serial ser;
     const char* device = "/dev/ttyUSB0";
 };
