@@ -7,7 +7,7 @@ armor-plate: ArmorPlate.cu ArmorPlate.h BoundingBox.cpp BoundingBox.h
 bounding-box: BoundingBox.cpp BoundingBox.h
 	$(CXX) $(FLAGS) BoundingBox.cpp -o bounding-box.o
 object-log: ObjectLog.cpp ObjectLog.h
-	$(CXX) $(FLAGS) ObjectLog.cpp ArmorPlate.cpp BoundingBox.cpp -o object-log.o
+	$(CXX) $(FLAGS) ObjectLog.cpp ArmorPlate.cu BoundingBox.cpp -o object-log.o
 kalman: Kalman.cu Kalman.h
 	$(CXX) $(FLAGS) Kalman.cu -o kalman.o
 
