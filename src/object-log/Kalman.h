@@ -64,6 +64,15 @@ public:
      * @return the current state of the object
     */
     float *get_state_n_1();
+    /*
+     * @brief updates the state of the object
+    */
+    void update_state_n();
+
+    /*
+     * @brief gets the state of the object
+     */
+    float *get_state_n();
 };
 
 #endif
