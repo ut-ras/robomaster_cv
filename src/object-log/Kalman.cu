@@ -3,12 +3,13 @@
 #include "cublas_v2.h"
 #include <stdio.h>
 #include <iostream>
+#include <time.h>
 
 /*
  * @param src: 2D array to be stored in column major format
  * @param dest: pointer to the destination array
  * @return void
-*/
+ */
 void Kalman::storeColumnMajor(float src[][VECTOR_SIZE], float *dest)
 {
     float *dest_copy = dest;
@@ -51,7 +52,6 @@ Kalman::Kalman(float deltaTime)
     };
     _state_transition_matrix = (float *)malloc(VECTOR_SIZE * VECTOR_SIZE * sizeof(float *));
     storeColumnMajor(_state_transition_matrix_init, _state_transition_matrix);
-
 };
 
 void Kalman::updateStateTransitionMatrix(float *matrix, float deltaTime)
@@ -79,7 +79,8 @@ void Kalman::set_state_n(float *position, float *velocity, float *acceleration)
     memcpy(_state_n + 2 * STATE_SIZE, acceleration, STATE_SIZE * sizeof(float));
 }
 
-void Kalman::predict_state_n_1() {
+void Kalman::predict_state_n_1()
+{
     // device pointers for all the vectors and matrices
     float *d_state_transition_matrix, *d_state_n, *d_state_n_1;
 
@@ -114,7 +115,6 @@ void Kalman::predict_state_n_1() {
         std::cout << "Error copying state_n_1 to host" << std::endl;
         return;
     }
-
 }
 
 float *Kalman::get_state_n_1()
@@ -122,11 +122,21 @@ float *Kalman::get_state_n_1()
     return _state_n_1;
 }
 
+void Kalman::update_state_n()
+{
+    memcpy(_state_n, _state_n_1, VECTOR_SIZE * sizeof(float));
+}
+
+float *Kalman::get_state_n()
+{
+    return _state_n;
+}
+
 int main()
 {
     /*
      * TESTING
-    */
+     */
     float DELTA_TIME = 1.2;
     Kalman *k = new Kalman(DELTA_TIME);
 
@@ -134,11 +144,32 @@ int main()
     float velocity[] = {4.0, 5.0, 6.0};
     float acceleration[] = {7.0, 8.0, 9.0};
 
-    k->set_state_n(position, velocity, acceleration);
-    k->predict_state_n_1();
-    float *output = k->get_state_n_1();
-    for (int i = 0; i < VECTOR_SIZE; i++)
+    time_t start = time(0);
+    std::cout << "Starting time: " << start << std::endl;
+    for (int i = 0; i < 20; i++)
     {
-        std::cout << output[i] << std::endl;
+        k->set_state_n(position, velocity, acceleration);
+        k->predict_state_n_1();
+        float *output = k->get_state_n_1();
+        k->update_state_n();
+        output = k->get_state_n();
+        for (int i = 0; i < VECTOR_SIZE; i++)
+        {
+            std::cout << output[i] << std::endl;
+        }
+        position[0] = output[0];
+        position[1] = output[1];
+        position[2] = output[2];
+        velocity[0] = output[3];
+        velocity[1] = output[4];
+        velocity[2] = output[5];
+        acceleration[0] = output[6];
+        acceleration[1] = output[7];
+        acceleration[2] = output[8];
+        std::cout<<"----------iteration ended---------\n";
     }
+    time_t end = time(0);
+    std::cout << "Ending time: " << end << std::endl;
+    std::cout << "Time taken: " << end - start << std::endl;
+    return 0;
 }
