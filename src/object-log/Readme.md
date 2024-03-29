@@ -20,9 +20,10 @@ Lets first write the prototypes of each of these and leave header comments for e
 
 - Armor Plate class:
   * Tanay
-  * Luiz
 - Object Log class
   * David
+- Kalman Filter Class
+  * Tanay
 
 ## Other tasks:
 - Testing code
