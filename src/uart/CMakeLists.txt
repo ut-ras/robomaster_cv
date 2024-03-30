@@ -6,9 +6,10 @@ set(DEPENDENCIES
   ament_cmake
   rclcpp
   std_msgs
+  stampede_msg
 )
 
-find_package(rosidl_default_generators REQUIRED)
+# find_package(rosidl_default_generators REQUIRED)
 
 foreach(pkg ${DEPENDENCIES})
   find_package(${pkg} REQUIRED)

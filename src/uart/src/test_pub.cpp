@@ -5,7 +5,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "stampede_msg/msg/Uart.hpp"
+#include "stampede_msg/msg/uart.hpp"
 
 using namespace std::chrono_literals;
 

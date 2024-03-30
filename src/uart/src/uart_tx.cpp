@@ -2,7 +2,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "stampede_msg/msg/Uart.hpp"
+#include "stampede_msg/msg/uart.hpp"
 
 #include "serial/serial.h"
 
@@ -24,10 +24,22 @@ class UartTX : public rclcpp::Node
     }
 
   private:
-    void topic_callback(const stampede_msg::msg::Uart & msg)
+    void topic_callback(const stampede_msg::msg::Uart &msg)
     {
-        RCLCPP_INFO(this->get_logger(), "Sending: '%s'", msg);
-        int status = ser.write(msg);
+        RCLCPP_INFO(this->get_logger(), "Frame Head Byte: %d'", msg.frame_head_byte);
+        RCLCPP_INFO(this->get_logger(), "Frame Data Length: %d'", msg.frame_data_length);
+        RCLCPP_INFO(this->get_logger(), "Frame Sequence: %d'", msg.frame_sequence);
+        RCLCPP_INFO(this->get_logger(), "Frame CRC8: %d'", msg.frame_crc8);
+        RCLCPP_INFO(this->get_logger(), "Frame MSG_TYPE: %d'", msg.msg_type);
+        RCLCPP_INFO(this->get_logger(), "Data 0: %d'", msg.data[0]);
+        RCLCPP_INFO(this->get_logger(), "Data 1: %d'", msg.data[1]);
+        RCLCPP_INFO(this->get_logger(), "Data 2: %d'", msg.data[2]);
+        RCLCPP_INFO(this->get_logger(), "CRC16: %d'", msg.crc16);
+
+        std::vector<uint8_t> new_msg;
+        new_msg.push_back(msg.frame_head_byte)
+        
+        int status = ser.write(new_msg);
         RCLCPP_INFO(this->get_logger(), "Status: '%d'", status);
     }
     rclcpp::Subscription<stampede_msg::msg::Uart>::SharedPtr subscription_;
