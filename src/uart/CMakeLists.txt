@@ -6,7 +6,7 @@ set(DEPENDENCIES
   ament_cmake
   rclcpp
   std_msgs
-  stampede_msg
+  stampede_msgs
 )
 
 # find_package(rosidl_default_generators REQUIRED)
@@ -69,9 +69,23 @@ target_include_directories(uart_rx
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
 
+# test_pub executable
+add_executable(test_pub
+  src/test_pub.cpp
+)
+ament_target_dependencies(test_pub 
+  ${DEPENDENCIES}
+)
+
+target_include_directories(test_pub
+  PUBLIC
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
+
 install(TARGETS
   uart_tx
   uart_rx
+  test_pub
   DESTINATION lib/${PROJECT_NAME})
 
 install(

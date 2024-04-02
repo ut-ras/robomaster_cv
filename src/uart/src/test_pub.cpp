@@ -5,7 +5,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "stampede_msg/msg/uart.hpp"
+#include "stampede_msgs/msg/uart.hpp"
 
 using namespace std::chrono_literals;
 
@@ -16,33 +16,33 @@ class TestPublisher : public rclcpp::Node
 {
   public:
     TestPublisher()
-    : Node("minimal_publisher"), count_(0)
+    : Node("test_publisher"), count_(0)
     {
-      publisher_ = this->create_publisher<stampede_msg::msg::Uart>("data_tx", 10);
+      publisher_ = this->create_publisher<stampede_msgs::msg::Uart>("data_tx", 10);
       timer_ = this->create_wall_timer(
-      500ms, std::bind(&TestPublisher::timer_callback, this));
+      5000ms, std::bind(&TestPublisher::timer_callback, this));
     }
 
   private:
     void timer_callback()
     {
-        auto message = stampede_msg::msg::Uart();
+        auto message = stampede_msgs::msg::Uart();
         message.frame_head_byte = 0xA5;
         message.frame_data_length = 0x03;
         message.frame_sequence = 0x00;
         message.frame_crc8 = Get_CRC8_Check_Sum((unsigned char*)&message, 4, CRC8_INIT);
-        message.message_type = 0x0F;
-        message.data[0] = 0x01;
-        message.data[1] = 0x02;
-        message.data[2] = 0x03;
-        message.crc16 = Get_CRC16_Check_Sum((unsigned char*)&message, 10, CRC_INIT)
+        message.msg_type = 0x0F;
+        message.data.push_back(0x01);
+        message.data.push_back(0x02);
+        message.data.push_back(0x03);
+        message.crc16 = Get_CRC16_Check_Sum((unsigned char*)&message, 10, CRC_INIT);
 
-        RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message);
+        RCLCPP_INFO(this->get_logger(), "Publishing");
         publisher_->publish(message);
     }
     
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+    rclcpp::Publisher<stampede_msgs::msg::Uart>::SharedPtr publisher_;
     size_t count_;
 
     //crc8 generator polynomial:G(x)=x8+x5+x4+1
@@ -109,7 +109,7 @@ class TestPublisher : public rclcpp::Node
         0x6b46, 0x7acf, 0x4854, 0x59dd, 0x2d62, 0x3ceb, 0x0e70, 0x1ff9,
         0xf78f, 0xe606, 0xd49d, 0xc514, 0xb1ab, 0xa022, 0x92b9, 0x8330,
         0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78
-    }；
+    };
 
     /*
     ** Descriptions: CRC16 checksum function
@@ -117,7 +117,7 @@ class TestPublisher : public rclcpp::Node
     ** Output: CRC checksum
     */
     uint16_t Get_CRC16_Check_Sum(uint8_t *pchMessage, uint32_t dwLength, uint16_t wCRC) {
-        Uint8_t chData;
+        uint8_t chData;
         if (pchMessage == NULL) {
             return 0xFFFF;
         }
