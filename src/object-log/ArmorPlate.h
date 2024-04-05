@@ -6,6 +6,7 @@
 #include <ctime>
 #include <time.h>
 #include "BoundingBox.h"
+#include "Kalman.h"
 
 
 class ArmorPlate
@@ -68,6 +69,11 @@ public:
     // ! TOOO update_box takes in a boundingBox and updates all the status variables involved
     // void updateBox(BoundingBox boundingBox, time_t currentTime);
 
+    /*
+     * @brief setDeltaTime sets the delta time for the armor plate to be used in calculations 
+    */
+    void setDeltaTime(float deltaTime);
+
 private:
     int _id;
     std::tuple<float, float, float> _position;
@@ -79,6 +85,6 @@ private:
     std::tuple<float, float, float> _next_position;
     time_t _lastTime;
     std::vector<BoundingBox> _associatedBoxes;
-    // KalmanFilter _kalmanFilter;
+    Kalman *_kalmanFilter;
 };
 #endif
