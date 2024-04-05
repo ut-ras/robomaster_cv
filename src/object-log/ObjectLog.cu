@@ -111,7 +111,6 @@ int ObjectLog::assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
     std::tuple<float, float, float> position = box->getPosition();
     float shortest_dist = std::numeric_limits<float>::max();
     int shortest_plate = -1;
-    float error = MARGIN_OF_ERR;
     if (((std::get<0>(position) + MARGIN_OF_ERR) > MAX_X) || ((std::get<1>(position) + MARGIN_OF_ERR) > MAX_Y) || ((std::get<2>(position) + MARGIN_OF_ERR) > MAX_Z) 
             || ((std::get<0>(position) - MARGIN_OF_ERR) < MIN_X) || ((std::get<1>(position) - MARGIN_OF_ERR) < MIN_Y) || ((std::get<2>(position) - MARGIN_OF_ERR) < MIN_Z))
     {
@@ -120,7 +119,7 @@ int ObjectLog::assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
 
     for (int i = 0; i < plates.size(); i++)
     {
-        double dist = get_distance(position, plates[i].getPosition());
+        float dist = get_distance(position, plates[i].getPosition());
         if (dist < shortest_dist)
         {
             shortest_plate = i;
@@ -166,7 +165,7 @@ void ObjectLog::kill_plate(int id)
 }
 
 // Distance formula (basically Pythagorean theorem in 3D space)
-double get_distance(std::tuple<double, double, double> p1, std::tuple<double, double, double> p2)
+float ObjectLog::get_distance(std::tuple<float, float, float> p1, std::tuple<float, float, float> p2)
 {
     return sqrt(pow((std::get<0>(p1) - std::get<0>(p2)), 2) + pow((std::get<1>(p1) - std::get<1>(p2)), 2) + pow((std::get<2>(p1) - std::get<2>(p2)), 2));
 }

@@ -26,7 +26,7 @@ const int KILL_THRESHOLD = 60;
 
 const float MARGIN_OF_ERR = 0.5; //to be fine tuned
 
-// const double error_margin = 0; // to be fine tuned
+// const float error_margin = 0; // to be fine tuned
 
 // const int kill_threshold = -1; // to be fine tuned
 
@@ -74,9 +74,9 @@ public:
     /*
     Get_Distance returns the distance in pixels between two points
     input is two 3x1 matrices, each representing point in (x,y,z)
-    Output is a double which is the distance between the two objects
+    Output is a float which is the distance between the two objects
     */
-    double get_distance(std::tuple<double, double, double> p1, std::tuple<double, double, double> p2);
+    float get_distance(std::tuple<float, float, float> p1, std::tuple<float, float, float> p2);
 
     std::vector<ArmorPlate> get_plates();
 
