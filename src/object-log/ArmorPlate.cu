@@ -3,7 +3,6 @@
 #include "cublas_v2.h"
 #include <iostream>
 
-
 // ! WE MIGHT NEED TO CHANGE ALL THE floatS HERE TO FLOATS
 ArmorPlate::ArmorPlate(int id)
     : _id(id),
@@ -15,8 +14,8 @@ ArmorPlate::ArmorPlate(int id)
       _seenThisIteration(false),
       _next_position(std::tuple<float, float, float>(0, 0, 0)),
       _lastTime(time(0)),
-      _associatedBoxes(std::vector<BoundingBox>())
-// _kalmanFilter(new KalmanFilter())
+      _associatedBoxes(std::vector<BoundingBox>()),
+      _kalmanFilter(new KalmanFilter(0))
 {
     /*
      * Initializes the armor plate
@@ -136,12 +135,13 @@ void ArmorPlate::updatePositionVelAcc()
     // set the position, vel, and acc to the predicted values
 }
 
+/*
+ * @brief Predicts the position of the armor plate at the current time
+ * Uses the kalman filter to do so
+ */
 void ArmorPlate::predictPosition(time_t currentTime)
 {
-    /*
-     * Predicts the position of the armor plate at the current time
-     * Uses the kalman filter to do so
-     */
+
     // get the predicted position from kalman filter
     // set the position to the predicted value
     time_t timeDiff = currentTime - ArmorPlate::_lastTime;
@@ -153,7 +153,7 @@ void ArmorPlate::predictPosition(time_t currentTime)
     velocity = (float *)malloc(3 * sizeof(float));
     acceleration = (float *)malloc(3 * sizeof(float));
     deltaVel_h = (float *)malloc(3 * sizeof(float));
-    
+
     velocity[0] = (std::get<0>(ArmorPlate::_velocity));
     velocity[1] = (std::get<1>(ArmorPlate::_velocity));
     velocity[2] = (std::get<2>(ArmorPlate::_velocity));
@@ -179,14 +179,14 @@ void ArmorPlate::predictPosition(time_t currentTime)
     cublasSetVector(3, sizeof(float), deltaVel_h, 1, deltaVel_d, 1);
 
     float alpha = 0.5 * timeDiff * timeDiff;
-    
+
     cublasSaxpy_v2_64(handle, 3, &alpha, acceleration_d, 1, deltaVel_d, 1);
 
     alpha = timeDiff;
     cublasSaxpy_v2_64(handle, 3, &alpha, velocity_d, 1, deltaVel_d, 1);
 
     cublasGetVector(3, sizeof(float), deltaVel_d, 1, deltaVel_h, 1);
-    
+
     ArmorPlate::_velocity = deltaVel;
     setNextPosition(std::tuple<float, float, float>(deltaVel_h[0], deltaVel_h[1], deltaVel_h[2]));
 }
@@ -230,7 +230,6 @@ int experimentCUDA(int n)
 
     // * Perform vector addition
     float alpha = 1.0;
-   
 
     time_t start = time(0);
     std::cout << "Starting GPU" << start << std::endl;
@@ -279,7 +278,7 @@ int main()
     int step = 10000;
     for (int i = 0; i < 100; i++)
     {
-        std::cout<< "n: " << n << std::endl;
+        std::cout << "n: " << n << std::endl;
         experimentCUDA(n);
         n += step;
     }
