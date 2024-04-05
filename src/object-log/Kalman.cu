@@ -117,6 +117,13 @@ void Kalman::predict_state_n_1()
     }
 }
 
+/*
+ * @brief Updates the state transition matrix based on deltaTime
+*/
+void Kalman::setDeltaTime(float deltaTime) {
+    updateStateTransitionMatrix(_state_transition_matrix, deltaTime);
+}
+
 float *Kalman::get_state_n_1()
 {
     return _state_n_1;
@@ -130,6 +137,16 @@ void Kalman::update_state_n()
 float *Kalman::get_state_n()
 {
     return _state_n;
+}
+
+void Kalman::set_velocity(float *velocity)
+{
+    memcpy(_state_n + STATE_SIZE, velocity, STATE_SIZE * sizeof(float));
+}
+
+void Kalman::set_acceleration(float *acceleration)
+{
+    memcpy(_state_n + 2 * STATE_SIZE, acceleration, STATE_SIZE * sizeof(float));
 }
 
 int main()

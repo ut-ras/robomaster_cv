@@ -49,7 +49,7 @@ public:
     float *getVA(); 
     float *getPos();
     void kinematicUpdate(float *position);
-
+    void setDeltaTime(float deltaTime);
     /*
      * @brief Pass in 3 3x1 vectors for position, velocity and acceleration
     */
@@ -70,9 +70,21 @@ public:
     void update_state_n();
 
     /*
-     * @brief gets the state of the object
+     * @return a pointer to the current state of the object
      */
     float *get_state_n();
+
+    /*
+     * Sets the velocity of the state_n variable because we can't calculate it using 
+     * the state transition matrix
+    */
+    void set_velocity(float *velocity);
+
+    /*
+     * Sets the acceleration of the state_n variable because we can't calculate it using
+     * the state transition matrix
+    */
+    void set_acceleration(float *acceleration);
 };
 
 #endif

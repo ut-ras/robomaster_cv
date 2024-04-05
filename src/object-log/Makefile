@@ -1,6 +1,6 @@
 CXX=nvcc
 FLAGS=-lcublas
-all: clean object-log 
+all: clean object-log
 
 armor-plate: ArmorPlate.cu ArmorPlate.h BoundingBox.cu BoundingBox.h
 	$(CXX) $(FLAGS) ArmorPlate.cu BoundingBox.cu -o armor-plate.o

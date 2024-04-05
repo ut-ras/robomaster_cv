@@ -14,8 +14,8 @@ ArmorPlate::ArmorPlate(int id)
       _seenThisIteration(false),
       _next_position(std::tuple<float, float, float>(0, 0, 0)),
       _lastTime(time(0)),
-      _associatedBoxes(std::vector<BoundingBox>())
-      //_kalmanFilter(new KalmanFilter(0))
+      _associatedBoxes(std::vector<BoundingBox>()),
+      _kalmanFilter(new Kalman(0.0))
 {
     /*
      * Initializes the armor plate
@@ -122,6 +122,10 @@ void ArmorPlate::setLastTime(time_t lastTime)
 // void setBoundingBox(BoundingBox boundingBox) {}
 // void setKalmanFilter(KalmanFilter kalmanFilter) {}
 
+
+// TODO (IMP) Whenever we make a callback function for the topic that listens to the position, we need to calculate instantaneous velocity and acceleration
+// TODO make two new functions for this that are similar to the functions in Kalman
+
 void ArmorPlate::updatePositionVelAcc()
 {
     /*
@@ -133,6 +137,7 @@ void ArmorPlate::updatePositionVelAcc()
     // get the predicted position from kalman filter
     // get predicted vel and acc from the kalman filter
     // set the position, vel, and acc to the predicted values
+    float *state = _kalmanFilter->get_state_n();
 }
 
 /*
@@ -189,6 +194,13 @@ void ArmorPlate::predictPosition(time_t currentTime)
 
     ArmorPlate::_velocity = deltaVel;
     setNextPosition(std::tuple<float, float, float>(deltaVel_h[0], deltaVel_h[1], deltaVel_h[2]));
+}
+
+/*
+ * @brief Updates the state transition matrix of the Kalman Filter
+*/
+void ArmorPlate::setDeltaTime(float deltaTime) {
+    _kalmanFilter->setDeltaTime(deltaTime);
 }
 
 int experimentCUDA(int n)
