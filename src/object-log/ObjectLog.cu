@@ -94,6 +94,7 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
             }
         }
     }
+    return 0;
 }
 
 // Basic check to see if a bounding box meets the basic requirements (size does matter)
