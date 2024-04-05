@@ -14,8 +14,8 @@ ArmorPlate::ArmorPlate(int id)
       _seenThisIteration(false),
       _next_position(std::tuple<float, float, float>(0, 0, 0)),
       _lastTime(time(0)),
-      _associatedBoxes(std::vector<BoundingBox>()),
-      _kalmanFilter(new KalmanFilter(0))
+      _associatedBoxes(std::vector<BoundingBox>())
+      //_kalmanFilter(new KalmanFilter(0))
 {
     /*
      * Initializes the armor plate
@@ -180,10 +180,10 @@ void ArmorPlate::predictPosition(time_t currentTime)
 
     float alpha = 0.5 * timeDiff * timeDiff;
 
-    cublasSaxpy_v2_64(handle, 3, &alpha, acceleration_d, 1, deltaVel_d, 1);
+    cublasSaxpy_v2(handle, 3, &alpha, acceleration_d, 1, deltaVel_d, 1);
 
     alpha = timeDiff;
-    cublasSaxpy_v2_64(handle, 3, &alpha, velocity_d, 1, deltaVel_d, 1);
+    cublasSaxpy_v2(handle, 3, &alpha, velocity_d, 1, deltaVel_d, 1);
 
     cublasGetVector(3, sizeof(float), deltaVel_d, 1, deltaVel_h, 1);
 
