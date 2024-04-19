@@ -17,9 +17,11 @@ int main( int argc, char** argv )
     }
 
     namedWindow("Control", WINDOW_AUTOSIZE); //create a window called "Control"
+    moveWindow("Control", 1620, 0);
 
-    int iLowH = 1;
-    int iHighH = 179;
+    // Blue current using low 94 high 120
+    int iLowH = 94;
+    int iHighH = 120;
 
     int iLowS = 150; 
     int iHighS = 255;
@@ -80,36 +82,49 @@ int main( int argc, char** argv )
         Mat image_copy = imgOriginal.clone();
         vector<vector<Point>> contours;
         vector<Vec4i> hierarchy;
-        findContours(imgThresholded, contours, hierarchy, RETR_TREE, CHAIN_APPROX_NONE);
-        drawContours(image_copy, contours, -1, Scalar(0, 255, 0), 2);
-        imshow("Contours", image_copy);
+        findContours(imgThresholded, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+        // drawContours(image_copy, contours, -1, Scalar(0, 255, 0), 2);
 
-        //Calculate the moments of the thresholded image
-        Moments oMoments = moments(imgThresholded);
+        vector<Rect> bounding_rects(contours.size());
+        vector<Rect> accepted_rects;
+        for (size_t i = 0; i < contours.size(); i++) // iterate through each contour.
+        {
+            bounding_rects[i] = boundingRect(contours[i]);
+            if (bounding_rects[i].size().height / bounding_rects[i].size().width > 1.5)
+            {
+                accepted_rects.push_back(bounding_rects[i]);
+            }
+        }
 
-        double dM01 = oMoments.m01;
-        double dM10 = oMoments.m10;
-        double dArea = oMoments.m00;
+        if (accepted_rects.size() >= 2)
+        {
+            Rect first_tallest = accepted_rects[0];
+            Rect second_tallest = accepted_rects[1];
 
-        // if the area <= 10000, I consider that the there are no object in the image and it's because of the noise, the area is not zero 
-        // if (dArea > 10000)
-        // {
-        //     //calculate the position of the ball
-        //     int posX = dM10 / dArea;
-        //     int posY = dM01 / dArea;        
-                    
-        //     if (iLastX >= 0 && iLastY >= 0 && posX >= 0 && posY >= 0)
-        //     {
-        //         circle(imgLines, Point(posX, posY), 10, Scalar(0, 255, 0), FILLED, 2);
-        //     }
+            for (size_t i = 2; i < accepted_rects.size(); i++) // iterate through each contour.
+            {
+                if (first_tallest.size().height < accepted_rects[i].size().height)
+                {
+                    first_tallest = accepted_rects[i];
+                    second_tallest = first_tallest;
+                }
+            }
 
-        //     iLastX = posX;
-        //     iLastY = posY;
-        //     cout << "X, Y pos is " << posX << ", " << posY << "\n";
-        // }
+            rectangle(image_copy, first_tallest.tl(), first_tallest.br(), Scalar(0, 0, 255), 2);   
+            rectangle(image_copy, second_tallest.tl(), second_tallest.br(), Scalar(0, 0, 255), 2);  
+            float x = (first_tallest.tl().x + second_tallest.br().x) / 2;
+            float y = (first_tallest.tl().y + second_tallest.br().y) / 2;
+            circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
+        }
+        else
+        {
+            for (size_t i = 0; i < accepted_rects.size(); i++) // iterate through each contour.
+            {
+                rectangle(image_copy, accepted_rects[i].tl(), accepted_rects[i].br(), Scalar(0, 0, 255), 2);   
+            }
+        }
 
-        imgOriginal = imgOriginal + imgLines;
-        imshow("Original", imgOriginal); //show the original image
+        imshow("Modified", image_copy); //show the original image
         imshow("Thresholded", imgThresholded);
 
         if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
