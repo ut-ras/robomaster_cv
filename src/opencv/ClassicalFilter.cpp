@@ -76,9 +76,9 @@ int main( int argc, char** argv )
 
             // Red Mask
             Mat mask1, mask2;
-            // inRange(imgHSV, Scalar(0, 70, 50), Scalar(10, 255, 255), mask1);
-            // inRange(imgHSV, Scalar(170, 70, 50), Scalar(180, 255, 255), mask2);
-            // color_threshold = mask1 | mask2;
+            inRange(imgHSV, Scalar(0, 70, 50), Scalar(10, 255, 255), mask1);
+            inRange(imgHSV, Scalar(170, 70, 50), Scalar(180, 255, 255), mask2);
+            color_threshold = mask1 | mask2;
             
             //morphological opening (removes small objects from the foreground)
             erode(color_threshold, color_threshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
@@ -92,28 +92,9 @@ int main( int argc, char** argv )
             Mat image_contours = imgOriginal.clone();
             Mat image_all_bounded_boxes = imgOriginal.clone();
 
-            // vector<vector<Point>> contours;
-            // vector<Vec4i> hierarchy;
-            // findContours(color_threshold, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
-            // drawContours(image_contours, contours, -1, Scalar(0, 255, 0), 2);
-
-            Mat img_gray;
-            cvtColor(imgOriginal, img_gray, COLOR_BGR2GRAY);
-            Mat thresh;
-
-            // Current Low of 150 and High of 255
-            threshold(img_gray, thresh, 120, 255, THRESH_BINARY);
-
-            erode(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
-            dilate(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
-            dilate(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
-            erode(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
-
-            Mat test = thresh & color_threshold;
-
             vector<vector<Point>> contours;
             vector<Vec4i> hierarchy;
-            findContours(test, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+            findContours(color_threshold, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
             drawContours(image_contours, contours, -1, Scalar(0, 255, 0), 2);
 
             vector<Rect> accepted_rects;
@@ -121,37 +102,13 @@ int main( int argc, char** argv )
             {
                 Rect bounding_rect = boundingRect(contours[i]);
                 if (bounding_rect.size().height / bounding_rect.size().width > 1
-                    && bounding_rect.size().height / bounding_rect.size().width < 4.5)
+                    && bounding_rect.size().height / bounding_rect.size().width < 7)
                 {
                     accepted_rects.push_back(bounding_rect);
                 }
             }
 
             sort(accepted_rects.begin(), accepted_rects.end(), rect_sort_function);
-
-            // if (accepted_rects.size() >= 2)
-            // {
-            //     Rect first_tallest = accepted_rects[0];
-            //     Rect second_tallest = accepted_rects[1];
-
-            //     for (size_t i = 2; i < accepted_rects.size(); i++)
-            //     {
-            //         if (accepted_rects[i].tl().x - first_tallest.tl().x < 1000)
-            //             continue;
-
-            //         if (first_tallest.size().height < accepted_rects[i].size().height)
-            //         {
-            //             first_tallest = accepted_rects[i];
-            //             second_tallest = first_tallest;
-            //         }
-            //     }
-
-            //     rectangle(image_copy, first_tallest.tl(), first_tallest.br(), Scalar(0, 255, 0), 5);   
-            //     rectangle(image_copy, second_tallest.tl(), second_tallest.br(), Scalar(0, 255, 0), 5);  
-            //     float x = (first_tallest.tl().x + second_tallest.br().x) / 2;
-            //     float y = (first_tallest.tl().y + second_tallest.br().y) / 2;
-            //     circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
-            // }
 
             if (accepted_rects.size() >= 2)
             {
@@ -185,7 +142,6 @@ int main( int argc, char** argv )
                 rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i].br(), Scalar(0, 255, 0), 5); 
             }
             
-            imshow("Thresholded Grayscale", test);
             imshow("Bounded Box", image_copy); //show the modified image
             imshow("Accepted Bounding Boxes", image_all_bounded_boxes);
             // imshow("Thresholded Color", color_threshold);
