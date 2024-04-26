@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <algorithm>
+#include <cmath>
 #include <opencv2/opencv.hpp>
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
@@ -6,19 +8,26 @@
 using namespace cv;
 using namespace std;
 
+bool rect_sort_function (Rect first, Rect second)
+{
+    return first.tl().x < second.tl().x;
+}
+
 int main( int argc, char** argv ) 
 {
     namedWindow("Control", WINDOW_AUTOSIZE); //create a window called "Control"
     moveWindow("Control", 1620, 0);
 
-    // Blue current using low 94 high 120
-    int iLowH = 94;
-    int iHighH = 120;
+    // Blue current using low 80 high 140
+    int iLowH = 80;
+    int iHighH = 140;
 
-    int iLowS = 150; 
+    // Blue current using low 100 high 255
+    int iLowS = 100; 
     int iHighS = 255;
 
-    int iLowV = 60;
+    // Blue current using low 175 high 255
+    int iLowV = 175;
     int iHighV = 255;
 
     //Create trackbars in "Control" window
@@ -37,7 +46,7 @@ int main( int argc, char** argv )
     while (true) 
     {
         bool isClosed = 0;
-        VideoCapture cap("../../resources/IMG_2129.MOV"); //capture the video from webcam
+        // VideoCapture cap("../../resources/rmna2.mp4"); //xcapture the video from webcam
 
         if (!cap.isOpened() )  // if not success, exit program
         {
@@ -52,7 +61,6 @@ int main( int argc, char** argv )
         while (true) 
         {
             Mat imgOriginal;
-            Mat imgLines = Mat::zeros(imgTmp.size(), CV_8UC3);;
             bool bSuccess = cap.read(imgOriginal); // read a new frame from video
 
             if (!bSuccess) //if not success, break loop
@@ -63,67 +71,125 @@ int main( int argc, char** argv )
 
             Mat imgHSV;
             cvtColor(imgOriginal, imgHSV, COLOR_BGR2HSV); //Convert the captured frame from BGR to HSV
-            Mat imgThresholded;
+            Mat color_threshold;
+            inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), color_threshold); //Threshold the image
 
-            inRange(imgHSV, Scalar(iLowH, iLowS, iLowV), Scalar(iHighH, iHighS, iHighV), imgThresholded); //Threshold the image
+            // Red Mask
+            Mat mask1, mask2;
+            // inRange(imgHSV, Scalar(0, 70, 50), Scalar(10, 255, 255), mask1);
+            // inRange(imgHSV, Scalar(170, 70, 50), Scalar(180, 255, 255), mask2);
+            // color_threshold = mask1 | mask2;
             
             //morphological opening (removes small objects from the foreground)
-            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
-            dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
+            erode(color_threshold, color_threshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+            dilate(color_threshold, color_threshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
 
             //morphological closing (removes small holes from the foreground)
-            dilate(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
-            erode(imgThresholded, imgThresholded, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+            dilate(color_threshold, color_threshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
+            erode(color_threshold, color_threshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
 
             Mat image_copy = imgOriginal.clone();
             Mat image_contours = imgOriginal.clone();
+            Mat image_all_bounded_boxes = imgOriginal.clone();
+
+            // vector<vector<Point>> contours;
+            // vector<Vec4i> hierarchy;
+            // findContours(color_threshold, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+            // drawContours(image_contours, contours, -1, Scalar(0, 255, 0), 2);
+
+            Mat img_gray;
+            cvtColor(imgOriginal, img_gray, COLOR_BGR2GRAY);
+            Mat thresh;
+
+            // Current Low of 150 and High of 255
+            threshold(img_gray, thresh, 120, 255, THRESH_BINARY);
+
+            erode(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+            dilate(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
+            dilate(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
+            erode(thresh, thresh, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+
+            Mat test = thresh & color_threshold;
+
             vector<vector<Point>> contours;
             vector<Vec4i> hierarchy;
-            findContours(imgThresholded, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+            findContours(test, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
             drawContours(image_contours, contours, -1, Scalar(0, 255, 0), 2);
 
-            vector<Rect> bounding_rects(contours.size());
             vector<Rect> accepted_rects;
             for (size_t i = 0; i < contours.size(); i++) // iterate through each contour.
             {
-                bounding_rects[i] = boundingRect(contours[i]);
-                if (bounding_rects[i].size().height / bounding_rects[i].size().width > 1.5)
+                Rect bounding_rect = boundingRect(contours[i]);
+                if (bounding_rect.size().height / bounding_rect.size().width > 1
+                    && bounding_rect.size().height / bounding_rect.size().width < 4.5)
                 {
-                    accepted_rects.push_back(bounding_rects[i]);
+                    accepted_rects.push_back(bounding_rect);
                 }
             }
+
+            sort(accepted_rects.begin(), accepted_rects.end(), rect_sort_function);
+
+            // if (accepted_rects.size() >= 2)
+            // {
+            //     Rect first_tallest = accepted_rects[0];
+            //     Rect second_tallest = accepted_rects[1];
+
+            //     for (size_t i = 2; i < accepted_rects.size(); i++)
+            //     {
+            //         if (accepted_rects[i].tl().x - first_tallest.tl().x < 1000)
+            //             continue;
+
+            //         if (first_tallest.size().height < accepted_rects[i].size().height)
+            //         {
+            //             first_tallest = accepted_rects[i];
+            //             second_tallest = first_tallest;
+            //         }
+            //     }
+
+            //     rectangle(image_copy, first_tallest.tl(), first_tallest.br(), Scalar(0, 255, 0), 5);   
+            //     rectangle(image_copy, second_tallest.tl(), second_tallest.br(), Scalar(0, 255, 0), 5);  
+            //     float x = (first_tallest.tl().x + second_tallest.br().x) / 2;
+            //     float y = (first_tallest.tl().y + second_tallest.br().y) / 2;
+            //     circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
+            // }
 
             if (accepted_rects.size() >= 2)
             {
-                Rect first_tallest = accepted_rects[0];
-                Rect second_tallest = accepted_rects[1];
+                Rect first = accepted_rects[0];
+                Rect second = accepted_rects[1];
 
-                for (size_t i = 2; i < accepted_rects.size(); i++) // iterate through each contour.
+                int distance = abs(second.tl().y - first.tl().y);
+
+                for (size_t i = 1; i + 1 < accepted_rects.size(); i++)
                 {
-                    if (first_tallest.size().height < accepted_rects[i].size().height)
+                    // if (accepted_rects[i].tl().x - first_tallest.tl().x < 1000)
+                        // continue;
+
+                    if (abs(accepted_rects[i].tl().y - accepted_rects[i + 1].tl().y) < distance)
                     {
-                        first_tallest = accepted_rects[i];
-                        second_tallest = first_tallest;
+                        distance = abs(accepted_rects[i].tl().y - accepted_rects[i + 1].tl().y);
+                        first = accepted_rects[i];
+                        second = accepted_rects[i + 1];
                     }
                 }
 
-                rectangle(image_copy, first_tallest.tl(), first_tallest.br(), Scalar(0, 0, 255), 2);   
-                rectangle(image_copy, second_tallest.tl(), second_tallest.br(), Scalar(0, 0, 255), 2);  
-                float x = (first_tallest.tl().x + second_tallest.br().x) / 2;
-                float y = (first_tallest.tl().y + second_tallest.br().y) / 2;
+                rectangle(image_copy, first.tl(), second.br(), Scalar(0, 255, 0), 5);   
+                // rectangle(image_copy, second.tl(), second.br(), Scalar(0, 255, 0), 5);  
+                float x = (first.tl().x + second.br().x) / 2;
+                float y = (first.tl().y + second.br().y) / 2;
                 circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
             }
-            else
-            {
-                for (size_t i = 0; i < accepted_rects.size(); i++) // iterate through each contour.
-                {
-                    rectangle(image_copy, accepted_rects[i].tl(), accepted_rects[i].br(), Scalar(0, 0, 255), 2);   
-                }
-            }
 
+            for (size_t i = 0; i < accepted_rects.size(); i++) // iterate through each contour.
+            {
+                rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i].br(), Scalar(0, 255, 0), 5); 
+            }
+            
+            imshow("Thresholded Grayscale", test);
             imshow("Bounded Box", image_copy); //show the modified image
-            // imshow("Thresholded", imgThresholded);
-            imshow("Contours", image_contours);
+            imshow("Accepted Bounding Boxes", image_all_bounded_boxes);
+            // imshow("Thresholded Color", color_threshold);
+            // imshow("Contours", image_contours);
 
             if (waitKey(30) == 27) //wait for 'esc' key press for 30ms. If 'esc' key is pressed, break loop
             {
