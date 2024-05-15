@@ -38,14 +38,17 @@ class UartTX : public rclcpp::Node
 
         std::vector<uint8_t> new_msg;
         new_msg.push_back(msg.frame_head_byte);
-        new_msg.push_back(msg.frame_data_length);
+        new_msg.push_back(msg.frame_data_length & 0xFF);
+        new_msg.push_back(msg.frame_data_length >> 8);
         new_msg.push_back(msg.frame_sequence);
         new_msg.push_back(msg.frame_crc8);
-        new_msg.push_back(msg.msg_type);
+        new_msg.push_back(msg.msg_type & 0xFF);
+        new_msg.push_back(msg.msg_type >> 8);
         new_msg.push_back(msg.data[0]);
         new_msg.push_back(msg.data[1]);
         new_msg.push_back(msg.data[2]);
-        new_msg.push_back(msg.crc16);
+        new_msg.push_back(msg.crc16 & 0xFF);
+        new_msg.push_back(msg.crc16 >> 8);
 
         size_t status = ser.write(new_msg);
         // RCLCPP_INFO(this->get_logger(), "Status: '%lu'", status);
