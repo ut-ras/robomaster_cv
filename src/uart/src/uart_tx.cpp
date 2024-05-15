@@ -26,25 +26,33 @@ class UartTX : public rclcpp::Node
   private:
     void topic_callback(const stampede_msgs::msg::Uart &msg)
     {
-        RCLCPP_INFO(this->get_logger(), "Frame Head Byte: %d'", msg.frame_head_byte);
-        RCLCPP_INFO(this->get_logger(), "Frame Data Length: %d'", msg.frame_data_length);
-        RCLCPP_INFO(this->get_logger(), "Frame Sequence: %d'", msg.frame_sequence);
-        RCLCPP_INFO(this->get_logger(), "Frame CRC8: %d'", msg.frame_crc8);
-        RCLCPP_INFO(this->get_logger(), "Frame MSG_TYPE: %d'", msg.msg_type);
-        RCLCPP_INFO(this->get_logger(), "Data 0: %d'", msg.data[0]);
-        RCLCPP_INFO(this->get_logger(), "Data 1: %d'", msg.data[1]);
-        RCLCPP_INFO(this->get_logger(), "Data 2: %d'", msg.data[2]);
-        RCLCPP_INFO(this->get_logger(), "CRC16: %d'", msg.crc16);
+        RCLCPP_INFO(this->get_logger(), "Frame Head Byte: %X", msg.frame_head_byte);
+        RCLCPP_INFO(this->get_logger(), "Frame Data Length: %X", msg.frame_data_length);
+        RCLCPP_INFO(this->get_logger(), "Frame Sequence: %X", msg.frame_sequence);
+        RCLCPP_INFO(this->get_logger(), "Frame CRC8: %X", msg.frame_crc8);
+        RCLCPP_INFO(this->get_logger(), "Frame MSG_TYPE: %X", msg.msg_type);
+        RCLCPP_INFO(this->get_logger(), "Data 0: %X", msg.data[0]);
+        RCLCPP_INFO(this->get_logger(), "Data 1: %X", msg.data[1]);
+        RCLCPP_INFO(this->get_logger(), "Data 2: %X", msg.data[2]);
+        RCLCPP_INFO(this->get_logger(), "CRC16: %X", msg.crc16);
 
         std::vector<uint8_t> new_msg;
         new_msg.push_back(msg.frame_head_byte);
-        
+        new_msg.push_back(msg.frame_data_length);
+        new_msg.push_back(msg.frame_sequence);
+        new_msg.push_back(msg.frame_crc8);
+        new_msg.push_back(msg.msg_type);
+        new_msg.push_back(msg.data[0]);
+        new_msg.push_back(msg.data[1]);
+        new_msg.push_back(msg.data[2]);
+        new_msg.push_back(msg.crc16);
+
         size_t status = ser.write(new_msg);
-        RCLCPP_INFO(this->get_logger(), "Status: '%lu'", status);
+        // RCLCPP_INFO(this->get_logger(), "Status: '%lu'", status);
     }
     rclcpp::Subscription<stampede_msgs::msg::Uart>::SharedPtr subscription_;
     serial::Serial ser;
-    const char* device = "/dev/pts/1";
+    const char* device = "/dev/ttyUSB0";
 };
 
 int main(int argc, char * argv[])
