@@ -30,12 +30,19 @@ class TestPublisher : public rclcpp::Node
         message.frame_head_byte = 0xA5;
         message.frame_data_length = 0x03;
         message.frame_sequence = 0x00;
-        message.frame_crc8 = Get_CRC8_Check_Sum((unsigned char*)&message, 4, CRC8_INIT);
+        uint8_t header[4] = {message.frame_head_byte, (uint8_t) (message.frame_data_length), (uint8_t) (message.frame_data_length >> 8), message.frame_sequence};
+        message.frame_crc8 = Get_CRC8_Check_Sum(header, 4, CRC8_INIT);
+        
         message.msg_type = 0x0F;
         message.data.push_back(0x01);
         message.data.push_back(0x02);
         message.data.push_back(0x03);
-        message.crc16 = Get_CRC16_Check_Sum((unsigned char*)&message, 10, CRC_INIT);
+        uint8_t msg_arr[6 + message.frame_data_length];
+        memcpy(msg_arr, header, 4);
+        msg_arr[4] = message.frame_crc8;
+        msg_arr[5] = message.msg_type;
+        memcpy(&(msg_arr[6]), &message.data[0], message.frame_data_length);
+        message.crc16 = Get_CRC16_Check_Sum(msg_arr, sizeof(msg_arr), CRC_INIT);
 
         RCLCPP_INFO(this->get_logger(), "Publishing");
         publisher_->publish(message);

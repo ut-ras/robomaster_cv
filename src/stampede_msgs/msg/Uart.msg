@@ -1,9 +1,9 @@
-int8 frame_head_byte
-int16 frame_data_length
-int8 frame_sequence
-int8 frame_crc8
-int16 msg_type
+uint8 frame_head_byte
+uint16 frame_data_length
+uint8 frame_sequence
+uint8 frame_crc8
+uint16 msg_type
 
-int8[] data
+uint8[] data
 
-int16 crc16
+uint16 crc16
