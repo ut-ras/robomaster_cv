@@ -33,15 +33,16 @@ class TestPublisher : public rclcpp::Node
         uint8_t header[4] = {message.frame_head_byte, (uint8_t) (message.frame_data_length), (uint8_t) (message.frame_data_length >> 8), message.frame_sequence};
         message.frame_crc8 = Get_CRC8_Check_Sum(header, 4, CRC8_INIT);
         
-        message.msg_type = 0x0F;
-        message.data.push_back(0x01);
-        message.data.push_back(0x02);
-        message.data.push_back(0x03);
-        uint8_t msg_arr[6 + message.frame_data_length];
+        message.msg_type = 0x000F;
+        message.data.push_back(0x07);
+        message.data.push_back(0x05);
+        message.data.push_back(0x08);
+        uint8_t msg_arr[7 + message.frame_data_length];
         memcpy(msg_arr, header, 4);
         msg_arr[4] = message.frame_crc8;
-        msg_arr[5] = message.msg_type;
-        memcpy(&(msg_arr[6]), &message.data[0], message.frame_data_length);
+        msg_arr[5] = message.msg_type & 0xFF;
+        msg_arr[6] = message.msg_type >> 8;
+        memcpy(&(msg_arr[7]), &message.data[0], message.frame_data_length);
         message.crc16 = Get_CRC16_Check_Sum(msg_arr, sizeof(msg_arr), CRC_INIT);
 
         RCLCPP_INFO(this->get_logger(), "Publishing");
