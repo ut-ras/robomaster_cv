@@ -1,0 +1,1 @@
+ros2 run image_publisher image_publisher_node /workspaces/isaac_ros-dev/resources/rmna2.mp4 --ros-args --remap /image_raw:=/image
