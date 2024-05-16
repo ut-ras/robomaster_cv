@@ -6,6 +6,9 @@
         "ranges": "cpp",
         "*.tcc": "cpp",
         "system_error": "cpp",
+        "xlocale": "cpp",
+        "xlocinfo": "cpp",
+        "xstring": "cpp"
         "streambuf": "cpp",
         "any": "cpp",
         "atomic": "cpp",
