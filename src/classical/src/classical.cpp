@@ -113,16 +113,19 @@ class Classical : public rclcpp::Node
             float x = (first.tl().x + second.br().x) / 2;
             float y = (first.tl().y + second.br().y) / 2;
             circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
-        }
 
-        for (size_t i = 0; i < accepted_rects.size(); i++) // iterate through each contour.
-        {
-            rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i].br(), Scalar(0, 255, 0), 5); 
-        }
+            for (size_t i = 0; i < accepted_rects.size(); i++) // iterate through each contour.
+            {
+                rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i].br(), Scalar(0, 255, 0), 5); 
+            }
 
-        for (size_t i = 0; i < accepted_rects.size() - 1; i++)
-        {
-            rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i+1].br(), Scalar(255, 0, 0), 5);
+            for (size_t i = 0; i < accepted_rects.size() - 1; i++)
+            {
+                rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i+1].br(), Scalar(255, 0, 0), 5);
+                float center_x = (accepted_rects[i].tl().x + accepted_rects[i+1].br().x) / 2;
+                float center_y = (accepted_rects[i].tl().y + accepted_rects[i+1].br().y) / 2;
+                circle(image_all_bounded_boxes, Point(center_x, center_y), 2, Scalar(255, 0, 0), 5);
+            }
         }
 
         sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_all_bounded_boxes).toImageMsg();
