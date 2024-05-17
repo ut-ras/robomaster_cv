@@ -1,5 +1,7 @@
 #include <memory>
 
+#include <algorithm>
+#include <cmath>
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "cv_bridge/cv_bridge.h"
@@ -8,6 +10,7 @@
 
 using std::placeholders::_1;
 using namespace cv;
+using namespace std;
 
 class Classical : public rclcpp::Node
 {
@@ -21,6 +24,11 @@ class Classical : public rclcpp::Node
     }
 
   private:
+    static bool rect_sort_function (Rect first, Rect second)
+    {
+        return first.tl().x < second.tl().x;
+    }
+
     void topic_callback(const sensor_msgs::msg::Image & img)
     {
         // Blue current using low 80 high 140
@@ -58,15 +66,71 @@ class Classical : public rclcpp::Node
         dilate(color_threshold, color_threshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
         erode(color_threshold, color_threshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
 
-        Mat image_result;
-        cvtColor(color_threshold, image_result, COLOR_GRAY2BGR);
+        Mat image_copy = imgOrig.clone();
+        Mat image_contours = imgOrig.clone();
+        Mat image_all_bounded_boxes = imgOrig.clone();
 
-        sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_result).toImageMsg();
+        vector<vector<Point>> contours;
+        vector<Vec4i> hierarchy;
+        findContours(color_threshold, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+        drawContours(image_contours, contours, -1, Scalar(0, 255, 0), 2);
+
+        vector<Rect> accepted_rects;
+        for (size_t i = 0; i < contours.size(); i++) // iterate through each contour.
+        {
+            Rect bounding_rect = boundingRect(contours[i]);
+            if (bounding_rect.size().height / bounding_rect.size().width > 1
+                && bounding_rect.size().height / bounding_rect.size().width < 7)
+            {
+                accepted_rects.push_back(bounding_rect);
+            }
+        }
+
+        sort(accepted_rects.begin(), accepted_rects.end(), rect_sort_function);
+
+        if (accepted_rects.size() >= 2)
+        {
+            Rect first = accepted_rects[0];
+            Rect second = accepted_rects[1];
+
+            int distance = abs(second.tl().y - first.tl().y);
+
+            for (size_t i = 1; i + 1 < accepted_rects.size(); i++)
+            {
+                // if (accepted_rects[i].tl().x - first_tallest.tl().x < 1000)
+                    // continue;
+
+                if (abs(accepted_rects[i].tl().y - accepted_rects[i + 1].tl().y) < distance)
+                {
+                    distance = abs(accepted_rects[i].tl().y - accepted_rects[i + 1].tl().y);
+                    first = accepted_rects[i];
+                    second = accepted_rects[i + 1];
+                }
+            }
+
+            rectangle(image_copy, first.tl(), second.br(), Scalar(0, 255, 0), 5);   
+            // rectangle(image_copy, second.tl(), second.br(), Scalar(0, 255, 0), 5);  
+            float x = (first.tl().x + second.br().x) / 2;
+            float y = (first.tl().y + second.br().y) / 2;
+            circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
+        }
+
+        for (size_t i = 0; i < accepted_rects.size(); i++) // iterate through each contour.
+        {
+            rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i].br(), Scalar(0, 255, 0), 5); 
+        }
+
+        for (size_t i = 0; i < accepted_rects.size() - 1; i++)
+        {
+            rectangle(image_all_bounded_boxes, accepted_rects[i].tl(), accepted_rects[i+1].br(), Scalar(255, 0, 0), 5);
+        }
+
+        sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_all_bounded_boxes).toImageMsg();
 
         publisher_->publish(msg);
     }
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;   
 };
 
 int main(int argc, char * argv[])
