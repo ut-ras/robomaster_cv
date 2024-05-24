@@ -24,7 +24,7 @@ const int MIN_AREA = 10;
 
 const int KILL_THRESHOLD = 60;
 
-const float MARGIN_OF_ERR = 0.5; //to be fine tuned
+const float MARGIN_OF_ERR = 4; //to be fine tuned
 
 // const float error_margin = 0; // to be fine tuned
 
