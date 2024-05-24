@@ -12,6 +12,10 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
         return -1;
     }
 
+    // for(int i = 0; i < boxList.size(); i++) {
+    //     printf("box %d: (%f, %f, %f)\n", i+1,  boxList[i].getXCenter(), boxList[i].getYCenter(), boxList[i].getDepthVal());
+    // }
+
     if (_plates.empty())
     {
         for (int i = 0; i < boxList.size(); i++)
@@ -25,18 +29,18 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
             }
             ArmorPlate *newPlate = new ArmorPlate(_idAssign);
             newPlate->setLastTime(currTime);
-            newPlate->setPosition({box.getXCenter(), box.getYCenter(), box.getDepthVal()});
+            newPlate->setPosition(box.getPosition());
             // newPlate.addArmorPlate(newPlate, currTime);
             _plates.push_back(*newPlate);
             _idAssign++;
         }
+        
     }
     else
     {
         for (int i = 0; i < boxList.size(); i++)
         {
             BoundingBox box = boxList[i];
-            // std::cout << box << std::endl; //C++ does not have the same printing properties as Python so prints may be useless
             if (!sizeCheck(&box))
                 continue;
 
@@ -45,11 +49,12 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
                 return -1;
             }
             int assoc = assign_plate(&box, _plates);
-            ArmorPlate *newAP = new ArmorPlate(_idAssign);
-            newAP->setLastTime(currTime);
-            newAP->setPosition(std::tuple<float, float, float>(box.getXCenter(), box.getYCenter(), box.getDepthVal()));
+            // printf("ASSOC %d\n", assoc);
             if (assoc == -1)
             {
+                ArmorPlate *newAP = new ArmorPlate(_idAssign);
+                newAP->setLastTime(currTime);
+                newAP->setPosition(std::tuple<float, float, float>(box.getXCenter(), box.getYCenter(), box.getDepthVal()));
                 if (_plates.size() < 9)
                 {
                     _plates.push_back(*newAP);
@@ -70,12 +75,10 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
             }
             else
             {
-                ArmorPlate assocPlate = _plates[assoc];
-                // assocPlate.addArmorPlate(newAP, currTime);
-                // assocPlate.timeBuffer = 0;
-                assocPlate.setLastTime(currTime);
-                assocPlate.setIsActive(true);
-                _idAssign++;
+                _plates[assoc].setLastTime(currTime);
+                _plates[assoc].setIsActive(true);
+                _plates[assoc].setPosition(box.getPosition());
+                // _idAssign++;
             }
         }
 
@@ -94,6 +97,10 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
             }
         }
     }
+    for(int i = 0; i < _plates.size(); i++) {
+        std::tuple<float, float, float> pos = _plates[i].getPosition();
+        // printf("plate %d: (%f, %f, %f)\n", _plates[i].getId(), std::get<0>(pos), std::get<1>(pos), std::get<2>(pos));
+    }
     return 0;
 }
 
@@ -109,6 +116,7 @@ int ObjectLog::assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
         return -2;
 
     std::tuple<float, float, float> position = box->getPosition();
+    // printf("BOX: (%f, %f, %f)\n", std::get<0>(position), std::get<1>(position), std::get<2>(position));
     float shortest_dist = std::numeric_limits<float>::max();
     int shortest_plate = -1;
     if (((std::get<0>(position) + MARGIN_OF_ERR) > MAX_X) || ((std::get<1>(position) + MARGIN_OF_ERR) > MAX_Y) || ((std::get<2>(position) + MARGIN_OF_ERR) > MAX_Z) 
@@ -121,17 +129,20 @@ int ObjectLog::assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
     {
         float dist = get_distance(position, plates[i].getPosition());
         if (dist < shortest_dist)
-        {
+        {   
             shortest_plate = i;
             shortest_dist = dist;
+            // printf("shortest distance: %f\n", shortest_dist);
         }
     }
 
-    if (shortest_dist > MARGIN_OF_ERR)
+    float full_mog = sqrt(3 * pow(MARGIN_OF_ERR, 2)); // full mog represents the margin of error extended to 3d space
+    if (shortest_dist > full_mog)
     {
+        // printf("RETURN -1, %f %f\n", shortest_dist, full_mog);
         return -1;
     }
-
+    // printf("SHORTEST PLATE: %d, SHORTEST DIST: %f\n", shortest_plate, shortest_dist);
     return shortest_plate;
 }
 
