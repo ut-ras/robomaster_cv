@@ -3,7 +3,6 @@
 #include "cublas_v2.h"
 #include <iostream>
 
-// ! WE MIGHT NEED TO CHANGE ALL THE floatS HERE TO FLOATS
 ArmorPlate::ArmorPlate(int id)
     : _id(id),
       _position(std::tuple<float, float, float>(0, 0, 0)),
@@ -123,7 +122,8 @@ void ArmorPlate::setLastTime(time_t lastTime)
 // void setKalmanFilter(KalmanFilter kalmanFilter) {}
 
 
-// TODO (IMP) Whenever we make a callback function for the topic that listens to the position, we need to calculate instantaneous velocity and acceleration
+// TODO (IMP) Whenever we make a callback function for the topic that listens to the position, 
+// TODO we need to calculate instantaneous velocity and acceleration
 // TODO make two new functions for this that are similar to the functions in Kalman
 
 void ArmorPlate::updatePositionVelAcc()
