@@ -1,5 +1,6 @@
 build/
 install/
 log/
-.vscode/
-src/realsense-ros
+rosbags/
+
+src/ros2_benchmark/
