@@ -74,5 +74,6 @@
         "variant": "cpp",
         "codecvt": "cpp",
         "__nullptr": "cpp"
-    }
+    },
+    "ros.distro": "humble"
 }
