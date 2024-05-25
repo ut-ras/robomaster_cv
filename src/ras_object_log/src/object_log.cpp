@@ -2,6 +2,7 @@
 #include <cstdio>
 #include "rclcpp/rclcpp.hpp"
 #include "object_log_msgs/msg/input.hpp"
+#include "object-log/ObjectLog.h"
 
 using namespace std::chrono_literals;
 

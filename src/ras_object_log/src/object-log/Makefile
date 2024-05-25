@@ -17,4 +17,5 @@ clean:
 	rm -f object-log.o
 	rm -f out.o
 	rm -f kalman.o
+	rm -f BoundingBox.o
 	

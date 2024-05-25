@@ -1,6 +1,6 @@
 
-#include "ArmorPlate.h"
-#include "ObjectLog.h"
+#include "object-log/ArmorPlate.h"
+#include "object-log/ObjectLog.h"
 
 ObjectLog::ObjectLog() : _plates(std::vector<ArmorPlate>()), _idAssign(0), _outputLog(fopen("ObjectLog.txt", "w")) {}
 
