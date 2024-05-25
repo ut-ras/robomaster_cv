@@ -7,9 +7,9 @@ set(DEPENDENCIES
   rclcpp
   std_msgs
   sensor_msgs
+  realsense2_camera_msgs
   OpenCV
   cv_bridge
-  image_transport
 )
 
 foreach(pkg ${DEPENDENCIES})

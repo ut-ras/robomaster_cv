@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/u_int16.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "realsense2_camera_msgs/msg/rgbd.hpp"
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -18,9 +20,10 @@ class Classical : public rclcpp::Node
     Classical()
     : Node("classical")
     {
-        subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "/robot/rs2/color/image_raw", 10, std::bind(&Classical::topic_callback, this, _1));
+        subscription_ = this->create_subscription<realsense2_camera_msgs::msg::RGBD>(
+            "/robot/rs2/rgbd", 10, std::bind(&Classical::topic_callback, this, _1));
         publisher_ = this->create_publisher<sensor_msgs::msg::Image>("image_result", 10);
+        depth_ = this->create_publisher<std_msgs::msg::UInt16>("depth_result", 10);
     }
 
   private:
@@ -29,7 +32,7 @@ class Classical : public rclcpp::Node
         return first.tl().x < second.tl().x;
     }
 
-    void topic_callback(const sensor_msgs::msg::Image & img)
+    void topic_callback(const realsense2_camera_msgs::msg::RGBD & img)
     {
         // Blue current using low 80 high 140
         int iLowH = 80;
@@ -43,7 +46,7 @@ class Classical : public rclcpp::Node
         int iLowV = 175;
         int iHighV = 255;
 
-        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(img, sensor_msgs::image_encodings::BGR8);
+        cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(img.rgb, sensor_msgs::image_encodings::BGR8);
 
         Mat imgOrig = cv_ptr->image;
 
@@ -88,6 +91,8 @@ class Classical : public rclcpp::Node
 
         sort(accepted_rects.begin(), accepted_rects.end(), rect_sort_function);
 
+        float x = 0.0f;
+        float y = 0.0f;
         if (accepted_rects.size() >= 2)
         {
             Rect first = accepted_rects[0];
@@ -110,8 +115,8 @@ class Classical : public rclcpp::Node
 
             rectangle(image_copy, first.tl(), second.br(), Scalar(0, 255, 0), 5);   
             // rectangle(image_copy, second.tl(), second.br(), Scalar(0, 255, 0), 5);  
-            float x = (first.tl().x + second.br().x) / 2;
-            float y = (first.tl().y + second.br().y) / 2;
+            x = (first.tl().x + second.br().x) / 2;
+            y = (first.tl().y + second.br().y) / 2;
             circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
 
             for (size_t i = 0; i < accepted_rects.size(); i++) // iterate through each contour.
@@ -130,10 +135,18 @@ class Classical : public rclcpp::Node
 
         sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_all_bounded_boxes).toImageMsg();
 
+        cv_ptr = cv_bridge::toCvCopy(img.depth);
+
+        Mat depth = cv_ptr->image;
+
+        std_msgs::msg::UInt16 depth_msg; 
+        depth_msg.data = depth.at<uint16_t>(Point((int) x, (int) y));
         publisher_->publish(msg);
+        depth_->publish(depth_msg);
     }
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;   
+    rclcpp::Subscription<realsense2_camera_msgs::msg::RGBD>::SharedPtr subscription_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+    rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr depth_;   
 };
 
 int main(int argc, char * argv[])
