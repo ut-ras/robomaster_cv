@@ -1,6 +1,6 @@
 #ifndef KALMAN_H
 #define KALMAN_H
-#define IDX2C(i, j, ld) (((j) * (ld)) + (i))
+#define IDX2C(i, j, ld) (((j) * (ld)) + (i)) 
 #include "cublas_v2.h"
 #include <tuple>
 

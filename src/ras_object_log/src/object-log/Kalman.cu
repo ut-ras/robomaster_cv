@@ -1,4 +1,4 @@
-#include "Kalman.h"
+#include "object-log/Kalman.h"
 #include <stdio.h>
 #include "cublas_v2.h"
 #include <stdio.h>
@@ -149,44 +149,44 @@ void Kalman::set_acceleration(float *acceleration)
     memcpy(_state_n + 2 * STATE_SIZE, acceleration, STATE_SIZE * sizeof(float));
 }
 
-int main()
-{
-    /*
-     * TESTING
-     */
-    float DELTA_TIME = 1.2;
-    Kalman *k = new Kalman(DELTA_TIME);
+// int main()
+// {
+//     /*
+//      * TESTING
+//      */
+//     float DELTA_TIME = 1.2;
+//     Kalman *k = new Kalman(DELTA_TIME);
 
-    float position[] = {1.0, 2.0, 3.0};
-    float velocity[] = {4.0, 5.0, 6.0};
-    float acceleration[] = {7.0, 8.0, 9.0};
+//     float position[] = {1.0, 2.0, 3.0};
+//     float velocity[] = {4.0, 5.0, 6.0};
+//     float acceleration[] = {7.0, 8.0, 9.0};
 
-    time_t start = time(0);
-    std::cout << "Starting time: " << start << std::endl;
-    for (int i = 0; i < 20; i++)
-    {
-        k->set_state_n(position, velocity, acceleration);
-        k->predict_state_n_1();
-        float *output = k->get_state_n_1();
-        k->update_state_n();
-        output = k->get_state_n();
-        for (int i = 0; i < VECTOR_SIZE; i++)
-        {
-            std::cout << output[i] << std::endl;
-        }
-        position[0] = output[0];
-        position[1] = output[1];
-        position[2] = output[2];
-        velocity[0] = output[3];
-        velocity[1] = output[4];
-        velocity[2] = output[5];
-        acceleration[0] = output[6];
-        acceleration[1] = output[7];
-        acceleration[2] = output[8];
-        std::cout<<"----------iteration ended---------\n";
-    }
-    time_t end = time(0);
-    std::cout << "Ending time: " << end << std::endl;
-    std::cout << "Time taken: " << end - start << std::endl;
-    return 0;
-}
+//     time_t start = time(0);
+//     std::cout << "Starting time: " << start << std::endl;
+//     for (int i = 0; i < 20; i++)
+//     {
+//         k->set_state_n(position, velocity, acceleration);
+//         k->predict_state_n_1();
+//         float *output = k->get_state_n_1();
+//         k->update_state_n();
+//         output = k->get_state_n();
+//         for (int i = 0; i < VECTOR_SIZE; i++)
+//         {
+//             std::cout << output[i] << std::endl;
+//         }
+//         position[0] = output[0];
+//         position[1] = output[1];
+//         position[2] = output[2];
+//         velocity[0] = output[3];
+//         velocity[1] = output[4];
+//         velocity[2] = output[5];
+//         acceleration[0] = output[6];
+//         acceleration[1] = output[7];
+//         acceleration[2] = output[8];
+//         std::cout<<"----------iteration ended---------\n";
+//     }
+//     time_t end = time(0);
+//     std::cout << "Ending time: " << end << std::endl;
+//     std::cout << "Time taken: " << end - start << std::endl;
+//     return 0;
+// }

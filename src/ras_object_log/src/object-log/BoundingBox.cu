@@ -1,4 +1,4 @@
-#include "BoundingBox.h"
+#include "object-log/BoundingBox.h"
 
 BoundingBox::BoundingBox(float xCenter, float yCenter, float depthVal, float width, float height)
 {
@@ -78,6 +78,6 @@ time_t BoundingBox::getTimeStamp(){
     return _timeStamp;
 }
 
-int BoundingBox::main(){
-    return 0;
-}
+// int BoundingBox::main(){
+//     return 0;
+// }

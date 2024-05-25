@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "ArmorPlate.h"
+#include "object-log/ArmorPlate.h"
 #include "cublas_v2.h"
 #include <iostream>
 
@@ -282,17 +282,17 @@ int experimentCUDA(int n)
     return 0;
 }
 
-int main()
-{
+// int main()
+// {
 
-    // * Size of vector
-    int n = 500000000;
-    int step = 10000;
-    for (int i = 0; i < 100; i++)
-    {
-        std::cout << "n: " << n << std::endl;
-        experimentCUDA(n);
-        n += step;
-    }
-    return 0;
-}
+//     // * Size of vector
+//     int n = 500000000;
+//     int step = 10000;
+//     for (int i = 0; i < 100; i++)
+//     {
+//         std::cout << "n: " << n << std::endl;
+//         experimentCUDA(n);
+//         n += step;
+//     }
+//     return 0;
+// }

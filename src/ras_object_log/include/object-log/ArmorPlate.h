@@ -1,12 +1,12 @@
 #ifndef ARMORPLATE_H
 #define ARMORPLATE_H
-#define IDX2C(i,j,ld) (((j)*(ld))+(i))
+#define IDX2C(i,j,ld) (((j)*(ld))+(i)) 
 #include <tuple>
 #include <vector>
 #include <ctime>
 #include <time.h>
-#include "BoundingBox.h"
-#include "Kalman.h"
+#include "object-log/BoundingBox.h"
+#include "object-log/Kalman.h"
 
 
 class ArmorPlate

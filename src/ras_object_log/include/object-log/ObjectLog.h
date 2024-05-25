@@ -9,8 +9,8 @@
 #include <limits>
 #include <stdio.h>
 
-#include "ArmorPlate.h"
-#include "BoundingBox.h"
+#include "object-log/ArmorPlate.h"
+#include "object-log/BoundingBox.h"
 
 const int MAX_X = 150;
 const int MAX_Y = 150;
