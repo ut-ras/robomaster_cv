@@ -60,8 +60,16 @@ class Classical : public rclcpp::Node
     }
 
     Mat remove_artifacts(Mat img) {
-        morphologyEx(img, img, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
-        morphologyEx(img, img, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+        // morphologyEx(img, img, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+        // morphologyEx(img, img, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
+
+        //morphological opening (removes small objects from the foreground)
+        erode(img, img, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
+        dilate(img, img, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
+
+        //morphological closing (removes small holes from the foreground)
+        dilate(img, img, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) ); 
+        erode(img, img, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)) );
         return img;
     }
 
@@ -105,13 +113,13 @@ class Classical : public rclcpp::Node
                     first = bounding_boxes[i];
                     second = bounding_boxes[i + 1];
                 }
-
-                // rectangle(image_copy, first.tl(), second.br(), Scalar(0, 255, 0), 5);   
-                int x = (first.tl().x + second.br().x) / 2;
-                int y = (first.tl().y + second.br().y) / 2;
-                // circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
-                armor_plates.push_back(ArmorPlate{first.tl(), second.br(), Point(x,y)});
             }
+
+            // rectangle(image_copy, first.tl(), second.br(), Scalar(0, 255, 0), 5);   
+            int x = (first.tl().x + second.br().x) / 2;
+            int y = (first.tl().y + second.br().y) / 2;
+            // circle(image_copy, Point(x, y), 2, Scalar(0, 0, 255), 8);
+            armor_plates.push_back(ArmorPlate{first.tl(), second.br(), Point(x,y)});
         }
 
         return std::make_tuple(armor_plates, bounding_boxes);
@@ -139,7 +147,7 @@ class Classical : public rclcpp::Node
         
         auto [armor_plates, bounding_boxes] = find_armor_plates(accepted_rects);
 
-        if (this->get_parameter("enable_debug").as_bool() == true) {
+        if (this->get_parameter("enable_debug").as_bool() == true && armor_plates.size() > 0) {
             for (size_t i = 0; i < bounding_boxes.size(); i++) // iterate through each contour.
             {
                 rectangle(image_all_bounded_boxes, bounding_boxes[i].tl(), bounding_boxes[i].br(), Scalar(0, 255, 0), 5); 
@@ -150,13 +158,16 @@ class Classical : public rclcpp::Node
                 circle(image_all_bounded_boxes, armor_plates[i].center, 2, Scalar(0, 0, 255), 8);
             }
 
-            sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_all_bounded_boxes).toImageMsg();
+            // sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_all_bounded_boxes).toImageMsg();
             std_msgs::msg::UInt16 depth_msg; 
             depth_msg.data = depth_img.at<uint16_t>(armor_plates[0].center);
 
-            image_result_->publish(msg);
+            // image_result_->publish(msg);
             depth_result_->publish(depth_msg);
         }
+
+        sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_all_bounded_boxes).toImageMsg();
+        image_result_->publish(msg);
     }
     rclcpp::Subscription<realsense2_camera_msgs::msg::RGBD>::SharedPtr subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_result_;
