@@ -36,7 +36,11 @@ To access WSL2 through VSCode, download the "WSL" extension.
    ```bash
    sudo apt-get install ros-humble-realsense2-camera
    ```
-9. Start the RealSense camera node using
+9. Install vision_msgs package
+   ```bash
+   sudo apt update && sudo apt install ros-$ROS_DISTRO-vision-msgs-rviz-plugins
+   ```
+10. Start the RealSense camera node using
    ```bash
    ros2 run realsense2_camera realsense2_camera_node
    ```
