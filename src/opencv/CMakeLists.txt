@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.5)
+project( ClassicalFilter )
+find_package( OpenCV REQUIRED PATHS )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_executable( ClassicalFilter ClassicalFilter.cpp )
+target_link_libraries( ClassicalFilter ${OpenCV_LIBS} )
