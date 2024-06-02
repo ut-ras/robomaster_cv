@@ -37,7 +37,7 @@ public:
 
     // **** Setters ****
     void setId(int id);
-    void setPosition(std::tuple<float, float, float> position);
+    void setPosition(std::tuple<float, float, float> position, time_t currTime);
     void setVelocity(std::tuple<float, float, float> velocity);
     void setAcceleration(std::tuple<float, float, float> acceleration);
     void setIsActive(bool isActive);

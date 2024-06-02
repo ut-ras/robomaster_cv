@@ -11,6 +11,7 @@ set(DEPENDENCIES
   realsense2_camera_msgs
   OpenCV
   cv_bridge
+  stampede_msgs
 )
 
 foreach(pkg ${DEPENDENCIES})

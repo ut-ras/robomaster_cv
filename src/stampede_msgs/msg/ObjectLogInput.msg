@@ -1,0 +1,1 @@
+stampede_msgs/BoundingBox[] boxes

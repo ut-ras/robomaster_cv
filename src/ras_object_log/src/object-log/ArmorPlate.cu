@@ -83,9 +83,19 @@ void ArmorPlate::setId(int id)
     ArmorPlate::_id = id;
 }
 
-void ArmorPlate::setPosition(std::tuple<float, float, float> position)
+void ArmorPlate::setPosition(std::tuple<float, float, float> position, time_t currentTime)
 {
+    time_t deltaTime = currentTime - _lastTime;
+    std::tuple<float, float, float> new_velocity = std::tuple<float, float, float>((std::get<0>(position) - std::get<0>(ArmorPlate::_position) / deltaTime),
+                                                                                   (std::get<1>(position) - std::get<1>(ArmorPlate::_position) / deltaTime),
+                                                                                   (std::get<2>(position) - std::get<2>(ArmorPlate::_position) / deltaTime));
+    std::tuple<float, float, float> new_accelaration = std::tuple<float, float, float>((std::get<0>(new_velocity) - std::get<0>(ArmorPlate::_velocity) / deltaTime),
+                                                                                       (std::get<1>(new_velocity) - std::get<1>(ArmorPlate::_velocity) / deltaTime),
+                                                                                       (std::get<2>(new_velocity) - std::get<2>(ArmorPlate::_velocity) / deltaTime));
+
     ArmorPlate::_position = position;
+    this->setVelocity(new_velocity);
+    this->setAcceleration(new_accelaration);
 }
 
 void ArmorPlate::setVelocity(std::tuple<float, float, float> velocity)
@@ -121,8 +131,7 @@ void ArmorPlate::setLastTime(time_t lastTime)
 // void setBoundingBox(BoundingBox boundingBox) {}
 // void setKalmanFilter(KalmanFilter kalmanFilter) {}
 
-
-// TODO (IMP) Whenever we make a callback function for the topic that listens to the position, 
+// TODO (IMP) Whenever we make a callback function for the topic that listens to the position,
 // TODO we need to calculate instantaneous velocity and acceleration
 // TODO make two new functions for this that are similar to the functions in Kalman
 
@@ -137,7 +146,30 @@ void ArmorPlate::updatePositionVelAcc()
     // get the predicted position from kalman filter
     // get predicted vel and acc from the kalman filter
     // set the position, vel, and acc to the predicted values
-    float *state = _kalmanFilter->get_state_n();
+    float *position = (float *)malloc(3 * sizeof(float));
+    float *velocity = (float *)malloc(3 * sizeof(float));
+    float *acceleration = (float *)malloc(3 * sizeof(float));
+
+    position[0] = (std::get<0>(ArmorPlate::_position));
+    position[1] = (std::get<1>(ArmorPlate::_position));
+    position[2] = (std::get<2>(ArmorPlate::_position));
+
+    velocity[0] = (std::get<0>(ArmorPlate::_velocity));
+    velocity[1] = (std::get<1>(ArmorPlate::_velocity));
+    velocity[2] = (std::get<2>(ArmorPlate::_velocity));
+
+    acceleration[0] = (std::get<0>(ArmorPlate::_acceleration));
+    acceleration[1] = (std::get<1>(ArmorPlate::_acceleration));
+    acceleration[2] = (std::get<2>(ArmorPlate::_acceleration));
+
+    _kalmanFilter->set_state_n(position, velocity, acceleration);
+    _kalmanFilter->predict_state_n_1();
+    float *output = _kalmanFilter->get_state_n_1();
+    _kalmanFilter->update_state_n();
+    output = _kalmanFilter->get_state_n();
+    ArmorPlate::_position = std::tuple<float, float, float>(output[0], output[1], output[2]);
+    ArmorPlate::_velocity = std::tuple<float, float, float>(output[3], output[4], output[5]);
+    ArmorPlate::_acceleration = std::tuple<float, float, float>(output[6], output[7], output[8]);
 }
 
 /*
@@ -198,8 +230,9 @@ void ArmorPlate::predictPosition(time_t currentTime)
 
 /*
  * @brief Updates the state transition matrix of the Kalman Filter
-*/
-void ArmorPlate::setDeltaTime(float deltaTime) {
+ */
+void ArmorPlate::setDeltaTime(float deltaTime)
+{
     _kalmanFilter->setDeltaTime(deltaTime);
 }
 

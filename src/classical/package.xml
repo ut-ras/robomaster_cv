@@ -18,6 +18,7 @@
   <depend>realsense2_camera_msgs</depend>
   <depend>OpenCV</depend>
   <depend>cv_bridge</depend>
+  <depend>stampede_msgs</depend>
   
   <export>
     <build_type>ament_cmake</build_type>

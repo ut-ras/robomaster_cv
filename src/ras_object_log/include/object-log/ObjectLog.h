@@ -18,13 +18,15 @@ const int MAX_Z = 150;
 const int MIN_X = -1;
 const int MIN_Y = -1;
 const int MIN_Z = -1;
+const int FRAME_WIDTH = 1280;
+const int FRAME_HEIGHT = 720;
 
 // minimum area allowed
 const int MIN_AREA = 10;
 
 const int KILL_THRESHOLD = 60;
 
-const float MARGIN_OF_ERR = 4; //to be fine tuned
+const float MARGIN_OF_ERR = 4; // to be fine tuned
 
 // const float error_margin = 0; // to be fine tuned
 
@@ -48,10 +50,10 @@ public:
         - Filter out old plates
         - Write to a log file
     */
-    
+
     /* *
      * Input from depth
-     * Input: 
+     * Input:
         - boxList: an array of of bounding box objects
         - timestamp: timestamp of the boundingBoxes
                      the plates unless the closest distance is greater than some margin of error
@@ -84,6 +86,10 @@ public:
     void kill_all();
 
     void kill_plate(int id);
+
+    /// @brief Returns the Best Armor plate to shoot at
+    /// @return a vector consisting of position (x,y,z), velocity (x, y, z), acceleration (x, y, z)
+    std::vector<float> getFinalArmorPlateState();
 
 private:
     std::vector<ArmorPlate> _plates;
