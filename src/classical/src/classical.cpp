@@ -10,6 +10,8 @@
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/opencv.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include "stampede_msgs/msg/object_log_input.hpp"
+#include "stampede_msgs/msg/bounding_box.hpp"
 
 using std::placeholders::_1;
 using namespace cv;
@@ -19,6 +21,18 @@ struct ArmorPlate {
     Point tl;
     Point br;
     Point center;
+    RotatedRect left_light;
+    RotatedRect right_light;
+};
+
+struct left_right_contour_sorter // 'less' for contours
+{
+    bool operator ()( const vector<Point>& a, const vector<Point> & b )
+    {
+        Rect ra(boundingRect(a));
+        Rect rb(boundingRect(b));
+        return (ra.x < rb.x);
+    }
 };
 
 class Classical : public rclcpp::Node
@@ -33,8 +47,7 @@ class Classical : public rclcpp::Node
             "/robot/rs2/rgbd", 10, std::bind(&Classical::topic_callback, this, _1));
         image_result_ = this->create_publisher<sensor_msgs::msg::Image>("image_result", 10);
         depth_result_ = this->create_publisher<std_msgs::msg::UInt16>("depth_result", 10);
-
-
+        classical_output_ = this->create_publisher<stampede_msgs::msg::ObjectLogInput>("object_log_input", 10);
     }
 
   private:
@@ -96,15 +109,15 @@ class Classical : public rclcpp::Node
     std::tuple<vector<RotatedRect>, vector<vector<Point>>> find_rotated_bounding_boxes(Mat img) {
         vector<vector<Point>> contours;
         findContours(img, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+        sort(contours.begin(), contours.end(), left_right_contour_sorter());
 
         vector<RotatedRect> bounding_boxes;
         for (size_t i = 0; i < contours.size(); i++) {
             RotatedRect bounding_box = minAreaRect(contours[i]);
-            
-            // if (bounding_box.size.height / bounding_box.size.width > 1 && bounding_box.size.height / bounding_box.size.width < 7) {
-            //     bounding_boxes.push_back(minAreaRect(contours[i]));
-            // }
-            bounding_boxes.push_back(minAreaRect(contours[i]));
+
+            if (bounding_box.boundingRect().height / bounding_box.boundingRect().width > 1 && bounding_box.boundingRect().height / bounding_box.boundingRect().width < 7) {
+                bounding_boxes.push_back(bounding_box);
+            }
         }
 
         return std::make_tuple(bounding_boxes, contours);
@@ -156,31 +169,85 @@ class Classical : public rclcpp::Node
             for (size_t i = 0; i < bounding_boxes.size() - 1; i++) {
                 RotatedRect first = bounding_boxes[i];
                 RotatedRect second = bounding_boxes[i+1];
+
+                Point2f first_points[4];
+                Point2f second_points[4];
+                first.points(first_points);
+                second.points(second_points);
+
+                int tl_x, tl_y, br_x, br_y;
                 float angle_first = normalize_0_180(first);
-                float angle_second = normalize_0_180(second);
-
-                RCLCPP_INFO(this->get_logger(), "Absolute angle: '%f", abs(angle_first - angle_second));
-
-                if (abs(angle_first - angle_second) < 15) {
-                    Point2f first_points[4];
-                    Point2f second_points[4];
-                    first.points(first_points);
-                    second.points(second_points);
-                    int tl_x = first_points[1].x;
-                    int tl_y = min(first_points[1].y, second_points[2].y);
-                    int br_x = second_points[3].x;
-                    int br_y = max(first_points[0].y, second_points[3].y);
-
-                    Point tl(tl_x, tl_y), br(br_x, br_y);
-                    int x = (tl.x + br.x) / 2;
-                    int y = (tl.y + br.y) / 2;
-
-                    armor_plates.push_back(ArmorPlate{tl, br, Point(x,y)});
+                if (angle_first > 90) {
+                    tl_x = first_points[1].x;
+                    tl_y = min(first_points[1].y, second_points[2].y);
+                    br_x = second_points[3].x;
+                    br_y = max(first_points[0].y, second_points[3].y);
                 }
+                else {
+                    tl_x = first_points[3].x;
+                    tl_y = min(first_points[1].y, second_points[2].y);
+                    br_x = second_points[1].x;
+                    br_y = max(first_points[0].y, second_points[3].y);
+                }
+
+                Point tl(tl_x, tl_y), br(br_x, br_y);
+                int x = (tl.x + br.x) / 2;
+                int y = (tl.y + br.y) / 2;
+
+                armor_plates.push_back(ArmorPlate{tl, br, Point(x,y), first, second});
+            }
+        }
+        return std::make_tuple(armor_plates, bounding_boxes);
+    }
+
+    vector<ArmorPlate> find_best_armor_plates(vector<ArmorPlate> armor_plates) {
+        int scores[armor_plates.size()] = {0};
+
+        // Check if armor plate light angles are within 5 degrees of each other
+        for (size_t i = 0; i < armor_plates.size(); i++) {
+            float angle_left = normalize_0_180(armor_plates.at(i).left_light);
+            float angle_right = normalize_0_180(armor_plates.at(i).right_light);
+            if (abs(angle_left - angle_right) < 5) {
+                scores[i] += 1;
             }
         }
 
-        return std::make_tuple(armor_plates, bounding_boxes);
+        // Check if armor plate light height differences are within 1/4 of light height
+        for (size_t i = 0; i < armor_plates.size(); i++) {
+            int left_light_y = armor_plates.at(i).left_light.boundingRect().tl().y;
+            int right_light_y = armor_plates.at(i).right_light.boundingRect().tl().y;
+
+            int avg_light_height = (armor_plates.at(i).left_light.boundingRect().height + armor_plates.at(i).right_light.boundingRect().height) / 2;
+
+            if (abs(left_light_y - right_light_y) < avg_light_height / 4) {
+                scores[i] += 1;
+            }
+        }
+
+        vector<ArmorPlate> best_armor_plates;
+        while (true) {
+            // Get next best score
+            int max_score = -1;
+            int max_index = -1;
+            for (size_t i = 0; i < armor_plates.size(); i++) {
+                if (scores[i] > max_score) {
+                    max_score = scores[i];
+                    max_index = i;
+                }
+            }
+
+            // Remove neighbors and selected plate
+            scores[max_index] = -1;
+            if (max_index != 0) {
+                scores[max_index - 1] = -1;
+            }
+            if (max_index != armor_plates.size() - 1) {
+                scores[max_index + 1] = -1;
+            }
+            best_armor_plates.push_back(armor_plates.at(max_index));
+        }
+
+        
     }
 
     void topic_callback(const realsense2_camera_msgs::msg::RGBD & img)
@@ -201,8 +268,10 @@ class Classical : public rclcpp::Node
         Mat image_contours = rgb_img.clone();
         Mat image_all_bounded_boxes = rgb_img.clone();
 
+        // auto [accepted_rects, contours] = find_bounding_boxes(color_mask);
+        // auto [armor_plates, bounding_boxes] = find_armor_plates(accepted_rects);
+
         auto [accepted_rects, contours] = find_rotated_bounding_boxes(color_mask);
-        
         auto [armor_plates, bounding_boxes] = find_rotated_armor_plates(accepted_rects);
 
         if (this->get_parameter("enable_debug").as_bool() == true && armor_plates.size() > 0) {
@@ -231,10 +300,23 @@ class Classical : public rclcpp::Node
 
         sensor_msgs::msg::Image msg = *cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", image_all_bounded_boxes).toImageMsg();
         image_result_->publish(msg);
+
+        stampede_msgs::msg::ObjectLogInput output_msg = stampede_msgs::msg::ObjectLogInput();
+        for (size_t i = 0; i < armor_plates.size(); i++) {
+            stampede_msgs::msg::BoundingBox bbox = stampede_msgs::msg::BoundingBox();
+            bbox.center_x = armor_plates[i].center.x;
+            bbox.center_y = armor_plates[i].center.y;
+            bbox.width = armor_plates[i].br.x - armor_plates[i].tl.x;
+            bbox.height = armor_plates[i].br.y - armor_plates[i].br.y;
+            bbox.depth = depth_img.at<uint16_t>(armor_plates[i].center);
+            output_msg.boxes.push_back(bbox);
+        }
+        classical_output_->publish(output_msg);
     }
     rclcpp::Subscription<realsense2_camera_msgs::msg::RGBD>::SharedPtr subscription_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr image_result_;
     rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr depth_result_;
+    rclcpp::Publisher<stampede_msgs::msg::ObjectLogInput>::SharedPtr classical_output_;
 
     /** Constants **/
 

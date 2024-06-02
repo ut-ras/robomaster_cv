@@ -12,8 +12,8 @@ enable_language(CUDA)
 find_package(CUDA REQUIRED)
 # find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(object_log_msgs REQUIRED)
-# ament_export_dependencies(vision_msgs geometry_msgs rclcpp object_log_msgs)
+find_package(stampede_msgs REQUIRED)
+# ament_export_dependencies(vision_msgs geometry_msgs rclcpp stampede_msgs)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -60,7 +60,7 @@ add_executable(object_log
 )
 ament_target_dependencies(object_log 
   rclcpp 
-  object_log_msgs
+  stampede_msgs
 )
 target_include_directories(object_log 
   PUBLIC

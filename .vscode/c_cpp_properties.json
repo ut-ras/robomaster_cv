@@ -5,7 +5,8 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/opt/ros/**",
-                "/usr/include/opencv4/**"
+                "/usr/include/opencv4/**",
+                "/workspaces/isaac_ros-dev/install/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
