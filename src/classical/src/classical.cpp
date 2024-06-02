@@ -93,6 +93,23 @@ class Classical : public rclcpp::Node
         return std::make_tuple(accepted_rects, contours);
     }
 
+    std::tuple<vector<RotatedRect>, vector<vector<Point>>> find_rotated_bounding_boxes(Mat img) {
+        vector<vector<Point>> contours;
+        findContours(img, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+
+        vector<RotatedRect> bounding_boxes;
+        for (size_t i = 0; i < contours.size(); i++) {
+            RotatedRect bounding_box = minAreaRect(contours[i]);
+            
+            // if (bounding_box.size.height / bounding_box.size.width > 1 && bounding_box.size.height / bounding_box.size.width < 7) {
+            //     bounding_boxes.push_back(minAreaRect(contours[i]));
+            // }
+            bounding_boxes.push_back(minAreaRect(contours[i]));
+        }
+
+        return std::make_tuple(bounding_boxes, contours);
+    }
+
     std::tuple<vector<ArmorPlate>, vector<Rect>> find_armor_plates(vector<Rect> bounding_boxes) {
         vector<ArmorPlate> armor_plates;
         if (bounding_boxes.size() >= 2)
@@ -125,6 +142,47 @@ class Classical : public rclcpp::Node
         return std::make_tuple(armor_plates, bounding_boxes);
     }
 
+    float normalize_0_180(RotatedRect bounding_box) {
+        if (bounding_box.size.width < bounding_box.size.height) {
+            return (90 - bounding_box.angle);
+        }
+
+        return -bounding_box.angle;
+    }
+
+    std::tuple<vector<ArmorPlate>, vector<RotatedRect>> find_rotated_armor_plates(vector<RotatedRect> bounding_boxes) {
+        vector<ArmorPlate> armor_plates;
+        if (bounding_boxes.size() >= 2) {
+            for (size_t i = 0; i < bounding_boxes.size() - 1; i++) {
+                RotatedRect first = bounding_boxes[i];
+                RotatedRect second = bounding_boxes[i+1];
+                float angle_first = normalize_0_180(first);
+                float angle_second = normalize_0_180(second);
+
+                RCLCPP_INFO(this->get_logger(), "Absolute angle: '%f", abs(angle_first - angle_second));
+
+                if (abs(angle_first - angle_second) < 15) {
+                    Point2f first_points[4];
+                    Point2f second_points[4];
+                    first.points(first_points);
+                    second.points(second_points);
+                    int tl_x = first_points[1].x;
+                    int tl_y = min(first_points[1].y, second_points[2].y);
+                    int br_x = second_points[3].x;
+                    int br_y = max(first_points[0].y, second_points[3].y);
+
+                    Point tl(tl_x, tl_y), br(br_x, br_y);
+                    int x = (tl.x + br.x) / 2;
+                    int y = (tl.y + br.y) / 2;
+
+                    armor_plates.push_back(ArmorPlate{tl, br, Point(x,y)});
+                }
+            }
+        }
+
+        return std::make_tuple(armor_plates, bounding_boxes);
+    }
+
     void topic_callback(const realsense2_camera_msgs::msg::RGBD & img)
     {
         cv_bridge::CvImagePtr cv_rgb_ptr = cv_bridge::toCvCopy(img.rgb, sensor_msgs::image_encodings::BGR8);
@@ -143,14 +201,19 @@ class Classical : public rclcpp::Node
         Mat image_contours = rgb_img.clone();
         Mat image_all_bounded_boxes = rgb_img.clone();
 
-        auto [accepted_rects, contours] = find_bounding_boxes(color_mask);
+        auto [accepted_rects, contours] = find_rotated_bounding_boxes(color_mask);
         
-        auto [armor_plates, bounding_boxes] = find_armor_plates(accepted_rects);
+        auto [armor_plates, bounding_boxes] = find_rotated_armor_plates(accepted_rects);
 
         if (this->get_parameter("enable_debug").as_bool() == true && armor_plates.size() > 0) {
             for (size_t i = 0; i < bounding_boxes.size(); i++) // iterate through each contour.
             {
-                rectangle(image_all_bounded_boxes, bounding_boxes[i].tl(), bounding_boxes[i].br(), Scalar(0, 255, 0), 5); 
+                // rectangle(image_all_bounded_boxes, bounding_boxes[i].tl(), bounding_boxes[i].br(), Scalar(0, 255, 0), 5); 
+                Point2f points[4];
+                bounding_boxes[i].points(points);
+                for (size_t j = 0; j < 4; j++) {
+                    line(image_all_bounded_boxes, points[j], points[(j+1)%4], Scalar(0, 255, 0), 5);
+                }
             }
 
             for (size_t i = 0; i < armor_plates.size(); i++) {
