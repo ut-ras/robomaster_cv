@@ -22,38 +22,38 @@ set(CUDA_NVCC_FLAGS
 )
 include_directories(/usr/local/cuda-11.4/targets/aarch64-linux/include/)
 
-add_library(object-log SHARED
-  src/object-log/ArmorPlate.cu
-  src/object-log/BoundingBox.cu
-  src/object-log/Kalman.cu
-  src/object-log/ObjectLog.cu
-)
-target_compile_options(object-log PRIVATE
-  $<$<COMPILE_LANGUAGE:CUDA>:${CUDA_NVCC_FLAGS}>
-)
-target_compile_definitions(object-log PUBLIC
-  GPU=1
-)
-target_link_libraries(object-log PUBLIC
-  cuda
-  cublas
-)
-set_target_properties(object-log PROPERTIES LINKER_LANGUAGE C)
-target_include_directories(object-log PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-  $<INSTALL_INTERFACE:include>
-)
+# add_library(object-log SHARED
+#   src/object-log/ArmorPlate.cu
+#   src/object-log/BoundingBox.cu
+#   src/object-log/Kalman.cu
+#   src/object-log/ObjectLog.cu
+# )
+# target_compile_options(object-log PRIVATE
+#   $<$<COMPILE_LANGUAGE:CUDA>:${CUDA_NVCC_FLAGS}>
+# )
+# target_compile_definitions(object-log PUBLIC
+#   GPU=1
+# )
+# target_link_libraries(object-log PUBLIC
+#   cuda
+#   cublas
+# )
+# set_target_properties(object-log PROPERTIES LINKER_LANGUAGE C)
+# target_include_directories(object-log PUBLIC
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+#   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+#   $<INSTALL_INTERFACE:include>
+# )
 # target_compile_features(object-log PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 # ament_export_targets(object-log HAS_LIBRARY_TARGET)
-install(
-  TARGETS object-log
-  EXPORT object-log
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  RUNTIME DESTINATION bin
-  INCLUDES DESTINATION include
-)
+# install(
+#   TARGETS object-log
+#   EXPORT object-log
+#   LIBRARY DESTINATION lib
+#   ARCHIVE DESTINATION lib
+#   RUNTIME DESTINATION bin
+#   INCLUDES DESTINATION include
+# )
 
 add_executable(object_log 
   src/object_log.cpp
@@ -62,6 +62,12 @@ ament_target_dependencies(object_log
   rclcpp 
   stampede_msgs
 )
+target_link_libraries( object_log
+${catkin_LIBRARIES}
+cuda
+${CMAKE_SOURCE_DIR}/src/object-log/libobjectlog.so
+)
+
 target_include_directories(object_log 
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

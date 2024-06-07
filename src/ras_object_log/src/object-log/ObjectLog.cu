@@ -1,7 +1,9 @@
 
-#include "object-log/ArmorPlate.h"
-#include "object-log/ObjectLog.h"
-
+// #include "object-log/ArmorPlate.h"
+// #include "object-log/ObjectLog.h"
+#include "ArmorPlate.h"
+#include "ObjectLog.h"
+#include <unistd.h>
 ObjectLog::ObjectLog() : _plates(std::vector<ArmorPlate>()), _idAssign(0), _outputLog(fopen("ObjectLog.txt", "w")) {}
 
 //
@@ -15,6 +17,12 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
     // for(int i = 0; i < boxList.size(); i++) {
     //     printf("box %d: (%f, %f, %f)\n", i+1,  boxList[i].getXCenter(), boxList[i].getYCenter(), boxList[i].getDepthVal());
     // }
+
+    // ! Remove later *******
+    for (int i = 0; i < boxList.size(); i++)
+    {
+        printf("box %d: (%f, %f, %f)\n", i + 1, boxList[i].getXCenter(), boxList[i].getYCenter(), boxList[i].getDepthVal());
+    }
 
     if (_plates.empty())
     {
@@ -40,6 +48,7 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
         for (int i = 0; i < boxList.size(); i++)
         {
             BoundingBox box = boxList[i];
+            printf("Processing box: (%f, %f, %f)\n", box.getXCenter(), box.getYCenter(), box.getDepthVal());
             if (!sizeCheck(&box))
                 continue;
 
@@ -48,7 +57,7 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
                 return -1;
             }
             int assoc = assign_plate(&box, _plates);
-            // printf("ASSOC %d\n", assoc);
+            printf("ASSOC %d\n", assoc);
             if (assoc == -1)
             {
                 ArmorPlate *newAP = new ArmorPlate(_idAssign);
@@ -75,10 +84,18 @@ int ObjectLog::boxesInput(std::vector<BoundingBox> boxList, time_t currTime)
             else
             {
                 // We made an association
-                _plates[assoc].setLastTime(currTime);
+                printf("Previous plate velocity: (%f, %f, %f)\n", std::get<0>(_plates[assoc].getVelocity()), std::get<1>(_plates[assoc].getVelocity()), std::get<2>(_plates[assoc].getVelocity()));
+                printf("Previous plate position: (%f, %f, %f)\n", std::get<0>(_plates[assoc].getPosition()), std::get<1>(_plates[assoc].getPosition()), std::get<2>(_plates[assoc].getPosition()));
+                printf("Previous plate acceleration: (%f, %f, %f)\n", std::get<0>(_plates[assoc].getAcceleration()), std::get<1>(_plates[assoc].getAcceleration()), std::get<2>(_plates[assoc].getAcceleration()));
+                printf("Previous plate last time: %ld\n", _plates[assoc].getLastTime());
+
                 _plates[assoc].setIsActive(true);
                 _plates[assoc].updatePositionVelAcc();
                 _plates[assoc].setPosition(box.getPosition(), currTime);
+                _plates[assoc].setLastTime(currTime);
+                printf("ASSOC %d\n", assoc);
+                printf("POS: (%f, %f, %f)\n", std::get<0>(_plates[assoc].getPosition()), std::get<1>(_plates[assoc].getPosition()), std::get<2>(_plates[assoc].getPosition()));
+
                 // _idAssign++;
             }
         }
@@ -120,7 +137,7 @@ std::vector<float> ObjectLog::getFinalArmorPlateState()
             best_index = i;
         }
     }
-    
+
     // get the position velocity and accelaration from the plate
     // pack it into a float vector
     std::vector<float> plate_state;
@@ -148,9 +165,18 @@ int ObjectLog::assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
         return -2;
 
     std::tuple<float, float, float> position = box->getPosition();
-    // printf("BOX: (%f, %f, %f)\n", std::get<0>(position), std::get<1>(position), std::get<2>(position));
+    printf("BOX: (%f, %f, %f)\n", std::get<0>(position), std::get<1>(position), std::get<2>(position));
     float shortest_dist = std::numeric_limits<float>::max();
     int shortest_plate = -1;
+    printf("Condition 1: %d\n", ((std::get<0>(position) + MARGIN_OF_ERR) > MAX_X));
+    printf("Condition 2: %d\n", ((std::get<1>(position) + MARGIN_OF_ERR) > MAX_Y));
+    printf("Condition 3: %d\n", ((std::get<2>(position) + MARGIN_OF_ERR) > MAX_Z));
+    printf("Condition 4: %d\n", ((std::get<0>(position) - MARGIN_OF_ERR) < MIN_X));
+    printf("Condition 5: %d\n", ((std::get<1>(position) - MARGIN_OF_ERR) < MIN_Y));
+    printf("Condition 6: %d\n", ((std::get<2>(position) - MARGIN_OF_ERR) < MIN_Z));
+    printf("Min check X: %f\n", (std::get<0>(position) - MARGIN_OF_ERR));
+    printf("Min check Y: %f\n", (std::get<1>(position) - MARGIN_OF_ERR));
+    printf("Min check Z: %f\n", (std::get<2>(position) - MARGIN_OF_ERR));
     if (((std::get<0>(position) + MARGIN_OF_ERR) > MAX_X) || ((std::get<1>(position) + MARGIN_OF_ERR) > MAX_Y) || ((std::get<2>(position) + MARGIN_OF_ERR) > MAX_Z) || ((std::get<0>(position) - MARGIN_OF_ERR) < MIN_X) || ((std::get<1>(position) - MARGIN_OF_ERR) < MIN_Y) || ((std::get<2>(position) - MARGIN_OF_ERR) < MIN_Z))
     {
         return -3;
@@ -207,4 +233,41 @@ void ObjectLog::kill_plate(int id)
 float ObjectLog::get_distance(std::tuple<float, float, float> p1, std::tuple<float, float, float> p2)
 {
     return sqrt(pow((std::get<0>(p1) - std::get<0>(p2)), 2) + pow((std::get<1>(p1) - std::get<1>(p2)), 2) + pow((std::get<2>(p1) - std::get<2>(p2)), 2));
+}
+
+int main()
+{
+    std::vector<BoundingBox> boxList;
+    BoundingBox box = BoundingBox();
+    float x = 50.0;
+    float y = 50.0;
+    float z = 50.0;
+    ObjectLog *log = new ObjectLog();
+    for (int i = 0; i < 10; i++)
+    {
+        box.setXCenter(x);
+        box.setYCenter(y);
+        box.setDepthVal(z);
+        box.setWidth(10.0);
+        box.setHeight(10.0);
+        boxList.push_back(box);
+        time_t currTime;
+        time(&currTime);
+        log->boxesInput(boxList, double(currTime));
+        printf("Time: %ld\n", currTime);
+        std::vector<float> plate_state = log->getFinalArmorPlateState();
+        printf("target: \n");
+        for (int i = 0; i < plate_state.size(); i++)
+        {
+            printf("%f\n", plate_state[i]);
+        }
+
+        // sleep for 0.01 seconds
+        x += 0.02;
+        y += 0.02;
+        z += 0.01;
+        boxList = std::vector<BoundingBox>();
+        sleep(1);
+    }
+    return 0;
 }

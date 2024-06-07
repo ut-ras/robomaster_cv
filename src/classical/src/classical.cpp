@@ -115,9 +115,9 @@ class Classical : public rclcpp::Node
         for (size_t i = 0; i < contours.size(); i++) {
             RotatedRect bounding_box = minAreaRect(contours[i]);
 
-            if (bounding_box.boundingRect().height / bounding_box.boundingRect().width > 1 && bounding_box.boundingRect().height / bounding_box.boundingRect().width < 7) {
+            // if (bounding_box.boundingRect().height / bounding_box.boundingRect().width > 1 && bounding_box.boundingRect().height / bounding_box.boundingRect().width < 7) {
                 bounding_boxes.push_back(bounding_box);
-            }
+            // }
         }
 
         return std::make_tuple(bounding_boxes, contours);
@@ -224,8 +224,19 @@ class Classical : public rclcpp::Node
             }
         }
 
+        // Check if armor plates is wider than it is tall
+        for (size_t i = 0; i < armor_plates.size(); i++) {
+            int height = armor_plates.at(i).br.y - armor_plates.at(i).tl.y;
+            int width = armor_plates.at(i).br.x - armor_plates.at(i).tl.x;
+
+            if (width > height) {
+                scores[i] += 1;
+            }
+        }
+
         vector<ArmorPlate> best_armor_plates;
-        while (true) {
+        bool finding_plates = true;
+        while (finding_plates) {
             // Get next best score
             int max_score = -1;
             int max_index = -1;
@@ -237,17 +248,24 @@ class Classical : public rclcpp::Node
             }
 
             // Remove neighbors and selected plate
-            scores[max_index] = -1;
-            if (max_index != 0) {
-                scores[max_index - 1] = -1;
+            if (max_index > -1) {
+                scores[max_index] = -1;
+                if (max_index > 0) {
+                    scores[max_index - 1] = -1;
+                }
+                if (max_index < armor_plates.size() - 1) {
+                    scores[max_index + 1] = -1;
+                }
+                best_armor_plates.push_back(armor_plates.at(max_index));
             }
-            if (max_index != armor_plates.size() - 1) {
-                scores[max_index + 1] = -1;
+
+            // All plates found, exit
+            else {
+                finding_plates = false;
             }
-            best_armor_plates.push_back(armor_plates.at(max_index));
         }
 
-        
+        return best_armor_plates;
     }
 
     void topic_callback(const realsense2_camera_msgs::msg::RGBD & img)
@@ -273,6 +291,8 @@ class Classical : public rclcpp::Node
 
         auto [accepted_rects, contours] = find_rotated_bounding_boxes(color_mask);
         auto [armor_plates, bounding_boxes] = find_rotated_armor_plates(accepted_rects);
+
+        armor_plates = find_best_armor_plates(armor_plates);
 
         if (this->get_parameter("enable_debug").as_bool() == true && armor_plates.size() > 0) {
             for (size_t i = 0; i < bounding_boxes.size(); i++) // iterate through each contour.

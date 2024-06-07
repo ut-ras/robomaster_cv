@@ -12,8 +12,6 @@ using std::placeholders::_1;
 
 class MinimalSubscriber : public rclcpp::Node
 {
-private:
-  rclcpp::Clock clock;
 
 public:
   MinimalSubscriber()
@@ -26,20 +24,7 @@ public:
   }
 
 private:
-  void topic_callback(const stampede_msgs::msg::ObjectLogInput &msg) const
-  {
-    // RCLCPP_INFO(this->get_logger(), "I heard: '%s'", msg.data.c_str());
-    std::vector<BoundingBox> boxList;
-    for (int i = 0; i < msg.boxes.size(); i++)
-    {
-      BoundingBox box;
-      box.setXCenter(msg.boxes[i].center_x);
-      box.setYCenter(msg.boxes[i].center_y);
-      box.setDepthVal(msg.boxes[i].depth);
-      box.setWidth(msg.boxes[i].width);
-      box.setHeight(msg.boxes[i].height);
-      boxList.push_back(box);
-    }
+  void constructMessage(std::vector<BoundingBox> boxList) {
     _objectlog.boxesInput(boxList, std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
     auto message = stampede_msgs::msg::TurretData();
     std::vector<float> target = _objectlog.getFinalArmorPlateState();
@@ -63,6 +48,21 @@ private:
                 message.yacc,
                 message.zacc);
     publisher_->publish(message);
+  }
+  void topic_callback(const stampede_msgs::msg::ObjectLogInput &msg) 
+  {
+    std::vector<BoundingBox> boxList;
+    for (int i = 0; i < msg.boxes.size(); i++)
+    {
+      BoundingBox box = BoundingBox();
+      box.setXCenter(msg.boxes[i].center_x);
+      box.setYCenter(msg.boxes[i].center_y);
+      box.setDepthVal(msg.boxes[i].depth);
+      box.setWidth(msg.boxes[i].width);
+      box.setHeight(msg.boxes[i].height);
+      boxList.push_back(box);
+    }
+    constructMessage(boxList);
   }
   rclcpp::Subscription<stampede_msgs::msg::ObjectLogInput>::SharedPtr subscription_;
   rclcpp::Publisher<stampede_msgs::msg::TurretData>::SharedPtr publisher_;
