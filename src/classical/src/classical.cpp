@@ -224,15 +224,29 @@ class Classical : public rclcpp::Node
             }
         }
 
-        // Check if armor plates is wider than it is tall
+        // Standard plates W:H ratio is ~2.2, Hero plates are ~TODO
+        // Check if armor plates are close to real ratio
         for (size_t i = 0; i < armor_plates.size(); i++) {
             int height = armor_plates.at(i).br.y - armor_plates.at(i).tl.y;
             int width = armor_plates.at(i).br.x - armor_plates.at(i).tl.x;
 
-            if (width > height) {
+            float ratio = static_cast<float>(width) / static_cast<float>(height);
+            float tolerance = 0.2f;
+            if ((ratio > 2.2f - tolerance && ratio < 2.2f + tolerance) || (ratio > 2.2f - tolerance && ratio < 2.2f + tolerance)) {
                 scores[i] += 1;
             }
         }
+
+        // Check if armor plates is wider than it is tall
+        // NOTE: Not needed if doing ratio check
+        // for (size_t i = 0; i < armor_plates.size(); i++) {
+        //     int height = armor_plates.at(i).br.y - armor_plates.at(i).tl.y;
+        //     int width = armor_plates.at(i).br.x - armor_plates.at(i).tl.x;
+
+        //     if (width > height) {
+        //         scores[i] += 1;
+        //     }
+        // }
 
         vector<ArmorPlate> best_armor_plates;
         bool finding_plates = true;
