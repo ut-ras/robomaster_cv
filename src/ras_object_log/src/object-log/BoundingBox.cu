@@ -1,4 +1,5 @@
-#include "object-log/BoundingBox.h"
+// #include "object-log/BoundingBox.h"
+#include "BoundingBox.h"
 
 BoundingBox::BoundingBox(float xCenter, float yCenter, float depthVal, float width, float height)
 {
@@ -71,7 +72,8 @@ float BoundingBox::getHeight(){
 }
 
 std::tuple<float, float, float> BoundingBox::getPosition(){
-    return _position;
+    std::tuple<float, float, float> position = std::make_tuple(_xCenter, _yCenter, _depthVal);
+    return position;
 }
 
 time_t BoundingBox::getTimeStamp(){
