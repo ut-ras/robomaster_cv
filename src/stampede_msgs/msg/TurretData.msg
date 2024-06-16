@@ -1,13 +1,13 @@
-float64 xpos
-float64 ypos
-float64 zpos
+float32 xpos
+float32 ypos
+float32 zpos
 
-float64 xvel
-float64 yvel
-float64 zvel
+float32 xvel
+float32 yvel
+float32 zvel
 
-float64 xacc
-float64 yacc
-float64 zacc
+float32 xacc
+float32 yacc
+float32 zacc
 
 bool has_target

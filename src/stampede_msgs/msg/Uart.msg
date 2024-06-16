@@ -4,6 +4,6 @@ uint8 frame_sequence
 uint8 frame_crc8
 uint16 msg_type
 
-uint8[] data
+stampede_msgs/TurretData[] data
 
 uint16 crc16
