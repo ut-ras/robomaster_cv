@@ -25,13 +25,17 @@ if(BUILD_TESTING)
 endif()
 
 find_package(rosidl_default_generators REQUIRED)
+find_package(vision_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/BoundingBox.msg"
+  "msg/Input.msg"
   "msg/ObjectLogInput.msg"
   "msg/Uart.msg"
   "msg/TurretData.msg"
   "msg/OdometryData.msg"
+  DEPENDENCIES vision_msgs geometry_msgs
 )
 ament_export_dependencies(rosidl_default_runtime)
 
