@@ -1,4 +1,9 @@
-# UT RoboMaster CV
+# UT RoboMaster Software
+
+This repository contains the code for the software sub-team for UT RoboMaster. The software sub-team is one of the two
+software-focused teams in RoboMaster, the other being the firmware sub-team. The distinction between the two teams can
+be roughly understood as firmware handles the direct control of the robot, while software runs on a separate board to
+try to provide more information or autonomy to the robot and operators.
 
 ## Pre-requisites
 

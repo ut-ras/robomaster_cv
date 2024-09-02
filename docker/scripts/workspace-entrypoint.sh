@@ -10,7 +10,12 @@
 
 # Build ROS dependency
 echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc
+echo "source /workspace/docker/scripts/setup.bash" >> ~/.bashrc
 source /opt/ros/${ROS_DISTRO}/setup.bash
+source /workspace/docker/scripts/setup.bash
+
+# Configure git
+git config --global --add safe.directory /workspace
 
 sudo apt-get update
 rosdep update
