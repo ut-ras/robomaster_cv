@@ -1,8 +1,25 @@
 #!/bin/bash
 
+function print_color {
+    tput setaf $1
+    echo "$2"
+    tput sgr0
+}
+
+function print_error {
+    print_color 1 "$1"
+}
+
+function print_warning {
+    print_color 3 "$1"
+}
+
+function print_info {
+    print_color 2 "$1"
+}
+
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 WORKSPACE_ROOT="${ROOT}/.."
-# source $ROOT/utils/print_color.sh
 DOCKER_DIR="${ROOT}/../docker"
 
 BASE_NAME="robomaster-cv"
@@ -58,7 +75,8 @@ fi
 # Re-use existing container.
 if [ "$(docker ps -a --quiet --filter status=running --filter name=$CONTAINER_NAME)" ]; then
     print_info "Attaching to running container: $CONTAINER_NAME"
-    docker exec -i -t -u admin --workdir /workspaces/isaac_ros-dev $CONTAINER_NAME /bin/bash $@
+    MSYS_NO_PATHCONV=1 \
+    docker exec -i -t -u admin --workdir /workspace/ $CONTAINER_NAME /bin/bash $@
     exit 0
 fi
 
