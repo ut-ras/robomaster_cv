@@ -76,7 +76,7 @@ fi
 if [ "$(docker ps -a --quiet --filter status=running --filter name=$CONTAINER_NAME)" ]; then
     print_info "Attaching to running container: $CONTAINER_NAME"
     MSYS_NO_PATHCONV=1 \
-    docker exec -i -t -u admin --workdir /workspace/ $CONTAINER_NAME /bin/bash $@
+    docker exec -i -t -u admin --workdir /robomaster_cv/ $CONTAINER_NAME /bin/bash $@
     exit 0
 fi
 
@@ -102,12 +102,12 @@ docker run -it --rm \
     --privileged \
     --network host \
     ${DOCKER_ARGS[@]} \
-    -v $WORKSPACE_ROOT:/workspace/ \
+    -v $WORKSPACE_ROOT:/robomaster_cv/ \
     -v /dev/*:/dev/* \
     --name "$CONTAINER_NAME" \
     --user="admin" \
     --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
-    --workdir /workspace/ \
+    --workdir /robomaster_cv/ \
     $@ \
     $IMAGE_NAME \
     /bin/bash
