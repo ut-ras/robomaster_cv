@@ -15,7 +15,7 @@ source /opt/ros/${ROS_DISTRO}/setup.bash
 source /robomaster_cv/docker/scripts/setup.bash
 
 # Configure git
-git config --global --add safe.directory /workspace
+git config --global --add safe.directory /robomaster_cv
 
 sudo apt-get update
 rosdep update
