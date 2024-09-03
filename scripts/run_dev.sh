@@ -95,10 +95,8 @@ if [[ $PLATFORM == "x86_64" ]]; then
     fi
 fi
 
-docker build --network host -t ${IMAGE_NAME} "${BUILD_ARGS[@]}" "${DOCKER_DIR}"
-
-echo $WORKSPACE_ROOT
-
+docker build --network host -t ${IMAGE_NAME} "${BUILD_ARGS[@]}" "${DOCKER_DIR}" \
+&& \
 MSYS_NO_PATHCONV=1 \
 docker run -it --rm \
     --privileged \
