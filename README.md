@@ -1,81 +1,83 @@
-# UT RoboMaster CV
+# UT RoboMaster Software
+
+This repository contains the code for the software sub-team for UT RoboMaster. The software sub-team is one of the two
+software-focused teams in RoboMaster, the other being the firmware sub-team. The distinction between the two teams can
+be roughly understood as firmware handles the direct control of the robot, while software runs on a separate board to
+try to provide more information or autonomy to the robot and operators.
+
+# Installation
 
 ## Pre-requisites
 
-If you would like to install the toolchain locally, you will need **Ubuntu 22.04**. If you do not want to dual-boot (or switch to Ubuntu entirely), WSL2 would be a good option. Additionally, there is a Dockerfile that can be used to run the toolchain, but it might not be able to flash to the board.
+For any platform, you will need [Git](https://git-scm.com/downloads), [Docker](https://www.docker.com/), and ideally [Visual Studio Code](https://code.visualstudio.com/download), but if you strongly prefer you can replace Visual Studio Code with an IDE of your preference.
 
-To install Ubuntu 22.04 on WSL2, run the following in a Windows Terminal:
-```cmd
-wsl --install -d Ubuntu-22.04
+### Windows
+
+If you are on a Windows platform, keep in mind that you will not be able to use the built in command line for Windows, as it does not support shell scripts. Instead, you should either opt to use Git Bash, which comes installed with Git by default, or if you are more tech-savvy, feel free to attempt to use Windows Subsystem Linux (scripts are untested on WSL).
+
+Additionally, when you clone this repo, try to make sure there are no spaces in the path to the repo, as that can potentially break some scripts.
+
+## Cloning the Repo
+
+### SSH Authentication Setup
+
+If you have already setup git with SSH authentication you may skip this step.
+
+Generate a SSH key in Terminal (MacOS, Linux) or Git Bash (Windows)
+
+```
+ssh-keygen -t ed25519 -C "your_email@example.com"
 ```
 
-To access WSL2 through VSCode, download the "WSL" extension.
+When prompted, just press enter until the command finishes. This will create an ssh key in the default location without a passkey. (You can choose a passkey if you would like, but it will ask you for the passkey every time you pull or push).
 
-## Setup
-1. Clone this repository to a location of your choice*(using the WSL Terminal) with the following command:
-   ```bash
-   git clone --recurse-submodules https://github.com/ut-ras/robomaster_cv.git
-   ```
-2. Install ROS2 Humble by following [these instructions](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debians.html).
-3. Add the `setup.bash` file to your shell startup script by running the following command in a terminal:
+Copy the output of the following command:
+```
+cat ~/.ssh/id_rsa.pub
+```
 
-   ```bash
-   echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
-   ```
-4. Install `colcon` using the following command in a terminal:
-   ```bash
-   sudo apt install python3-colcon-common-extensions
-   ```
-5. Install the RealSense SDK following steps 2 and 3 [outlined here](https://github.com/IntelRealSense/realsense-ros).
-   1. Make sure to get the "optional" developer and debug packages
-7. Build the ROS2 workspace using
-   ```bash
-   colcon build
-   ```
-8. Install the ros RealSense camera package
-   ```bash
-   sudo apt-get install ros-humble-realsense2-camera
-   ```
-9. Install vision_msgs package
-   ```bash
-   sudo apt update && sudo apt install ros-$ROS_DISTRO-vision-msgs-rviz-plugins
-   ```
-10. Start the RealSense camera node using
-   ```bash
-   ros2 run realsense2_camera realsense2_camera_node
-   ```
+Open [GitHub -> Settings -> Keys](https://github.com/settings/keys) in a web browser.
 
-## Docker Setup
+Click "New SSH Key" and paste the output you copied earlier into the box titled "Key."
 
-First, ensure that you have Docker installed and running. If not, you can download it (here)[https://www.docker.com/]. You may need to also install Docker Compose if you are on linux. Instructions for installing the compose plugin should already be included with the default Docker install.
+Click "Add SSH Key" to finish.
 
-Then, run the startup script in a terminal window.
+### Cloning
 
-`./start.sh`
+Go to the directory that you want to clone the repo in (if on Windows, make sure it has no spaces). Then run:
 
-After it finishes building, you should see a new terminal pop up that gives access to the Docker container. This terminal forwards the local directory to the directory `/robomaster_cv`. From here, you can build and run the system as normal using `colcon build`. When you need to exit, simply run `exit` or press `Ctrl+D`.
+```
+git clone git@github.com:ut-ras/robomaster_cv.git
+```
 
-### Mac Docker X11 Setup
+## Dev Setup
 
-1. Install XQuartz
+Once the repo is cloned, open the repo in Visual Studio Code. Press `ctrl + grave` (grave is the button below the tilde, `~`) to open up the terminal pop-up.
 
-2. Start XQuartz by opening the application (Cmd + Space -> Search for XQuartz)
+If you are on Windows, make sure that it is running in Git Bash and not on command line. 
 
-3. Open XQuartz settings and navigate to the security tab
+In terminal, run:
 
-4. Check "Allow connections from network clients"
+```
+./scripts/run_dev.sh
+```
 
-5. Quit XQuartz (make sure it is completely closed and gone from your taskbar)
+This will kick off a run to build our Docker container which contains our dev environment which will take ~5 minutes, and then open it up in the terminal after. In future runs, it will take ~20 seconds to reopen the container after it is built. If you're curious, you can find more information about Docker [here](https://docs.docker.com/get-started/).
 
-6. Reopen XQuartz
+If you need more terminal windows, you can open another terminal window and run the same script, which will attach to the same container.
 
-7. In a local terminal, run `xhost +localhost`
+# Development
 
-8. Run `./start.sh` to open the Docker container
+## Building Packages
 
-9. On every window you want to use X11 on, run `export DISPLAY=docker.for.mac.host.internal:0`
+The build system that ROS2 uses is called `colcon`. The repo includes several aliases to help with building.
 
+To build a specific package, make sure you are in the root directory then run `build package_name`. This is an alias to `colcon build --symlink-install --packages-up-to package_name`. 
 
-#### References
+Try this by running `build realsense2_camera` (should take ~3 min)
 
-https://gist.github.com/sorny/969fe55d85c9b0035b0109a31cbcb088
+You can also run `build_all`, but this is likely broken in the current version of the repository. 
+
+## Coding
+
+All of our source code is located within the `src` directory. You can feel free to poke around the [packages](http://wiki.ros.org/Packages), or check out the [software wiki](https://github.com/ut-ras/robomaster_cv/wiki) which goes more in depth.
