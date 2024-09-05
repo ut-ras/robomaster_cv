@@ -50,6 +50,12 @@ Go to the directory that you want to clone the repo in (if on Windows, make sure
 git clone git@github.com:ut-ras/robomaster_cv.git
 ```
 
+Then, when finished, run:
+
+```
+git submodule update --init --recursive
+```
+
 ## Dev Setup
 
 Once the repo is cloned, open the repo in Visual Studio Code. Press `ctrl + grave` (grave is the button below the tilde, `~`) to open up the terminal pop-up.
