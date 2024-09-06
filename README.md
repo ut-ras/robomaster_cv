@@ -33,7 +33,7 @@ When prompted, just press enter until the command finishes. This will create an 
 
 Copy the output of the following command:
 ```
-cat ~/.ssh/id_rsa.pub
+cat ~/.ssh/id_ed25519.pub
 ```
 
 Open [GitHub -> Settings -> Keys](https://github.com/settings/keys) in a web browser.
