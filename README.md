@@ -44,6 +44,8 @@ Click "Add SSH Key" to finish.
 
 ### Cloning
 
+**Make sure to do this before anything else.*** Before running anything else, run `git config --global core.autocrlf false`. This is important to make sure everything runs correctly.
+
 Go to the directory that you want to clone the repo in (if on Windows, make sure it has no spaces). Then run:
 
 ```
