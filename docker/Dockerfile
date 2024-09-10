@@ -112,12 +112,24 @@ RUN apt-get update \
 RUN apt-get update && apt-get install -y \
         vim \
         nano \
+        dos2unix \
 && rm -rf /var/lib/apt/lists/* \
 && apt-get clean
 
 # Copy scripts
 RUN  mkdir -p /usr/local/bin/scripts
-COPY scripts/*-entrypoint.sh /usr/local/bin/scripts/
+COPY scripts/*.sh /usr/local/bin/scripts/
+RUN  dos2unix /usr/local/bin/scripts/*.sh
 RUN  chmod +x /usr/local/bin/scripts/*.sh
+
+ENV USERNAME=${USERNAME}
+ENV USER_GID=${USER_GID}
+ENV USER_UID=${USER_UID}
+
+# Switch to non-root user and return to root
+USER ${USERNAME}
+RUN --mount=type=cache,target=/var/cache/apt \
+    rosdep update
+USER root
 
 ARG DEBIAN_FRONTEND=dialog
