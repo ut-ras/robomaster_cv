@@ -7,11 +7,14 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
 add_executable(NeelPerumandla src/NeelPerumandla.cpp)
+ament_target_dependencies(NeelPerumandla rclcpp std_msgs)
 target_include_directories(NeelPerumandla PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
