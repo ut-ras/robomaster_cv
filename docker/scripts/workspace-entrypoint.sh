@@ -10,9 +10,9 @@
 
 # Build ROS dependency
 echo "source /opt/ros/${ROS_DISTRO}/setup.bash" >> ~/.bashrc
-echo "source /robomaster_cv/docker/scripts/setup.bash" >> ~/.bashrc
+echo "source /usr/local/bin/scripts/setup.sh" >> ~/.bashrc
 source /opt/ros/${ROS_DISTRO}/setup.bash
-source /robomaster_cv/docker/scripts/setup.bash
+source /usr/local/bin/scripts/setup.sh
 
 # Configure git
 git config --global --add safe.directory /robomaster_cv
