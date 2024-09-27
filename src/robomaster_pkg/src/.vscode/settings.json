@@ -1,0 +1,26 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/rami/ros2_ws/install/ultimus_rs232_control/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/omega_dfg55_pkg/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/my_robot_controller/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/my_python_pkg/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/my_camera_pkg/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/dynamixel_sdk_custom_interfaces/local/lib/python3.10/dist-packages",
+        "/home/rami/ros2_ws/install/dynamixel_joystick_control/lib/python3.10/site-packages",
+        "/home/rami/robotis_ws/install/dynamixel_sdk_custom_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/rami/ros2_ws/install/ultimus_rs232_control/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/omega_dfg55_pkg/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/my_robot_controller/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/my_python_pkg/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/my_camera_pkg/lib/python3.10/site-packages",
+        "/home/rami/ros2_ws/install/dynamixel_sdk_custom_interfaces/local/lib/python3.10/dist-packages",
+        "/home/rami/ros2_ws/install/dynamixel_joystick_control/lib/python3.10/site-packages",
+        "/home/rami/robotis_ws/install/dynamixel_sdk_custom_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}
