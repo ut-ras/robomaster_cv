@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/rami/ros2_ws/install/dynamixel_sdk_custom_interfaces/include/**",
+        "/home/rami/ros2_ws/install/dynamixel_sdk/include/**",
+        "/home/rami/robotis_ws/install/dynamixel_sdk_custom_interfaces/include/**",
+        "/home/rami/robotis_ws/install/dynamixel_sdk/include/**",
+        "/opt/ros/humble/include/**",
+        "/home/rami/robomaster_cv/src/ras_object_log/include/**",
+        "/home/rami/robomaster_cv/src/uart/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
