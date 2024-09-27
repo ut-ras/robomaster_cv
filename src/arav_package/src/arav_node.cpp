@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <rclcpp/rclcpp.hpp>
+#include <memory>
 
 class AravNode : public rclcpp::Node {
 public:
