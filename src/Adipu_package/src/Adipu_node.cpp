@@ -2,6 +2,10 @@
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
+
 using std::placeholders::_1;
 
 class AdipuNode : public rclcpp::Node {
@@ -16,7 +20,14 @@ class AdipuNode : public rclcpp::Node {
   
   private:
     void topic_callback(const sensor_msgs::msg::Image::SharedPtr msg) const {
-      RCLCPP_INFO(this->get_logger(), "I heard: '%d' x '%d'", msg->width, msg->height);
+      cv_bridge::CvImagePtr cv_ptr;
+      cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+      cv::Mat src = cv_ptr->image;
+
+      cv::Mat mat;
+      cv::GaussianBlur(src, mat, cv::Size(101, 101), 0, 0);
+      cv::imwrite("original.jpg", src);
+      cv::imwrite("processed.jpg", mat);
     }
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
 };
