@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(yourname_package)
+project(arav_package)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -11,17 +11,20 @@ find_package(ament_cmake REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_executable(yourname_node src/yourname_node.cpp)
-target_include_directories(yourname_node PUBLIC
+add_executable(arav_node src/arav_node.cpp)
+ament_target_dependencies(arav_node rclcpp std_msgs)
+target_include_directories(arav_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(yourname_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(arav_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
-install(TARGETS yourname_node
+install(TARGETS arav_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(rclcpp REQUIRED)
+  find_package(std_msgs REQUIRED)
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
