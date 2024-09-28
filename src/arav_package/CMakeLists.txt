@@ -10,12 +10,14 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(OpenCV REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
 add_executable(arav_node src/arav_node.cpp)
-ament_target_dependencies(arav_node rclcpp sensor_msgs)
+ament_target_dependencies(arav_node rclcpp sensor_msgs cv_bridge OpenCV)
 target_include_directories(arav_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
