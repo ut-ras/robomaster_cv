@@ -62,14 +62,15 @@ RUN apt-get update \
     ros-${ROS_DISTRO}-rviz2 \
  && rm -rf /var/lib/apt/lists/*
 
-# ARG LIBREALSENSE_SOURCE_VERSION=v2.55.1
+ARG LIBREALSENSE_SOURCE_VERSION=v2.55.1
 
-# COPY scripts/build-librealsense.sh /opt/realsense/build-librealsense.sh
-# COPY scripts/install-realsense-dependencies.sh /opt/realsense/install-realsense-dependencies.sh
+COPY scripts/install-realsense-dependencies.sh /opt/realsense/install-realsense-dependencies.sh
+RUN chmod +x /opt/realsense/install-realsense-dependencies.sh && \
+    /opt/realsense/install-realsense-dependencies.sh;
 
-# RUN chmod +x /opt/realsense/install-realsense-dependencies.sh && \
-#     /opt/realsense/install-realsense-dependencies.sh; \
-#     chmod +x /opt/realsense/build-librealsense.sh && /opt/realsense/build-librealsense.sh -v ${LIBREALSENSE_SOURCE_VERSION};
+COPY scripts/build-librealsense.sh /opt/realsense/build-librealsense.sh
+RUN chmod +x /opt/realsense/build-librealsense.sh
+RUN /opt/realsense/build-librealsense.sh -n -v ${LIBREALSENSE_SOURCE_VERSION};
 
 # Copy hotplug script for udev rules/hotplug for RealSense
 RUN mkdir -p /opt/realsense/
