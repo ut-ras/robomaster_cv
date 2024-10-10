@@ -38,7 +38,7 @@ NUM_PROCS=""
 while :
 do
    case "$1" in
-      -n | --build_no_cuda) USE_CUDA=false   ; shift ;;
+      -n | --no_cuda) USE_CUDA=false   ; shift ;;
       -v | --version )      LIBREALSENSE_VERSION="$2" ; shift 2 ;;
       -j | --jobs)          NUM_PROCS="$2" ; 
                             shift 2 ;
@@ -175,7 +175,7 @@ cd $LIBREALSENSE_DIRECTORY
 echo "${green}Applying udev rules${reset}"
 # Copy over the udev rules so that camera can be run from user space
 sudo cp config/99-realsense-libusb.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules && udevadm trigger
+sudo udevadm control --reload-rules && sudo udevadm trigger
 
 echo "${green}Library Installed${reset}"
 echo " "

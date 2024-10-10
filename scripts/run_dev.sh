@@ -24,6 +24,7 @@ DOCKER_DIR="${ROOT}/../docker"
 
 BASE_NAME="robomaster-cv"
 IMAGE_NAME="$BASE_NAME-image"
+IMAGE_KEY="ros2_humble.realsense_source.tools.user"
 CONTAINER_NAME="$BASE_NAME-container"
 DEV_DIR="../"
 PLATFORM="$(uname -m)"
@@ -95,8 +96,27 @@ if [[ $PLATFORM == "x86_64" ]]; then
     fi
 fi
 
-docker build --network host -t ${IMAGE_NAME} "${BUILD_ARGS[@]}" "${DOCKER_DIR}" \
-&& \
+print_info "Building $IMAGE_KEY base as image: $BASE_NAME"
+$ROOT/build_image_layers.sh --image_key "$IMAGE_KEY" --image_name "$BASE_NAME"
+
+# Check result
+if [ $? -ne 0 ]; then
+    if [[ -z $(docker image ls --quiet $BASE_NAME) ]]; then
+        print_error "Building image failed and no cached image found for $BASE_NAME, aborting."
+        exit 1
+    else
+        print_warning "Unable to build image, but cached image found."
+    fi
+fi
+
+# Check image is available
+if [[ -z $(docker image ls --quiet $BASE_NAME) ]]; then
+    print_error "No built image found for $BASE_NAME, aborting."
+    exit 1
+fi
+
+# docker build --network host -t ${IMAGE_NAME} "${BUILD_ARGS[@]}" "${DOCKER_DIR}" \
+# && \
 MSYS_NO_PATHCONV=1 \
 docker run -it --rm \
     --privileged \
