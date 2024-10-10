@@ -62,7 +62,21 @@ RUN apt-get update \
     ros-${ROS_DISTRO}-rviz2 \
  && rm -rf /var/lib/apt/lists/*
 
- # Install ROS libraries
+# ARG LIBREALSENSE_SOURCE_VERSION=v2.55.1
+
+# COPY scripts/build-librealsense.sh /opt/realsense/build-librealsense.sh
+# COPY scripts/install-realsense-dependencies.sh /opt/realsense/install-realsense-dependencies.sh
+
+# RUN chmod +x /opt/realsense/install-realsense-dependencies.sh && \
+#     /opt/realsense/install-realsense-dependencies.sh; \
+#     chmod +x /opt/realsense/build-librealsense.sh && /opt/realsense/build-librealsense.sh -v ${LIBREALSENSE_SOURCE_VERSION};
+
+# Copy hotplug script for udev rules/hotplug for RealSense
+RUN mkdir -p /opt/realsense/
+COPY scripts/hotplug-realsense.sh /opt/realsense/hotplug-realsense.sh
+COPY udev_rules/99-realsense-libusb-custom.rules /etc/udev/rules.d/99-realsense-libusb-custom.rules
+
+# Install ROS libraries
 RUN apt-get update \
  && apt-get install -y \
     ros-${ROS_DISTRO}-ros-base \
@@ -122,6 +136,13 @@ COPY scripts/*.sh /usr/local/bin/scripts/
 RUN  dos2unix /usr/local/bin/scripts/*.sh
 RUN  chmod +x /usr/local/bin/scripts/*.sh
 
+# Copy hotplug script for udev rules/hotplug for RealSense
+#RUN mkdir -p /opt/realsense/
+#COPY scripts/hotplug-realsense.sh /opt/realsense/hotplug-realsense.sh
+#COPY udev_rules/99-realsense-libusb-custom.rules /etc/udev/rules.d/99-realsense-libusb-custom.rules
+
+ARG DEBIAN_FRONTEND=dialog
+
 ENV USERNAME=${USERNAME}
 ENV USER_GID=${USER_GID}
 ENV USER_UID=${USER_UID}
@@ -131,5 +152,3 @@ USER ${USERNAME}
 RUN --mount=type=cache,target=/var/cache/apt \
     rosdep update
 USER root
-
-ARG DEBIAN_FRONTEND=dialog
