@@ -5,3 +5,4 @@ rosbags/
 resources/
 src/ros2_benchmark/
 CMakeFiles
+rosbags/

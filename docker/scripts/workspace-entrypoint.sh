@@ -14,6 +14,8 @@ echo "source /usr/local/bin/scripts/setup.sh" >> ~/.bashrc
 source /opt/ros/${ROS_DISTRO}/setup.bash
 source /usr/local/bin/scripts/setup.sh
 
+sudo udevadm control --reload-rules
+
 # Configure git
 git config --global --add safe.directory /robomaster_cv
 
