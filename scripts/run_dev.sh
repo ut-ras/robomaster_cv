@@ -1,24 +1,7 @@
 #!/bin/bash
 
-function print_color {
-    tput setaf $1
-    echo "$2"
-    tput sgr0
-}
-
-function print_error {
-    print_color 1 "$1"
-}
-
-function print_warning {
-    print_color 3 "$1"
-}
-
-function print_info {
-    print_color 2 "$1"
-}
-
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $ROOT/utils/print_color.sh
 WORKSPACE_ROOT="${ROOT}/.."
 DOCKER_DIR="${ROOT}/../docker"
 
@@ -27,7 +10,6 @@ IMAGE_NAME="$BASE_NAME-image"
 CONTAINER_NAME="$BASE_NAME-container"
 DEV_DIR="../"
 PLATFORM="$(uname -m)"
-MODEL="PC"
 if [ -f /proc/device-tree/model ] && [[ "$(cat /proc/device-tree/model)" =~ "Jetson Orin Nano" ]]; then
     print_info "Detected Jetson Orin Nano, building librealsense from source"
     IMAGE_KEY="ros2_humble.realsense_source.tools.user"
@@ -35,6 +17,7 @@ if [ -f /proc/device-tree/model ] && [[ "$(cat /proc/device-tree/model)" =~ "Jet
 else
     print_info "Did not detect Jetson Orin Nano, installing librealsense from package"
     IMAGE_KEY="ros2_humble.realsense_pkg.tools.user"
+    MODEL="PC"
 fi
 
 
@@ -106,7 +89,8 @@ if [[ $PLATFORM == "x86_64" ]]; then
 fi
 
 print_info "Building $IMAGE_KEY base as image: $BASE_NAME"
-$ROOT/build_image_layers.sh --image_key "$IMAGE_KEY" --image_name "$BASE_NAME"
+print_info "Running $ROOT/build_image_layers.sh -i \"$IMAGE_KEY\" --image_name \"$BASE_NAME\""
+$ROOT/build_image_layers.sh -i "$IMAGE_KEY" --image_name "$BASE_NAME" -r
 
 # Check result
 if [ $? -ne 0 ]; then

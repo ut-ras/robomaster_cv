@@ -55,9 +55,9 @@ if [ ${#CONFIG_DOCKER_SEARCH_DIRS[@]} -gt 0 ]; then
 fi
 
 # Parse command-line args
-VALID_ARGS=$(getopt -o hra:b:c:ki:n:d: --long help,skip_registry_check,build_arg:,base_image:,context_dir:,disable_buildkit,image_key:,image_name:,ignore_composite_keys,docker_arg: -- "$@")
-eval set -- "$VALID_ARGS"
-while [ : ]; do
+# VALID_ARGS=$(getopt -o hra:b:c:ki:n:d: --long help,skip_registry_check,build_arg:,base_image:,context_dir:,disable_buildkit,image_key:,image_name:,ignore_composite_keys,docker_arg: -- "$@")
+# eval set -- "$VALID_ARGS"
+while [[ $# -gt 0 ]]; do
   case "$1" in
     -a | --build_arg)
         ADDITIONAL_BUILD_ARGS+=("$2")
@@ -102,10 +102,15 @@ while [ : ]; do
     --) shift;
         break
         ;;
+    *)
+        usage
+        exit 1
+        ;;
   esac
 done
 
 # Check arguments
+echo $TARGET_IMAGE_STR
 if [[ -z "$TARGET_IMAGE_STR" ]]; then
     print_error "Target image not specified with -i/--image_key"
     exit 1
