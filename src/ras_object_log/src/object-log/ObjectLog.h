@@ -81,7 +81,7 @@ public:
     input is two 3x1 matrices, each representing point in (x,y,z)
     Output is a float which is the distance between the two objects
     */
-    float get_distance(std::tuple<float, float, float> p1, std::tuple<float, float, float> p2);
+    float get_euclidean_distance(std::tuple<float, float, float> p1, std::tuple<float, float, float> p2);
 
     std::vector<ArmorPlate> get_plates();
 

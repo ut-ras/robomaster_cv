@@ -142,7 +142,7 @@ std::vector<float> ObjectLog::getFinalArmorPlateState()
     std::cout << "_plate.size(): " << _plates.size() << std::endl;
     for (size_t i = 0; i < _plates.size(); i++)
     {
-        float plate_distance = get_distance(_plates[i].getPosition(), std::tuple<float, float, float>(center_x, center_y, std::get<2>(_plates[i].getPosition())));
+        float plate_distance = get_euclidean_distance(_plates[i].getPosition(), std::tuple<float, float, float>(center_x, center_y, std::get<2>(_plates[i].getPosition())));
         if (plate_distance < distance)
         {
             best_index = i;
@@ -172,58 +172,14 @@ bool ObjectLog::sizeCheck(BoundingBox *box)
     return (box->getHeight() * box->getWidth()) >= MIN_AREA;
 }
 
+// TODO: Rewrite this to utilize Hungarian algorithm
 int ObjectLog::assign_plate(BoundingBox *box, std::vector<ArmorPlate> plates)
 {
-    if (box == NULL || &plates == NULL)
-        return -2;
-
-    std::tuple<float, float, float> position = box->getPosition();
-    printf("BOX: (%f, %f, %f)\n", std::get<0>(position), std::get<1>(position), std::get<2>(position));
-    float shortest_dist = std::numeric_limits<float>::max();
-    int shortest_plate = -1;
-    printf("Condition 1: %d\n", ((std::get<0>(position) + MARGIN_OF_ERR) > MAX_X));
-    printf("Condition 2: %d\n", ((std::get<1>(position) + MARGIN_OF_ERR) > MAX_Y));
-    printf("Condition 3: %d\n", ((std::get<2>(position) + MARGIN_OF_ERR) > MAX_Z));
-    printf("Condition 4: %d\n", ((std::get<0>(position) - MARGIN_OF_ERR) < MIN_X));
-    printf("Condition 5: %d\n", ((std::get<1>(position) - MARGIN_OF_ERR) < MIN_Y));
-    printf("Condition 6: %d\n", ((std::get<2>(position) - MARGIN_OF_ERR) < MIN_Z));
-    printf("Min check X: %f\n", (std::get<0>(position) - MARGIN_OF_ERR));
-    printf("Min check Y: %f\n", (std::get<1>(position) - MARGIN_OF_ERR));
-    printf("Min check Z: %f\n", (std::get<2>(position) - MARGIN_OF_ERR));
-    // if (((std::get<0>(position) + MARGIN_OF_ERR) > MAX_X) || ((std::get<1>(position) + MARGIN_OF_ERR) > MAX_Y) || ((std::get<2>(position) + MARGIN_OF_ERR) > MAX_Z) || ((std::get<0>(position) - MARGIN_OF_ERR) < MIN_X) || ((std::get<1>(position) - MARGIN_OF_ERR) < MIN_Y) || ((std::get<2>(position) - MARGIN_OF_ERR) < MIN_Z))
-    // {
-    //     return -3;
-    // }
-
-    for (int i = 0; i < plates.size(); i++)
-    {
-        float dist = get_distance(position, plates[i].getPosition());
-        printf("Plate %d: (%f, %f, %f)\n", i, std::get<0>(plates[i].getPosition()), std::get<1>(plates[i].getPosition()), std::get<2>(plates[i].getPosition()));
-        printf("Position: (%f, %f, %f)\n", std::get<0>(position), std::get<1>(position), std::get<2>(position));
-        printf("Distance: %f\n", dist);
-        if (dist < shortest_dist)
-        {
-            shortest_plate = i;
-            shortest_dist = dist;
-        }
-    }
-
-    float full_mog = sqrt(3 * pow(MARGIN_OF_ERR, 2)); // full mog represents the margin of error extended to 3d space
-    printf("full mog: %f\n", full_mog);
-    printf("shortest dist: %f\n", shortest_dist);
-    if (shortest_dist > full_mog)
-    {
-        return -1;
-    }
-    return shortest_plate;
+    return 0;
 }
 
 void ObjectLog::kill_all()
 {
-    // for (int i = 0; i < _plates.size(); i++)
-    // {
-    //     _plates[i].writeToHistory(_outputLog)
-    // }
     _plates.clear();
     fclose(_outputLog);
     return;
@@ -249,7 +205,7 @@ void ObjectLog::kill_plate(int id)
 }
 
 // Distance formula (basically Pythagorean theorem in 3D space)
-float ObjectLog::get_distance(std::tuple<float, float, float> p1, std::tuple<float, float, float> p2)
+float ObjectLog::get_euclidean_distance(std::tuple<float, float, float> p1, std::tuple<float, float, float> p2)
 {
     return sqrt(pow((std::get<0>(p1) - std::get<0>(p2)), 2) + pow((std::get<1>(p1) - std::get<1>(p2)), 2) + pow((std::get<2>(p1) - std::get<2>(p2)), 2));
 }
