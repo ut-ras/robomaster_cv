@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $ROOT/utils/print_color.sh
 WORKSPACE_ROOT="${ROOT}/.."
@@ -108,8 +110,6 @@ if [[ -z $(docker image ls --quiet $BASE_NAME) ]]; then
     exit 1
 fi
 
-# docker build --network host -t ${IMAGE_NAME} "${BUILD_ARGS[@]}" "${DOCKER_DIR}" \
-# && \
 MSYS_NO_PATHCONV=1 \
 docker run -it --rm \
     --privileged \
@@ -121,8 +121,9 @@ docker run -it --rm \
     --user="admin" \
     --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
     --workdir /robomaster_cv/ \
+    --runtime nvidia \
     $@ \
-    $IMAGE_NAME \
+    $BASE_NAME \
     /bin/bash
 
 # If we run on jetson, we should add this back
