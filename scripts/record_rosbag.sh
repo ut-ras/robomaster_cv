@@ -40,7 +40,20 @@ ros2 bag record --start-paused \
     -o "/robomaster_cv/rosbags/rosbag2_$NOW" \
     --compression-format zstd \
     --compression-mode file \
+    /robot/rs2/color/camera_info \
     /robot/rs2/color/image_raw/compressed \
+    /robot/rs2/color/metadata \
+    /robot/rs2/depth/camera_info \
+    /robot/rs2/depth/image_rect_raw \
+    /robot/rs2/extrinsics/depth_to_color
+
+ros2 param dump /robot/rs2 > "/robomaster_cv/rosbags/rosbag2_$NOW/robot__rs2.yaml"
+
+# ros2 bag record --start-paused \
+#     -o "/robomaster_cv/rosbags/rosbag2_$NOW" \
+#     --compression-format zstd \
+#     --compression-mode file \
+#     /robot/rs2/color/image_raw/compressed
 
 
 
