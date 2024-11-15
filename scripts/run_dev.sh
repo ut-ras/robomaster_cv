@@ -2,6 +2,25 @@
 
 set -e
 
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --build-only)
+      BUILD_ONLY=TRUE
+      shift # past argument
+      ;;
+    -*|--*)
+      echo "Unknown option $1"
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1") # save positional arg
+      shift # past argument
+      ;;
+  esac
+done
+
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $ROOT/utils/print_color.sh
 WORKSPACE_ROOT="${ROOT}/.."
@@ -70,31 +89,21 @@ if [ "$(docker ps -a --quiet --filter status=exited --filter name=$CONTAINER_NAM
 fi
 
 # Re-use existing container.
-if [ "$(docker ps -a --quiet --filter status=running --filter name=$CONTAINER_NAME)" ]; then
+if [[ $BUILD_ONLY != "TRUE" ]] && [ "$(docker ps -a --quiet --filter status=running --filter name=$CONTAINER_NAME)" ]; then
     print_info "Attaching to running container: $CONTAINER_NAME"
     MSYS_NO_PATHCONV=1 \
     docker exec -i -t -u admin --workdir /robomaster_cv/ $CONTAINER_NAME /bin/bash $@
     exit 0
 fi
 
-BUILD_ARGS+=("--build-arg" "USERNAME="admin"")
-BUILD_ARGS+=("--build-arg" "USER_UID=`id -u`")
-BUILD_ARGS+=("--build-arg" "USER_GID=`id -g`")
-BUILD_ARGS+=("--build-arg" "PLATFORM=$PLATFORM")
-
-# Check if GPU is installed
-if [[ $PLATFORM == "x86_64" ]]; then
-    if type nvidia-smi &>/dev/null; then
-        GPU_ATTACHED=(`nvidia-smi -a | grep "Attached GPUs"`)
-        if [ ! -z $GPU_ATTACHED ]; then
-            BUILD_ARGS+=("--build-arg" "HAS_GPU="true"")
-        fi
-    fi
-fi
-
 print_info "Building $IMAGE_KEY base as image: $BASE_NAME"
 print_info "Running $ROOT/build_image_layers.sh -i \"$IMAGE_KEY\" --image_name \"$BASE_NAME\""
 $ROOT/build_image_layers.sh -i "$IMAGE_KEY" --image_name "$BASE_NAME" -r
+
+if [[ $BUILD_ONLY == "TRUE" ]]; then
+    print_info "Build complete, exiting."
+    exit 0
+fi
 
 # Check result
 if [ $? -ne 0 ]; then

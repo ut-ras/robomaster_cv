@@ -1,0 +1,6 @@
+version: "3.7"
+
+services:
+  robomaster_cv_container:
+    build: .
+    command: ./scripts/run_dev.sh && /bin/bash
