@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/robomaster_cv/install/stampede_msgs/include/**",
+        "/robomaster_cv/install/realsense2_camera/include/**",
+        "/robomaster_cv/install/realsense2_camera_msgs/include/**",
+        "/opt/ros/humble/include/**",
+        "/robomaster_cv/src/ras_object_log/include/**",
+        "/robomaster_cv/src/realsense-ros/realsense2_camera/include/**",
+        "/robomaster_cv/src/uart/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-arm64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

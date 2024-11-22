@@ -1,8 +1,12 @@
-version: 3.7
+version: '3.7'
 
 services:
   robomaster_cv_container:
-    image: robomaster-cv:latest
+    build:
+      dockerfile: Dockerfile.user
+      context: docker
+      args:
+        - BASE_IMAGE=azhangvo/robomaster_cv:latest
     environment:
       - DISPLAY
       - NVIDIA_VISIBLE_DEVICES=all
@@ -10,8 +14,9 @@ services:
       - ROS_DOMAIN_ID
       - USER
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./:/robomaster_cv
       - /dev:/dev
+      - /tmp/.X11-unix:/tmp/.X11-unix
       - /dev/shm:/dev/shm
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
@@ -33,3 +38,8 @@ services:
       - /run/jtop.sock:/run/jtop.sock:ro
     runtime: nvidia
     pid: host # TODO: missing groupadd
+    privileged: true
+    user: admin
+    working_dir: /robomaster_cv
+    entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
+    command: /bin/bash

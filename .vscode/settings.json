@@ -1,0 +1,14 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/robomaster_cv/install/stampede_msgs/local/lib/python3.10/dist-packages",
+        "/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/robomaster_cv/install/stampede_msgs/local/lib/python3.10/dist-packages",
+        "/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}
