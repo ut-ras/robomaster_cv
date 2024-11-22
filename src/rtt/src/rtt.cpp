@@ -19,7 +19,7 @@ public:
     RttNode() : Node("rtt_node"), client_socket_(-1), retry_interval_(5.0)
     {
         this->declare_parameter<std::string>("host", "127.0.0.1");
-        this->declare_parameter<int>("port", 9000);
+        this->declare_parameter<int>("port", 9090);
         this->declare_parameter<double>("retry_interval", 5.0);
 
         this->get_parameter("host", host_);
