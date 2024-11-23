@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile.user
       context: docker
       args:
-        - BASE_IMAGE=azhangvo/robomaster_cv_jetson:latest
+        - BASE_IMAGE=azhangvo/robomaster_cv:latest
     volumes:
       - ./:/robomaster_cv
       - /dev:/dev
@@ -21,3 +21,4 @@ services:
     working_dir: /robomaster_cv
     entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
     command: sleep infinity
+    network_mode: host
