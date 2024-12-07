@@ -1,0 +1,1 @@
+vector<vision_msgs/Point2D> centers
