@@ -1,0 +1,14 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# Install helpful tools
+RUN apt-get update && apt-get install -y \
+        vim \
+        nano \
+        dos2unix \
+        ffmpeg \
+        python3-pip \
+&& rm -rf /var/lib/apt/lists/* \
+&& apt-get clean
+
+RUN pip3 install zstandard
