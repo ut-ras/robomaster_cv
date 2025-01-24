@@ -62,15 +62,39 @@ Once the repo is cloned, open the repo in Visual Studio Code. Press `ctrl + grav
 
 If you are on Windows, make sure that it is running in Git Bash and not on command line. 
 
-In terminal, run:
+First, configure your environment by running
+```
+./configure.sh
+```
 
+This will set up the correct docker environment for you.
+
+To enter the container, there are two methods, one involving VSC and one not. I recommend using VSC as it will enable syntax highlighting and smart language features.
+
+### VSC
+
+If you have VSC installed, install the Dev Containers extension and the Remote Development Extension pack.
+
+Once installed, open the command palette (Ctrl + Shift + P or Cmd + Shift + P) and search for the option for "Reopen workspace in container". Wait for it to build and set up the environment, and you should be all set to go.
+
+### Non-VSC
+
+If you do not use VSC, run
 ```
 ./scripts/run_dev.sh
 ```
 
-This will kick off a run to build our Docker container which contains our dev environment which will take ~5 minutes, and then open it up in the terminal after. In future runs, it will take ~20 seconds to reopen the container after it is built. If you're curious, you can find more information about Docker [here](https://docs.docker.com/get-started/).
+For every new terminal you wish to create, you should run this command in a new terminal.
 
-If you need more terminal windows, you can open another terminal window and run the same script, which will attach to the same container.
+### Git Setup (Optional)
+
+Git is currently a bit funky with this system, and is not fully supported yet. If you wish to try to set this up, follow this [guide](https://code.visualstudio.com/remote/advancedcontainers/sharing-git-credentials) or try the instructions that worked for me:
+
+1. Ensure that your sshd config enables agent forwarding. You should be able to find this file at `/etc/ssh/sshd_config` or `%programdata%\ssh\sshd_config`, and you will need to make sure it includes `AllowAgentForwarding yes`
+2. Restart your sshd if needed. This will vary from system to system.
+3. Open your environment in VSC (i.e. open it in the container)
+4. On your host computer (not in VSC), open a terminal and run `ssh-add`
+5. On the remote computer (inside VSC) and check that `ssh-add -l` contains a SSH key now
 
 # Development
 
