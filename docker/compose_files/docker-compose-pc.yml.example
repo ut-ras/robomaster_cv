@@ -20,5 +20,6 @@ services:
     user: admin
     working_dir: /robomaster_cv
     entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
-    command: sleep infinity
-    network_mode: host
+    command: /bin/bash
+    stdin_open: true
+    tty: true

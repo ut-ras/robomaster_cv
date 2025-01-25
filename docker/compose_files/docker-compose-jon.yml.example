@@ -1,7 +1,7 @@
 version: '3.7'
 
 services:
-  robomaster_cv_container:
+  robomaster_cv:
     build:
       dockerfile: Dockerfile.user
       context: docker
@@ -42,5 +42,6 @@ services:
     user: admin
     working_dir: /robomaster_cv
     entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
-    command: sleep infinity
-    network_mode: host
+    command: /bin/bash
+    stdin_open: true
+    tty: true
