@@ -21,3 +21,5 @@ services:
     working_dir: /robomaster_cv
     entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
     command: /bin/bash
+    stdin_open: true
+    tty: true

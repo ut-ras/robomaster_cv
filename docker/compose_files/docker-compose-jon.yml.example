@@ -1,7 +1,7 @@
 version: '3.7'
 
 services:
-  robomaster_cv_container:
+  robomaster_cv:
     build:
       dockerfile: Dockerfile.user
       context: docker
@@ -43,3 +43,5 @@ services:
     working_dir: /robomaster_cv
     entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
     command: /bin/bash
+    stdin_open: true
+    tty: true
