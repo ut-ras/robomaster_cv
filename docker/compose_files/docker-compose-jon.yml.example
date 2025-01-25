@@ -1,0 +1,47 @@
+version: '3.7'
+
+services:
+  robomaster_cv:
+    build:
+      dockerfile: Dockerfile.user
+      context: docker
+      args:
+        - BASE_IMAGE=azhangvo/robomaster_cv:latest
+    environment:
+      - DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ROS_DOMAIN_ID
+      - USER
+    volumes:
+      - ./:/robomaster_cv
+      - /dev:/dev
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /dev/shm:/dev/shm
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /usr/bin/tegrastats:/usr/bin/tegrastats
+      - /tmp/argus_socket:/tmp/argus_socket
+      - /usr/local/cuda-11.4/targets/aarch64-linux/lib/libcusolver.so.11:/usr/local/cuda-11.4/targets/aarch64-linux/lib/libcusolver.so.11
+      - /usr/local/cuda-11.4/targets/aarch64-linux/lib/libcusparse.so.11:/usr/local/cuda-11.4/targets/aarch64-linux/lib/libcusparse.so.11
+      - /usr/local/cuda-11.4/targets/aarch64-linux/lib/libcurand.so.10:/usr/local/cuda-11.4/targets/aarch64-linux/lib/libcurand.so.10
+      - /usr/local/cuda-11.4/targets/aarch64-linux/lib/libcufft.so.10:/usr/local/cuda-11.4/targets/aarch64-linux/lib/libcufft.so.10
+      - /usr/local/cuda-11.4/targets/aarch64-linux/lib/libnvToolsExt.so:/usr/local/cuda-11.4/targets/aarch64-linux/lib/libnvToolsExt.so
+      - /usr/local/cuda-11.4/targets/aarch64-linux/lib/libcupti.so.11.4:/usr/local/cuda-11.4/targets/aarch64-linux/lib/libcupti.so.11.4
+      - /usr/local/cuda-11.4/targets/aarch64-linux/lib/libcudla.so.1:/usr/local/cuda-11.4/targets/aarch64-linux/lib/libcudla.so.1
+      - /usr/local/cuda-11.4/targets/aarch64-linux/include/nvToolsExt.h:/usr/local/cuda-11.4/targets/aarch64-linux/include/nvToolsExt.h
+      - /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra
+      - /usr/src/jetson_multimedia_api:/usr/src/jetson_multimedia_api
+      - /opt/nvidia/nsight-systems-cli:/opt/nvidia/nsight-systems-cli
+      - /opt/nvidia/vpi2:/opt/nvidia/vpi2
+      - /usr/share/vpi2:/usr/share/vpi2
+      - /run/jtop.sock:/run/jtop.sock:ro
+    runtime: nvidia
+    pid: host # TODO: missing groupadd
+    privileged: true
+    user: admin
+    working_dir: /robomaster_cv
+    entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
+    command: /bin/bash
+    stdin_open: true
+    tty: true

@@ -1,0 +1,25 @@
+version: '3.7'
+
+services:
+  robomaster_cv:
+    build:
+      dockerfile: Dockerfile.user
+      context: docker
+      args:
+        - BASE_IMAGE=azhangvo/robomaster_cv:latest
+    volumes:
+      - ./:/robomaster_cv
+      - /dev:/dev
+    environment:
+      - DISPLAY
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - ROS_DOMAIN_ID
+      - USER
+    privileged: true
+    user: admin
+    working_dir: /robomaster_cv
+    entrypoint: /usr/local/bin/scripts/workspace-entrypoint.sh
+    command: /bin/bash
+    stdin_open: true
+    tty: true
