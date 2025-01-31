@@ -1,5 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/byte_multi_array.hpp>
 
 #include <iostream>
 #include <memory>
@@ -26,8 +26,8 @@ public:
         this->get_parameter("port", port_);
         this->get_parameter("retry_interval", retry_interval_);
 
-        publisher_ = this->create_publisher<std_msgs::msg::String>("rtt_rx", 10);
-        subscriber_ = this->create_subscription<std_msgs::msg::String>(
+        publisher_ = this->create_publisher<std_msgs::msg::ByteMultiArray>("rtt_rx", 10);
+        subscriber_ = this->create_subscription<std_msgs::msg::ByteMultiArray>(
             "rtt_tx", 10,
             std::bind(&RttNode::handle_outgoing_message, this, std::placeholders::_1));
 
@@ -48,8 +48,8 @@ private:
     std::thread connection_thread_;
     std::thread read_thread_;
 
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscriber_;
+    rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr publisher_;
+    rclcpp::Subscription<std_msgs::msg::ByteMultiArray>::SharedPtr subscriber_;
 
     void manage_connection()
     {
@@ -62,7 +62,8 @@ private:
                 {
                     RCLCPP_INFO(this->get_logger(), "Connected to %s:%d", host_.c_str(), port_);
                     connection_status_callback(true);
-                    read_thread_ = std::thread([this]() { read_from_server(); });
+                    read_thread_ = std::thread([this]()
+                                               { read_from_server(); });
                 }
                 else
                 {
@@ -112,10 +113,9 @@ private:
             ssize_t bytes_received = recv(client_socket_, buffer, sizeof(buffer) - 1, 0);
             if (bytes_received > 0)
             {
-                buffer[bytes_received] = '\0'; // Null-terminate the received string
-                std_msgs::msg::String msg;
-                msg.data = std::string(buffer);
-                RCLCPP_INFO(this->get_logger(), "Received: %s", msg.data.c_str());
+                auto msg = std_msgs::msg::ByteMultiArray();
+                msg.data.insert(msg.data.end(), buffer, buffer + bytes_received);
+                RCLCPP_INFO(this->get_logger(), "Received: %.*s", msg.data.size(), msg.data.data());
                 publisher_->publish(msg);
             }
             else if (bytes_received == 0)
@@ -135,7 +135,7 @@ private:
         connection_status_callback(false); // Notify disconnection
     }
 
-    void handle_outgoing_message(const std_msgs::msg::String::SharedPtr msg)
+    void handle_outgoing_message(const std_msgs::msg::ByteMultiArray::SharedPtr msg)
     {
         if (client_socket_ < 0)
         {
@@ -143,15 +143,14 @@ private:
             return;
         }
 
-        std::string data = msg->data;
-        ssize_t bytes_sent = send(client_socket_, data.c_str(), data.size(), 0);
+        ssize_t bytes_sent = send(client_socket_, msg->data.data(), msg->data.size(), 0);
         if (bytes_sent < 0)
         {
             RCLCPP_ERROR(this->get_logger(), "Failed to send message: %s", strerror(errno));
         }
         else
         {
-            RCLCPP_INFO(this->get_logger(), "Sent: %s", data.c_str());
+            RCLCPP_INFO(this->get_logger(), "Sent: %.*s", msg->data.size(), msg->data.data());
         }
     }
 
