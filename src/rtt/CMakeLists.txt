@@ -15,7 +15,7 @@ find_package(stampede_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 add_executable(rtt src/rtt.cpp)
-add_executable(dji_serial src/dji_serial.cpp)
+add_executable(dji_serial src/dji_serial.cpp src/crc.cpp)
 target_include_directories(rtt PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)

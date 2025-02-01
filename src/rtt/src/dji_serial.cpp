@@ -1,24 +1,26 @@
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/byte_multi_array.hpp>
 #include <stampede_msgs/msg/dji_packet.hpp>
+#include "dji_serial_packet.hpp"
+#include "crc.hpp"
 
 class DJISerialNode : public rclcpp::Node
 {
 public:
     DJISerialNode() : Node("dji_serial_node")
     {
-        this->declare_parameter<std::string>("rtt_tx_topic", "rtt_tx");
-        this->declare_parameter<std::string>("rtt_rx_topic", "rtt_rx");
+        this->declare_parameter<std::string>("serial_tx_topic", "uart_tx");
+        this->declare_parameter<std::string>("serial_rx_topic", "uart_rx");
         this->declare_parameter<std::string>("dji_tx_topic", "dji_rx");
         this->declare_parameter<std::string>("dji_rx_topic", "dji_tx");
-        this->get_parameter("rtt_tx_topic", rtt_tx_topic_);
-        this->get_parameter("rtt_rx_topic", rtt_rx_topic_);
+        this->get_parameter("serial_tx_topic", serial_tx_topic_);
+        this->get_parameter("serial_rx_topic", serial_rx_topic_);
         this->get_parameter("dji_tx_topic", dji_tx_topic_);
         this->get_parameter("dji_rx_topic", dji_rx_topic_);
 
-        rtt_tx_ = this->create_publisher<std_msgs::msg::ByteMultiArray>(rtt_tx_topic_, 10);
+        rtt_tx_ = this->create_publisher<std_msgs::msg::ByteMultiArray>(serial_tx_topic_, 10);
         rtt_rx_ = this->create_subscription<std_msgs::msg::ByteMultiArray>(
-            rtt_rx_topic_, 10,
+            serial_rx_topic_, 10,
             std::bind(&DJISerialNode::handle_rtt_message, this, std::placeholders::_1));
         dji_tx_ = this->create_publisher<stampede_msgs::msg::DJIPacket>(dji_tx_topic_, 10);
         dji_rx_ = this->create_subscription<stampede_msgs::msg::DJIPacket>(
@@ -27,8 +29,8 @@ public:
     }
 
 private:
-    std::string rtt_tx_topic_;
-    std::string rtt_rx_topic_;
+    std::string serial_tx_topic_;
+    std::string serial_rx_topic_;
     std::string dji_tx_topic_;
     std::string dji_rx_topic_;
     rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr rtt_tx_;
@@ -38,18 +40,13 @@ private:
 
     void handle_dji_packet(const stampede_msgs::msg::DJIPacket::SharedPtr msg)
     {
+        uint8_t body_bytes[msg->body.size()];
+        std::copy(msg->body.begin(), msg->body.end(), body_bytes);
+        
+        SerialMessage serial_msg(body_bytes, msg->body.size(), msg->frame_sequence_number);
         std_msgs::msg::ByteMultiArray dji_packet;
-        dji_packet.data.push_back(msg->frame_head_byte);
-        dji_packet.data.push_back(static_cast<uint8_t>(msg->frame_data_length & 0xFF));
-        dji_packet.data.push_back(static_cast<uint8_t>((msg->frame_data_length >> 8) & 0xFF));
-        dji_packet.data.push_back(msg->frame_sequence_number);
-        dji_packet.data.push_back(msg->crc8);
-        dji_packet.data.push_back(static_cast<uint8_t>(msg->message_type & 0xFF));
-        dji_packet.data.push_back(static_cast<uint8_t>((msg->message_type >> 8) & 0xFF));
-        dji_packet.data.insert(dji_packet.data.end(), msg->body.begin(), msg->body.end());
-        dji_packet.data.push_back(static_cast<uint8_t>(msg->crc16 & 0xFF));
-        dji_packet.data.push_back(static_cast<uint8_t>((msg->crc16 >> 8) & 0xFF));
 
+        dji_packet.data.insert(dji_packet.data.end(), serial_msg.buffer, serial_msg.buffer + serial_msg.length);
         rtt_tx_->publish(dji_packet);
     }
 
@@ -57,7 +54,7 @@ private:
     {
         if (msg->data.size() < 9) // Minimum size check
         {
-            RCLCPP_ERROR(this->get_logger(), "Received invalid RTT message");
+            RCLCPP_ERROR(this->get_logger(), "Received invalid DJI message");
             return;
         }
 
@@ -69,6 +66,20 @@ private:
         dji_packet.message_type = static_cast<uint16_t>(msg->data[5]) | (static_cast<uint16_t>(msg->data[6]) << 8);
         dji_packet.body.insert(dji_packet.body.end(), msg->data.begin() + 7, msg->data.end() - 2);
         dji_packet.crc16 = static_cast<uint16_t>(*(msg->data.end() - 2)) | (static_cast<uint16_t>(*(msg->data.end() - 1)) << 8);
+
+        // verify crc
+        uint8_t crc8 = algorithms::calculateCRC8(msg->data.data(), 4);
+        if (crc8 != dji_packet.crc8)
+        {
+            RCLCPP_ERROR(this->get_logger(), "CRC8 mismatch");
+            return;
+        }
+        uint16_t crc16 = algorithms::calculateCRC16(msg->data.data(), msg->data.size() - 2);
+        if (crc16 != dji_packet.crc16)
+        {
+            RCLCPP_ERROR(this->get_logger(), "CRC16 mismatch");
+            return;
+        }
 
         dji_tx_->publish(dji_packet);
     }
