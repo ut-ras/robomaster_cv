@@ -23,4 +23,4 @@ else
 fi
 
 echo "Connecting to the container..."
-docker exec -u admin -it $CONTAINER_ID '/bin/bash'
+MSYS_NO_PATHCONV=1 docker exec -u admin -it $CONTAINER_ID '/bin/bash'
