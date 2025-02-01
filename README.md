@@ -50,6 +50,12 @@ Go to the directory that you want to clone the repo in (if on Windows, make sure
 git clone git@github.com:ut-ras/robomaster_cv.git
 ```
 
+Once cloned, run:
+
+```
+cd robomaster_cv
+```
+
 Then, when finished, run:
 
 ```
