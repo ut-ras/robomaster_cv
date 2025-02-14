@@ -108,7 +108,7 @@ Git is currently a bit funky with this system, and is not fully supported yet. I
 
 The build system that ROS2 uses is called `colcon`. The repo includes several aliases to help with building.
 
-To build a specific package, make sure you are in the root directory then run `build package_name`. This is an alias to `colcon build --symlink-install --packages-up-to package_name`. 
+To build a specific package, make sure you are in the root directory of the project (by default `/robomaster_cv` within the dev container) then run `build package_name`. This is an alias to `colcon build --symlink-install --packages-up-to package_name`. 
 
 Try this by running `build realsense2_camera` (should take ~3 min)
 
