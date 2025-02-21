@@ -17,11 +17,12 @@ enum class RobotState {
 };
 
 // Simple structure to hold a 3D point.
-struct Point3D {
+struct Pose2D { // top left of field is 0,0
   double x;
   double y;
-  double z;
+  double theta; // Rotation in radians    - 0 is same as coordinate plane
 };
+
 
 class Sentry : public rclcpp::Node
 {
@@ -33,9 +34,13 @@ public:
 
     // Define the three startup points.
     // These could also be loaded from parameters.
-    startup_points_.push_back({0.0, 0.0, 0.0});
-    startup_points_.push_back({1.0, 0.0, 0.0});
-    startup_points_.push_back({1.0, 1.0, 0.0});
+    std::vector<Pose2D> startup_points_ = {
+      {0.0, 0.0, 0.0},   // First point with 0 rotation
+      {0.0, -4, M_PI/2}, // Facing 90 degrees
+      {4, -4, M_PI},     // Facing 180 degrees
+      {4, -2, -M_PI/2}   // Facing -90 degrees
+  };
+
 
     // Initialize indices:
     // - current_startup_index_ tracks our progress forward through the startup points.
@@ -97,10 +102,17 @@ private:
       case RobotState::STARTUP:
       {
         // Navigate through startup points in forward order.
-        Point3D target_point = startup_points_[current_startup_index_];
+        Pose2D target_point = startup_points_[current_startup_index_];
         target_msg.pose.position.x = target_point.x;
         target_msg.pose.position.y = target_point.y;
-        target_msg.pose.position.z = target_point.z;
+
+        tf2::Quaternion q;
+        q.setRPY(0, 0, target_pose.theta); // Convert theta to quaternion
+        target_msg.pose.orientation.x = q.x();
+        target_msg.pose.orientation.y = q.y();
+        target_msg.pose.orientation.z = q.z();
+        target_msg.pose.orientation.w = q.w();
+
         target_pub_->publish(target_msg);
 
         RCLCPP_INFO(this->get_logger(),
@@ -126,7 +138,7 @@ private:
       case RobotState::PATROL:
       {
         // In PATROL state, hold position at the final startup point.
-        Point3D patrol_target = startup_points_.back();
+        Pose2D patrol_target = startup_points_.back();
         target_msg.pose.position.x = patrol_target.x;
         target_msg.pose.position.y = patrol_target.y;
         target_msg.pose.position.z = patrol_target.z;
@@ -150,7 +162,7 @@ private:
       case RobotState::DEAD:
       {
         // Navigate the startup points in reverse order.
-        Point3D target_point = startup_points_[current_reverse_index_];
+        Pose2D target_point = startup_points_[current_reverse_index_];
         target_msg.pose.position.x = target_point.x;
         target_msg.pose.position.y = target_point.y;
         target_msg.pose.position.z = target_point.z;
@@ -196,13 +208,12 @@ private:
   }
 
   // Helper: compute Euclidean distance between current position and a target point.
-  double distance(const geometry_msgs::msg::Point &p, const Point3D &pt)
-  {
+  double distance(const geometry_msgs::msg::Point &p, const Pose2D &pt)
+{
     double dx = p.x - pt.x;
     double dy = p.y - pt.y;
-    double dz = p.z - pt.z;
-    return std::sqrt(dx * dx + dy * dy + dz * dz);
-  }
+    return std::sqrt(dx * dx + dy * dy);  // Ignore z-component
+}
 
   // Subscribers and publisher.
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr localization_sub_;
@@ -212,7 +223,7 @@ private:
 
   // State machine variables.
   RobotState current_state_;
-  std::vector<Point3D> startup_points_;
+  std::vector<Pose2D> startup_points_;
   size_t current_startup_index_;
   size_t current_reverse_index_;
 
