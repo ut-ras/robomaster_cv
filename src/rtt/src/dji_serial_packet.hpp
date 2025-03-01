@@ -88,7 +88,7 @@ struct SerialMessage
      *
      * @param[in] seq Message sequence number, an optional parameter.
      */
-    explicit SerialMessage(uint8_t* data, uint16_t size, uint8_t seq = 0, )
+    explicit SerialMessage(uint8_t* data, uint16_t size, uint8_t seq = 0, uint16_t messageType)
     {
         length = sizeof(FrameHeader) + size + sizeof(CRC16);
         buffer = new uint8_t[length];
@@ -100,7 +100,7 @@ struct SerialMessage
         header->CRC8 = algorithms::calculateCRC8(
             reinterpret_cast<uint8_t *>(header),
             sizeof(FrameHeader) - 1);
-        memcpy(buffer + sizeof(FrameHeader), data, size);
+        memcpy(buffer + sizeof(FrameHeader) + 2, data, size);
         *CRC16 = algorithms::calculateCRC16(
             reinterpret_cast<uint8_t *>(this),
             sizeof(*this) - 2);

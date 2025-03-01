@@ -38,8 +38,11 @@ private:
     rclcpp::Publisher<stampede_msgs::msg::DJIPacket>::SharedPtr dji_tx_;
     rclcpp::Subscription<stampede_msgs::msg::DJIPacket>::SharedPtr dji_rx_;
 
+    std::vector<uint8_t> buffer_;
+
     void handle_dji_packet(const stampede_msgs::msg::DJIPacket::SharedPtr msg)
     {
+        RCLCPP_INFO(this->get_logger(), "Received DJI Packet: seq=%d, type=%d", msg->frame_sequence_number, msg->message_type);
         uint8_t body_bytes[msg->body.size()];
         std::copy(msg->body.begin(), msg->body.end(), body_bytes);
         
@@ -52,36 +55,73 @@ private:
 
     void handle_rtt_message(const std_msgs::msg::ByteMultiArray::SharedPtr msg)
     {
-        if (msg->data.size() < 9) // Minimum size check
-        {
-            RCLCPP_ERROR(this->get_logger(), "Received invalid DJI message");
-            return;
-        }
+        RCLCPP_INFO(this->get_logger(), "Received RTT message");
 
-        auto dji_packet = stampede_msgs::msg::DJIPacket();
-        dji_packet.frame_head_byte = msg->data[0];
-        dji_packet.frame_data_length = static_cast<uint16_t>(msg->data[1]) | (static_cast<uint16_t>(msg->data[2]) << 8);
-        dji_packet.frame_sequence_number = msg->data[3];
-        dji_packet.crc8 = msg->data[4];
-        dji_packet.message_type = static_cast<uint16_t>(msg->data[5]) | (static_cast<uint16_t>(msg->data[6]) << 8);
-        dji_packet.body.insert(dji_packet.body.end(), msg->data.begin() + 7, msg->data.end() - 2);
-        dji_packet.crc16 = static_cast<uint16_t>(*(msg->data.end() - 2)) | (static_cast<uint16_t>(*(msg->data.end() - 1)) << 8);
+        // Append incoming data to buffer
+        buffer_.insert(buffer_.end(), msg->data.begin(), msg->data.end());
 
-        // verify crc
-        uint8_t crc8 = algorithms::calculateCRC8(msg->data.data(), 4);
-        if (crc8 != dji_packet.crc8)
+        while (buffer_.size() >= 9) // Minimum size check
         {
-            RCLCPP_ERROR(this->get_logger(), "CRC8 mismatch");
-            return;
-        }
-        uint16_t crc16 = algorithms::calculateCRC16(msg->data.data(), msg->data.size() - 2);
-        if (crc16 != dji_packet.crc16)
-        {
-            RCLCPP_ERROR(this->get_logger(), "CRC16 mismatch");
-            return;
-        }
+            // Search for the start of a packet
+            auto it = std::find(buffer_.begin(), buffer_.end(), SERIAL_HEAD_BYTE);
+            if (it == buffer_.end())
+            {
+                // No start byte found, clear buffer
+                buffer_.clear();
+                return;
+            }
 
-        dji_tx_->publish(dji_packet);
+            // Remove data before the start byte
+            buffer_.erase(buffer_.begin(), it);
+
+            if (buffer_.size() < 9)
+            {
+                // Not enough data for a complete header
+                return;
+            }
+
+            // Parse the packet header
+            auto dji_packet = stampede_msgs::msg::DJIPacket();
+            dji_packet.frame_head_byte = buffer_[0];
+            dji_packet.frame_data_length = static_cast<uint16_t>(buffer_[1]) | (static_cast<uint16_t>(buffer_[2]) << 8);
+            dji_packet.frame_sequence_number = buffer_[3];
+            dji_packet.crc8 = buffer_[4];
+            dji_packet.message_type = static_cast<uint16_t>(buffer_[5]) | (static_cast<uint16_t>(buffer_[6]) << 8);
+
+            size_t packet_size = 7 + dji_packet.frame_data_length + 2; // Header + data length + CRC16
+
+            if (buffer_.size() < packet_size)
+            {
+                // Not enough data for a complete packet
+                return;
+            }
+
+            // Parse the packet body and CRC16
+            dji_packet.body.insert(dji_packet.body.end(), buffer_.begin() + 7, buffer_.begin() + 7 + dji_packet.frame_data_length);
+            dji_packet.crc16 = static_cast<uint16_t>(buffer_[7 + dji_packet.frame_data_length]) | (static_cast<uint16_t>(buffer_[8 + dji_packet.frame_data_length]) << 8);
+
+            // Verify CRC
+            uint8_t crc8 = algorithms::calculateCRC8(buffer_.data(), 4);
+            if (crc8 != dji_packet.crc8)
+            {
+                RCLCPP_ERROR(this->get_logger(), "CRC8 mismatch");
+                buffer_.erase(buffer_.begin(), buffer_.begin() + packet_size);
+                continue;
+            }
+            uint16_t crc16 = algorithms::calculateCRC16(buffer_.data(), packet_size - 2);
+            if (crc16 != dji_packet.crc16)
+            {
+                RCLCPP_ERROR(this->get_logger(), "CRC16 mismatch");
+                buffer_.erase(buffer_.begin(), buffer_.begin() + packet_size);
+                continue;
+            }
+
+            // Publish the packet
+            dji_tx_->publish(dji_packet);
+
+            // Remove the processed packet from the buffer
+            buffer_.erase(buffer_.begin(), buffer_.begin() + packet_size);
+        }
     }
 };
 

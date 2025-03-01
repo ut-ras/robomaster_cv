@@ -1,5 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/byte_multi_array.hpp>
 #include <serial/serial.h>
 
 #include <iostream>
@@ -25,8 +25,8 @@ public:
         this->get_parameter("port", port_);
         this->get_parameter("retry_interval", retry_interval_);
 
-        publisher_ = this->create_publisher<std_msgs::msg::String>("uart_rx", 10);
-        subscriber_ = this->create_subscription<std_msgs::msg::String>(
+        publisher_ = this->create_publisher<std_msgs::msg::ByteMultiArray>("uart_rx", 10);
+        subscriber_ = this->create_subscription<std_msgs::msg::ByteMultiArray>(
             "uart_tx", 10,
             std::bind(&UartNode::handle_outgoing_message, this, std::placeholders::_1));
 
@@ -46,8 +46,8 @@ private:
     std::thread connection_thread_;
     std::thread read_thread_;
 
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr subscriber_;
+    rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr publisher_;
+    rclcpp::Subscription<std_msgs::msg::ByteMultiArray>::SharedPtr subscriber_;
 
     void manage_connection()
     {
@@ -114,19 +114,16 @@ private:
             if (serial_.available()) 
             {
                 std::string data = serial_.read(serial_.available());
-                RCLCPP_INFO(this->get_logger(), "Received: '%s'", data.c_str());
-                auto message = std_msgs::msg::String();
-                message.data = data;
-                publisher_->publish(message);
-            }
-
-            // Better version of code above
-            std::string data = serial_.read(serial_.available());
-            if (!data.empty())
-            {
-                RCLCPP_INFO(this->get_logger(), "Received: '%s'", data.c_str());
-                auto message = std_msgs::msg::String();
-                message.data = data;
+                std_msgs::msg::ByteMultiArray message;
+                message.data.insert(message.data.end(), data.begin(), data.end());
+                std::string hex_data;
+                for (auto byte : message.data)
+                {
+                    char hex[3];
+                    snprintf(hex, sizeof(hex), "%02X", static_cast<unsigned char>(byte));
+                    hex_data += hex;
+                }
+                RCLCPP_INFO(this->get_logger(), "Received %zu bytes: %s", message.data.size(), hex_data.c_str());
                 publisher_->publish(message);
             }
         }
@@ -135,12 +132,12 @@ private:
         connection_status_callback(false); // Notify disconnection
     }
 
-    void handle_outgoing_message(const std_msgs::msg::String::SharedPtr msg)
+    void handle_outgoing_message(const std_msgs::msg::ByteMultiArray::SharedPtr msg)
     {
         if (serial_.isOpen())
         {
-            serial_.write(msg->data);
-            RCLCPP_INFO(this->get_logger(), "Sent: %s", msg->data.c_str());
+            serial_.write(reinterpret_cast<const uint8_t*>(msg->data.data()), msg->data.size());
+            RCLCPP_INFO(this->get_logger(), "Sent %zu bytes", msg->data.size());
         }
         else
         {
