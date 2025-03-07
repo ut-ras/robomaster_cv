@@ -32,6 +32,8 @@ DOCKER_ARGS+=("-e USER")
 # DOCKER_ARGS+=("-e FASTRTPS_DEFAULT_PROFILES_FILE=/usr/local/share/middleware_profiles/rtps_udp_profile.xml")
 
 if [[ $MODEL == "JON" ]]; then
+    DOCKER_ARGS+=("--runtime nvidia")
+
     # Map host's display socket to docker
     # This should only happen for non-windows
     DOCKER_ARGS+=("-v /tmp/.X11-unix:/tmp/.X11-unix") # TODO @arthur can probably forward for linux and/or macOS too
@@ -121,10 +123,6 @@ docker run -it --rm \
     --user="admin" \
     --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
     --workdir /robomaster_cv/ \
-    --runtime nvidia \
     $@ \
     $BASE_NAME \
     /bin/bash
-
-# If we run on jetson, we should add this back
-# --runtime nvidia
