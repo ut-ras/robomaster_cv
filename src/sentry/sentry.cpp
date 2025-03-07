@@ -10,6 +10,10 @@
 
 using namespace std::chrono_literals;
 
+// Constants for health thresholds
+constexpr float HEALTH_THRESHOLD_LOW = 20.0;    // Transition to DEAD
+constexpr float HEALTH_THRESHOLD_RECOVERED = 70.0; // Transition back to STARTUP
+
 // Define the three states.
 enum class RobotState {
   STARTUP,
@@ -28,10 +32,10 @@ class Sentry : public rclcpp::Node {
 public:
   Sentry() : Node("sentry_state_machine"), 
              startup_points_({
-                 {0.0, 0.0, 0.0},   
-                 {0.0, -4, M_PI/2},
-                 {4, -4, M_PI},     
-                 {4, -2, -M_PI/2}   
+                 {0.0, 0.0, 0.0},   // TODO: Review these positions and orientations for tuning
+                 {0.0, -4, M_PI/2},  // TODO: Adjust path if needed
+                 {4, -4, M_PI},      // TODO: Confirm final patrol route
+                 {4, -2, -M_PI/2}    // TODO: Add more waypoints if required
              }),
              current_startup_index_(0),
              current_reverse_index_(startup_points_.size() - 1),
@@ -116,7 +120,7 @@ private:
         RCLCPP_INFO(this->get_logger(), "[PATROL] Holding at: (%.2f, %.2f)",
                     patrol_target.x, patrol_target.y);
 
-        if (current_health_ < 20.0) {
+        if (current_health_ < HEALTH_THRESHOLD_LOW) {
           current_state_ = RobotState::DEAD;
           current_reverse_index_ = startup_points_.size() - 1;
           RCLCPP_WARN(this->get_logger(), "Health low (%.2f%%). Transitioning to DEAD.", current_health_);
@@ -139,7 +143,7 @@ private:
           }
         }
 
-        if (current_health_ > 70.0) {
+        if (current_health_ > HEALTH_THRESHOLD_RECOVERED) {
           current_state_ = RobotState::STARTUP;
           current_startup_index_ = 0;
           RCLCPP_INFO(this->get_logger(), "Health recovered (%.2f%%). Transitioning to STARTUP.", current_health_);
