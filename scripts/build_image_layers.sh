@@ -19,13 +19,14 @@ function usage() {
 }
 
 # Initialize arguments
-DOCKER_BUILDKIT=1
+DOCKER_BUILDKIT=0
 IGNORE_COMPOSITE_KEYS=0
 ADDITIONAL_BUILD_ARGS=()
 ADDITIONAL_DOCKER_ARGS=()
 DOCKER_SEARCH_DIRS=(${DOCKER_DIR})
 SKIP_REGISTRY_CHECK=0
 BASE_DOCKER_REGISTRY_NAMES=("nvcr.io/isaac/ros")
+USER="azhangvo"
 
 # Read and parse config file if exists
 #
@@ -165,7 +166,7 @@ function cleanup {
 }
 trap cleanup EXIT
 
-PLATFORM="$(uname -m)"
+# PLATFORM="$(uname -m)"
 
 # Resolve Dockerfiles by matching target image ids to available files
 TARGET_IMAGE_IDS=(${TARGET_IMAGE_STR//./ })
@@ -283,7 +284,7 @@ fi
 BUILD_ARGS+=("--build-arg" "USERNAME="admin"")
 BUILD_ARGS+=("--build-arg" "USER_UID=`id -u`")
 BUILD_ARGS+=("--build-arg" "USER_GID=`id -g`")
-BUILD_ARGS+=("--build-arg" "PLATFORM=$PLATFORM")
+# BUILD_ARGS+=("--build-arg" "PLATFORM=$PLATFORM")
 
 for BUILD_ARG in ${ADDITIONAL_BUILD_ARGS[@]}
 do
@@ -291,14 +292,14 @@ do
 done
 
 # Check if GPU is installed
-if [[ $PLATFORM == "x86_64" ]]; then
-    GPU_ATTACHED=(`nvidia-smi -a | grep "Attached GPUs" || true`)
-    if [ -z $GPU_ATTACHED ]; then
-        print_warning "No GPU detected! Not setting build args for HAS_GPU"
-    else
-        BUILD_ARGS+=("--build-arg" "HAS_GPU="true"")
-    fi
-fi
+# if [[ $PLATFORM == "x86_64" ]]; then
+#     GPU_ATTACHED=(`nvidia-smi -a | grep "Attached GPUs" || true`)
+#     if [ -z $GPU_ATTACHED ]; then
+#         print_warning "No GPU detected! Not setting build args for HAS_GPU"
+#     else
+#         BUILD_ARGS+=("--build-arg" "HAS_GPU="true"")
+#     fi
+# fi
 
 if [ ${#DOCKERFILES[@]} -gt 0 ]; then
     print_info "Resolved the following ${#DOCKERFILES[@]} Dockerfiles for target image: ${TARGET_IMAGE_STR}"
@@ -316,7 +317,7 @@ for (( i=${#DOCKERFILES[@]}-1 ; i>=0 ; i-- )); do
     DOCKERFILE=${DOCKERFILES[i]}
     DOCKERFILE_CONTEXT_DIR=${DOCKERFILE_CONTEXT_DIRS[i]}
     IMAGE_NAME=${DOCKERFILE#*"/Dockerfile."}
-    IMAGE_NAME="${IMAGE_NAME//./-}-image"
+    IMAGE_NAME="${USER}/${IMAGE_NAME//./-}"
 
     # Build the base images in layers first
     BASE_IMAGE_ARG=
@@ -329,7 +330,7 @@ for (( i=${#DOCKERFILES[@]}-1 ; i>=0 ; i-- )); do
     if [ $i -lt $(( ${#DOCKERFILES[@]} - 1 )) ]; then
         BASE_DOCKERFILE=${DOCKERFILES[i+1]}
         BASE_IMAGE_NAME=${BASE_DOCKERFILE#*"/Dockerfile."}
-        BASE_IMAGE_NAME="${BASE_IMAGE_NAME//./-}-image"
+        BASE_IMAGE_NAME="${USER}/${BASE_IMAGE_NAME//./-}"
 
         BASE_IMAGE_ARG="--build-arg BASE_IMAGE="${BASE_IMAGE_NAME}""
     fi
@@ -346,12 +347,21 @@ for (( i=${#DOCKERFILES[@]}-1 ; i>=0 ; i-- )); do
 
     print_warning "Building ${DOCKERFILE} as image: ${IMAGE_NAME} with base: ${BASE_IMAGE_NAME}"
 
-    DOCKER_BUILDKIT=${DOCKER_BUILDKIT} docker build -f ${DOCKERFILE} \
-     --network host \
+    print_info "DOCKER_BUILDKIT=${DOCKER_BUILDKIT} docker buildx build -f ${DOCKERFILE} \
+     -t ${IMAGE_NAME} \
+     ${BASE_IMAGE_ARG} \
+     \"${BUILD_ARGS[@]}\" \
+     \"${ADDITIONAL_DOCKER_ARGS[@]}\" \
+     $@ \
+     ${DOCKER_CONTEXT_ARG}"
+
+    DOCKER_BUILDKIT=${DOCKER_BUILDKIT} docker buildx build -f ${DOCKERFILE} \
      -t ${IMAGE_NAME} \
      ${BASE_IMAGE_ARG} \
      "${BUILD_ARGS[@]}" \
      "${ADDITIONAL_DOCKER_ARGS[@]}" \
      $@ \
-     ${DOCKER_CONTEXT_ARG}
+     ${DOCKER_CONTEXT_ARG} \
+     --push
+     
 done
