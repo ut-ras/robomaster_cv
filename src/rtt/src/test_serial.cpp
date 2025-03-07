@@ -27,11 +27,15 @@ private:
     {
         auto message = stampede_msgs::msg::DJIPacket();
         message.frame_head_byte = 0xA5;
-        message.frame_data_length = 3;
-        message.frame_sequence_number = count_++;
+        message.frame_data_length = 32;
+        // message.frame_sequence_number = count_++;
+        message.frame_sequence_number = 0; 
         message.crc8 = 0x00; // Placeholder CRC8
-        message.message_type = 0x0002;
+        message.message_type = 0x0001;
         message.body = {0x04, 0x02, 0x03};
+        message.body = {0x10, 0x01, 0x00, 0x00, 0x00, 0xe3, 0x65, 0x03, 0x08, 0xb1, 0x78,
+            0x00, 0x08, 0xb5, 0x08, 0x00, 0x08, 0xbd, 0x08, 0x00, 0x08, 0xb5, 0x08, 0x00,
+            0x08, 0xa5, 0x07, 0x00, 0x08, 0x95, 0x07, 0x00};
         message.crc16 = 0x0000; // Placeholder CRC16
 
         RCLCPP_INFO(this->get_logger(), "Publishing DJI Packet: seq=%d", message.frame_sequence_number);

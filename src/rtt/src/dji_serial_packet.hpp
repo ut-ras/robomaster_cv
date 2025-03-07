@@ -25,6 +25,7 @@
 #define DJI_SERIAL_HPP_
 
 #include <cstdint>
+#include <cstring>
 
 #include "crc.hpp"
 
@@ -72,10 +73,13 @@ static const uint16_t SERIAL_HEAD_BYTE = 0xA5;
 
 struct FrameHeader
 {
-    uint8_t headByte;
-    uint16_t dataLength;
-    uint8_t seq;
-    uint8_t CRC8;
+    uint8_t head_byte = SERIAL_HEAD_BYTE;
+    uint8_t data_length_lsb;
+    uint8_t data_length_msb;
+    uint8_t sequence;
+    uint8_t crc8;
+    uint8_t message_type_lsb;
+    uint8_t message_type_msb;
 };
 
 /**
@@ -88,28 +92,42 @@ struct SerialMessage
      *
      * @param[in] seq Message sequence number, an optional parameter.
      */
-    explicit SerialMessage(uint8_t* data, uint16_t size, uint8_t seq = 0, uint16_t messageType)
+    explicit SerialMessage(uint8_t *data, uint16_t size, uint16_t messageType, uint8_t seq)
     {
-        length = sizeof(FrameHeader) + size + sizeof(CRC16);
+        length = sizeof(FrameHeader) + size + sizeof(*crc16_lsb) + sizeof(*crc16_msb);
+
         buffer = new uint8_t[length];
-        FrameHeader* header = reinterpret_cast<FrameHeader *>(buffer);
-        CRC16 = reinterpret_cast<uint16_t *>(buffer + sizeof(FrameHeader) + size);
-        header->headByte = SERIAL_HEAD_BYTE;
-        header->dataLength = size;
-        header->seq = seq;
-        header->CRC8 = algorithms::calculateCRC8(
+
+        FrameHeader *header = reinterpret_cast<FrameHeader *>(buffer);
+        crc16_lsb = reinterpret_cast<uint8_t *>(buffer + sizeof(FrameHeader) + size);
+        crc16_msb = reinterpret_cast<uint8_t *>(buffer + sizeof(FrameHeader) + size + sizeof(*crc16_lsb));
+
+        header->head_byte = SERIAL_HEAD_BYTE;
+        header->data_length_lsb = size & 0xFF;
+        header->data_length_msb = (size >> 8) & 0xFF;
+        header->sequence = seq;
+
+        header->crc8 = algorithms::calculateCRC8(
             reinterpret_cast<uint8_t *>(header),
-            sizeof(FrameHeader) - 1);
-        memcpy(buffer + sizeof(FrameHeader) + 2, data, size);
-        *CRC16 = algorithms::calculateCRC16(
-            reinterpret_cast<uint8_t *>(this),
-            sizeof(*this) - 2);
-        
+            sizeof(FrameHeader) - sizeof(FrameHeader::crc8) - sizeof(FrameHeader::message_type_lsb) - sizeof(FrameHeader::message_type_msb));
+
+        header->message_type_lsb = messageType & 0xFF;
+        header->message_type_msb = (messageType >> 8) & 0xFF;
+
+        memcpy(buffer + sizeof(FrameHeader), data, size);
+
+        uint16_t crc16 = algorithms::calculateCRC16(
+            buffer,
+            length - sizeof(*crc16_lsb) - sizeof(*crc16_msb));
+
+        *crc16_lsb = crc16 & 0xFF;
+        *crc16_msb = (crc16 >> 8) & 0xFF;
     }
-    
+
     uint16_t length;
-    uint8_t* buffer;
-    uint16_t* CRC16;
+    uint8_t *buffer;
+    uint8_t *crc16_lsb;
+    uint8_t *crc16_msb;
 };
 
 #endif // DJI_SERIAL_HPP_

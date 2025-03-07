@@ -46,11 +46,19 @@ private:
         uint8_t body_bytes[msg->body.size()];
         std::copy(msg->body.begin(), msg->body.end(), body_bytes);
         
-        SerialMessage serial_msg(body_bytes, msg->body.size(), msg->frame_sequence_number);
+        SerialMessage serial_msg(body_bytes, msg->body.size(), msg->message_type, msg->frame_sequence_number);
         std_msgs::msg::ByteMultiArray dji_packet;
 
         dji_packet.data.insert(dji_packet.data.end(), serial_msg.buffer, serial_msg.buffer + serial_msg.length);
         rtt_tx_->publish(dji_packet);
+        std::string hex_data;
+        for (auto byte : dji_packet.data)
+        {
+            char hex[3];
+            snprintf(hex, sizeof(hex), "%02x", byte);
+            hex_data += hex;
+        }
+        RCLCPP_INFO(this->get_logger(), "Published %s", hex_data.c_str());
     }
 
     void handle_rtt_message(const std_msgs::msg::ByteMultiArray::SharedPtr msg)
