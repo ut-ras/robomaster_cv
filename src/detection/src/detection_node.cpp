@@ -1,18 +1,24 @@
 #include <cstdio>
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
+#include <vision_msgs/msg/detection2_d_array.hpp>
+#include <vision_msgs/msg/detection2_d.hpp>
+#include <vision_msgs/msg/object_hypothesis_with_pose.hpp>
 
 using std::placeholders::_1;
 using namespace cv;
 using namespace std;
+using vision_msgs::msg::Detection2DArray;
+using vision_msgs::msg::Detection2D;
+using vision_msgs::msg::ObjectHypothesisWithPose;
 
 double sim(double a, double b);
 double distSq(Point2f a, Point2f b);
 double angle(Point2f a, Point2f b);
 vector<vector<Point>> getContours(Mat& frame, const string& color);
-Mat drawCenters(Mat frame, const string& color);
+vector<Point2f> calculateCenters(Mat& frame, const string& color);
 
 Mat applyCanny(Mat& frame) {
     Mat edges;
@@ -28,65 +34,48 @@ class CVNode : public rclcpp::Node {
 public:
     CVNode() : Node("CVNode"), writer_initialized(false), last_frame_time(this->now()) {
         printf("Initializing subscriber...\n");
-        subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-            "image_raw", 10, std::bind(&CVNode::topic_callback, this, _1));
+        subscription_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
+            "/robot/rs2/color/image_raw/compressed", 10, std::bind(&CVNode::topic_callback, this, _1));
 
-        timer_ = this->create_wall_timer(
-            std::chrono::seconds(2), std::bind(&CVNode::check_for_inactivity, this));
+        detections_publisher_ = this->create_publisher<Detection2DArray>("detections", 10);
     }
 
 private:
-    VideoWriter writer;
+    rclcpp::Publisher<Detection2DArray>::SharedPtr detections_publisher_;
     bool writer_initialized;
     std::string output_video = "output.mp4";
     rclcpp::Time last_frame_time;
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
+    rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr subscription_;
     rclcpp::TimerBase::SharedPtr timer_;
 
-    void topic_callback(const sensor_msgs::msg::Image &msg) {
+    void topic_callback(const sensor_msgs::msg::CompressedImage &msg) {
         try {
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             Mat frame = cv_ptr->image;
 
             Mat edges = applyCanny(frame);
 
-            frame = drawCenters(frame, "blue");
+            vector<Point2f> centers = calculateCenters(frame, "blue");
 
-            // Combine canny with center image procssing
-            // frame = frame & edges;
+            Detection2DArray detections_msg;
+            detections_msg.header = msg.header;
 
-            if (!writer_initialized) {
-                int frame_width = frame.cols;
-                int frame_height = frame.rows;
-                double fps = 120.0;
-
-                writer.open(output_video, VideoWriter::fourcc('X', 'V', 'I', 'D'), fps, Size(frame_width, frame_height));
-                if (!writer.isOpened()) {
-                    RCLCPP_ERROR(this->get_logger(), "Failed to open video writer!");
-                    return;
-                }
-                writer_initialized = true;
+            for (const auto& center : centers) {
+                Detection2D detection;
+                detection.bbox.center.position.x = center.x;
+                detection.bbox.center.position.y = center.y;
+                detections_msg.detections.push_back(detection);
             }
 
-            writer.write(frame);  // Write the processed frame to video file
-            printf("Processed frame written to output video.\n");
+            detections_publisher_->publish(detections_msg);
+
+            RCLCPP_INFO(this->get_logger(), "Published %zu detections", detections_msg.detections.size());
 
             // Update the last received frame timestamp
             last_frame_time = this->now();
 
         } catch (cv_bridge::Exception &e) {
             RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
-        }
-    }
-
-    void check_for_inactivity() {
-        rclcpp::Time current_time = this->now();
-        double time_diff = (current_time - last_frame_time).seconds();
-
-        if (writer_initialized && time_diff > 2.0) {  // No frames for 2 seconds
-            RCLCPP_INFO(this->get_logger(), "No frames received. Stopping video writing.");
-            writer.release();
-            rclcpp::shutdown();
         }
     }
 };
@@ -131,9 +120,10 @@ vector<vector<Point>> getContours(Mat& frame, const string& color) {
     return contours;
 }
 
-Mat drawCenters(Mat frame, const string& color) {
+vector<Point2f> calculateCenters(Mat& frame, const string& color) {
     auto contours = getContours(frame, color);
     vector<RotatedRect> bboxes;
+    vector<Point2f> centers;
 
     for (auto& contour : contours) {
         RotatedRect bbox = minAreaRect(contour);
@@ -176,11 +166,12 @@ Mat drawCenters(Mat frame, const string& color) {
                 (angleDiff < angleThresh || angleDiff > 180 - angleThresh)) {
                 Point centerMid((center1.x + center2.x) / 2, (center1.y + center2.y) / 2);
                 circle(frame, centerMid, 10, Scalar(255, 0, 255), -1);
+                centers.push_back(centerMid);
             }
         }
     }
 
-    return frame;
+    return centers;
 }
 
 int main(int argc, char **argv) {
