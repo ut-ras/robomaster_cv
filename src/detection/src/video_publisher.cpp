@@ -1,7 +1,8 @@
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <cv_bridge/cv_bridge.h>
-#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/videoio.hpp>
 
 using namespace cv;
 using namespace std::chrono_literals;
@@ -14,13 +15,13 @@ public:
             rclcpp::shutdown();
         }
 
-        publisher_ = this->create_publisher<sensor_msgs::msg::Image>("image_raw", 10);
+        publisher_ = this->create_publisher<sensor_msgs::msg::CompressedImage>("image_raw/compressed", 10);
         timer_ = this->create_wall_timer(33ms, std::bind(&VideoPublisher::publish_frame, this));
     }
 
 private:
     VideoCapture cap;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
 
     void publish_frame() {
@@ -31,7 +32,9 @@ private:
             return;
         }
 
-        auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "bgr8", frame).toImageMsg();
+        std_msgs::msg::Header header;
+        header.stamp = this->now();
+        auto msg = cv_bridge::CvImage(header, "bgr8", frame).toCompressedImageMsg(cv_bridge::Format::JPEG);
         publisher_->publish(*msg);
     }
 };
