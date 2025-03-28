@@ -6,6 +6,7 @@
 #include <vision_msgs/msg/detection2_d_array.hpp>
 #include <vision_msgs/msg/detection2_d.hpp>
 #include <vision_msgs/msg/object_hypothesis_with_pose.hpp>
+#include <opencv2/videoio.hpp>
 
 using std::placeholders::_1;
 using namespace cv;
@@ -44,6 +45,7 @@ private:
     rclcpp::Publisher<Detection2DArray>::SharedPtr detections_publisher_;
     bool writer_initialized;
     std::string output_video = "output.mp4";
+    cv::VideoWriter writer_;  // new member for video writing
     rclcpp::Time last_frame_time;
     rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr subscription_;
     rclcpp::TimerBase::SharedPtr timer_;
@@ -74,6 +76,17 @@ private:
             // Update the last received frame timestamp
             last_frame_time = this->now();
 
+            // Initialize video writer if not already done
+            if (!writer_initialized) {
+                writer_.open(output_video, cv::VideoWriter::fourcc('m','p','4','v'), 30, frame.size(), true);
+                if (!writer_.isOpened()) {
+                    RCLCPP_ERROR(this->get_logger(), "Could not open the output video for write");
+                }
+                writer_initialized = true;
+            }
+            // Write annotated frame to video file
+            writer_.write(frame);
+
         } catch (cv_bridge::Exception &e) {
             RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
         }
@@ -92,7 +105,7 @@ double angle(Point2f a, Point2f b) {
     if (a.x == b.x) return 90;
     Point2f right = (a.x > b.x) ? a : b;
     Point2f left = (a.x > b.x) ? b : a;
-    return atan((right.y - left.y) / (right.x - left.x)) * 180 / CV_PI;
+    return atan((right.y - left.y) / (right.x - left.x)) * 180.0 / CV_PI;
 }
 
 vector<vector<Point>> getContours(Mat& frame, const string& color) {
@@ -104,8 +117,8 @@ vector<vector<Point>> getContours(Mat& frame, const string& color) {
         inRange(frameHSV, Scalar(0, 70, 50), Scalar(20, 255, 255), mask1);
         inRange(frameHSV, Scalar(170, 70, 50), Scalar(230, 255, 255), mask2);
     } else {
-        inRange(frameHSV, Scalar(90, 70, 50), Scalar(120, 255, 255), mask1);
-        inRange(frameHSV, Scalar(170, 70, 50), Scalar(200, 255, 255), mask2);
+        inRange(frameHSV, Scalar(90, 100, 100), Scalar(115, 255, 255), mask1);
+        inRange(frameHSV, Scalar(115, 100, 100), Scalar(135, 255, 255), mask2);
     }
     frameThreshold = mask1 | mask2;
 
@@ -137,7 +150,7 @@ vector<Point2f> calculateCenters(Mat& frame, const string& color) {
     }
 
     int thresh = 20;
-    double widthSimThresh = 0.1, lengthSimThresh = 0.3, yThresh = 15, angleThresh = 15;
+    double widthSimThresh = 0.1, lengthSimThresh = 0.3, yThresh = 0.15, angleThresh = 15;
 
     for (size_t i = 0; i < bboxes.size(); i++) {
         auto& bbox1 = bboxes[i];
@@ -145,6 +158,14 @@ vector<Point2f> calculateCenters(Mat& frame, const string& color) {
         double width1 = bbox1.size.width;
         double length1 = bbox1.size.height;
         double angle1 = bbox1.angle;
+
+        if (length1 < width1) {
+            swap(length1, width1); // Ensure length1 is always the longer dimension
+            angle1 += 90; // Adjust angle accordingly
+            if (angle1 >= 180) {
+                angle1 -= 180; // Normalize angle to be within [0, 180)
+            }
+        }
 
         if (max(length1, width1) < thresh) continue;
 
@@ -155,19 +176,66 @@ vector<Point2f> calculateCenters(Mat& frame, const string& color) {
             double length2 = bbox2.size.height;
             double angle2 = bbox2.angle;
 
+            if (length2 < width2) {
+                swap(length2, width2); // Ensure length2 is always the longer dimension
+                angle2 += 90; // Adjust angle accordingly
+                if (angle2 >= 180) {
+                    angle2 -= 180; // Normalize angle to be within [0, 180)
+                }
+            }
+
             if (max(length2, width2) < thresh) continue;
 
             double angleDiff = abs(angle1 - angle2);
             double yDiff = abs(center1.y - center2.y);
 
-            if (sim(width1, width2) > widthSimThresh &&
-                sim(length1, length2) > lengthSimThresh &&
-                yDiff < yThresh &&
-                (angleDiff < angleThresh || angleDiff > 180 - angleThresh)) {
-                Point centerMid((center1.x + center2.x) / 2, (center1.y + center2.y) / 2);
+            bool isWidthValid = sim(width1, width2) > widthSimThresh;
+            bool isLengthValid = sim(length1, length2) > lengthSimThresh;
+            bool isYDiffValid = yDiff < yThresh * (length1 + length2) / 2.0;
+            bool isAngleValid = (angleDiff < angleThresh || (angleDiff > 180 - angleThresh));
+
+            // If 3/4 conditions are satisfied, we consider them as a pair
+            int validConditions = 0;
+            if (isWidthValid) validConditions++;
+            if (isLengthValid) validConditions++;
+            if (isYDiffValid) validConditions++;
+            if (isAngleValid) validConditions++;
+            if (validConditions < 2) continue; // Skip if less than 3 conditions are satisfied
+
+            Point centerMid((center1.x + center2.x) / 2, (center1.y + center2.y) / 2);
+            line(frame, center1, center2, Scalar(255, 255, 255), 1);
+            if (validConditions >= 4) {
                 circle(frame, centerMid, 10, Scalar(255, 0, 255), -1);
-                centers.push_back(centerMid);
+            } else {
+                if (validConditions == 3) {
+                    // Highlight the center if 3 conditions are satisfied
+                    circle(frame, centerMid, 7, Scalar(0, 255, 255), -1);
+                } else {
+                    // If only 2 conditions are satisfied, use a smaller circle
+                    circle(frame, centerMid, 5, Scalar(0, 0, 255), -1);
+                }
+                // Display which condition failed
+                putText(frame, 
+                        "Width: " + to_string(isWidthValid) + 
+                        ", Length: " + to_string(isLengthValid) + 
+                        ", YDiff: " + to_string(isYDiffValid) + 
+                        ", Angle: " + to_string(isAngleValid), 
+                        Point(centerMid.x + 10, centerMid.y - 10), 
+                        FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
             }
+
+            centers.push_back(centerMid);
+
+
+            // if (sim(width1, width2) > widthSimThresh &&
+            //     sim(length1, length2) > lengthSimThresh &&
+            //     yDiff < yThresh * (length1 + length2) / 2.0 &&
+            //     (angleDiff < angleThresh || (angleDiff > 180 - angleThresh)))
+            // {
+            //     Point centerMid((center1.x + center2.x) / 2, (center1.y + center2.y) / 2);
+            //     circle(frame, centerMid, 10, Scalar(255, 0, 255), -1);
+            //     centers.push_back(centerMid);
+            // }
         }
     }
 
