@@ -7,6 +7,7 @@
 #include <vision_msgs/msg/detection2_d.hpp>
 #include <vision_msgs/msg/object_hypothesis_with_pose.hpp>
 #include <opencv2/videoio.hpp>
+#include <rclcpp/parameter.hpp>
 
 using std::placeholders::_1;
 using namespace cv;
@@ -19,7 +20,7 @@ double sim(double a, double b);
 double distSq(Point2f a, Point2f b);
 double angle(Point2f a, Point2f b);
 vector<vector<Point>> getContours(Mat& frame, const string& color);
-vector<Point2f> calculateCenters(Mat& frame, const string& color);
+vector<Point2f> calculateCenters(Mat& frame, const string& color, bool draw = false, bool debug = false);
 
 Mat applyCanny(Mat& frame) {
     Mat edges;
@@ -35,6 +36,12 @@ class CVNode : public rclcpp::Node {
 public:
     CVNode() : Node("CVNode"), writer_initialized(false), last_frame_time(this->now()) {
         printf("Initializing subscriber...\n");
+        this->declare_parameter<bool>("debug", false);
+        this->declare_parameter<bool>("write_video", false);
+        this->declare_parameter<string>("output_path", "output.mp4");
+        this->get_parameter("debug", flag_debug_);
+        this->get_parameter("write_video", flag_write_video_);
+        this->get_parameter("output_path", output_video_path_);
         subscription_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
             "/robot/rs2/color/image_raw/compressed", 10, std::bind(&CVNode::topic_callback, this, _1));
 
@@ -44,20 +51,23 @@ public:
 private:
     rclcpp::Publisher<Detection2DArray>::SharedPtr detections_publisher_;
     bool writer_initialized;
-    std::string output_video = "output.mp4";
     cv::VideoWriter writer_;  // new member for video writing
     rclcpp::Time last_frame_time;
     rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr subscription_;
     rclcpp::TimerBase::SharedPtr timer_;
+    bool flag_debug_;
+    bool flag_write_video_;
+    std::string output_video_path_;
 
     void topic_callback(const sensor_msgs::msg::CompressedImage &msg) {
         try {
+
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             Mat frame = cv_ptr->image;
 
             Mat edges = applyCanny(frame);
 
-            vector<Point2f> centers = calculateCenters(frame, "blue");
+            vector<Point2f> centers = calculateCenters(frame, "blue", flag_write_video_, flag_debug_);
 
             Detection2DArray detections_msg;
             detections_msg.header = msg.header;
@@ -76,16 +86,17 @@ private:
             // Update the last received frame timestamp
             last_frame_time = this->now();
 
-            // Initialize video writer if not already done
-            if (!writer_initialized) {
-                writer_.open(output_video, cv::VideoWriter::fourcc('m','p','4','v'), 30, frame.size(), true);
-                if (!writer_.isOpened()) {
-                    RCLCPP_ERROR(this->get_logger(), "Could not open the output video for write");
+            // Write video only if flag is true
+            if (flag_write_video_) {
+                if (!writer_initialized) {
+                    writer_.open(output_video_path_, cv::VideoWriter::fourcc('m','p','4','v'), 30, frame.size(), true);
+                    if (!writer_.isOpened()) {
+                        RCLCPP_ERROR(this->get_logger(), "Could not open the output video for write");
+                    }
+                    writer_initialized = true;
                 }
-                writer_initialized = true;
+                writer_.write(frame);
             }
-            // Write annotated frame to video file
-            writer_.write(frame);
 
         } catch (cv_bridge::Exception &e) {
             RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
@@ -133,7 +144,7 @@ vector<vector<Point>> getContours(Mat& frame, const string& color) {
     return contours;
 }
 
-vector<Point2f> calculateCenters(Mat& frame, const string& color) {
+vector<Point2f> calculateCenters(Mat& frame, const string& color, bool draw, bool debug) {
     auto contours = getContours(frame, color);
     vector<RotatedRect> bboxes;
     vector<Point2f> centers;
@@ -144,8 +155,10 @@ vector<Point2f> calculateCenters(Mat& frame, const string& color) {
 
         Point2f bboxPoints[4];
         bbox.points(bboxPoints);
-        for (int j = 0; j < 4; j++) {
-            line(frame, bboxPoints[j], bboxPoints[(j + 1) % 4], Scalar(0, 255, 0), 2);
+        if (draw) {
+            for (int j = 0; j < 4; j++) {
+                line(frame, bboxPoints[j], bboxPoints[(j + 1) % 4], Scalar(0, 255, 0), 2);
+            }
         }
     }
 
@@ -194,19 +207,24 @@ vector<Point2f> calculateCenters(Mat& frame, const string& color) {
             bool isYDiffValid = yDiff < yThresh * (length1 + length2) / 2.0;
             bool isAngleValid = (angleDiff < angleThresh || (angleDiff > 180 - angleThresh));
 
-            // If 3/4 conditions are satisfied, we consider them as a pair
             int validConditions = 0;
             if (isWidthValid) validConditions++;
             if (isLengthValid) validConditions++;
             if (isYDiffValid) validConditions++;
             if (isAngleValid) validConditions++;
-            if (validConditions < 2) continue; // Skip if less than 3 conditions are satisfied
 
             Point centerMid((center1.x + center2.x) / 2, (center1.y + center2.y) / 2);
+
+            if (validConditions == 4) {
+                centers.push_back(centerMid);
+                if (draw) {
+                    circle(frame, centerMid, 10, Scalar(255, 0, 255), -1);
+                }
+            }
+
+            if (!draw || !debug || validConditions < 2) continue; // Skip if less than 3 conditions are satisfied
             line(frame, center1, center2, Scalar(255, 255, 255), 1);
-            if (validConditions >= 4) {
-                circle(frame, centerMid, 10, Scalar(255, 0, 255), -1);
-            } else {
+            if (validConditions <= 3) {
                 if (validConditions == 3) {
                     // Highlight the center if 3 conditions are satisfied
                     circle(frame, centerMid, 7, Scalar(0, 255, 255), -1);
@@ -214,7 +232,7 @@ vector<Point2f> calculateCenters(Mat& frame, const string& color) {
                     // If only 2 conditions are satisfied, use a smaller circle
                     circle(frame, centerMid, 5, Scalar(0, 0, 255), -1);
                 }
-                // Display which condition failed
+                // Display which condition(s) failed
                 putText(frame, 
                         "Width: " + to_string(isWidthValid) + 
                         ", Length: " + to_string(isLengthValid) + 
@@ -223,19 +241,6 @@ vector<Point2f> calculateCenters(Mat& frame, const string& color) {
                         Point(centerMid.x + 10, centerMid.y - 10), 
                         FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
             }
-
-            centers.push_back(centerMid);
-
-
-            // if (sim(width1, width2) > widthSimThresh &&
-            //     sim(length1, length2) > lengthSimThresh &&
-            //     yDiff < yThresh * (length1 + length2) / 2.0 &&
-            //     (angleDiff < angleThresh || (angleDiff > 180 - angleThresh)))
-            // {
-            //     Point centerMid((center1.x + center2.x) / 2, (center1.y + center2.y) / 2);
-            //     circle(frame, centerMid, 10, Scalar(255, 0, 255), -1);
-            //     centers.push_back(centerMid);
-            // }
         }
     }
 
