@@ -6,4 +6,5 @@ resources/
 src/ros2_benchmark/
 CMakeFiles
 rosbags/
+__pycache__/
 /docker-compose.yml
