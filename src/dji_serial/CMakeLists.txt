@@ -1,34 +1,36 @@
 cmake_minimum_required(VERSION 3.8)
-project(rtt)
+project(dji_serial)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Find dependencies
+# find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(stampede_msgs REQUIRED)
 
-add_executable(rtt_node src/rtt.cpp)
-add_executable(test_serial src/test_serial.cpp)
+# Build a library for the DJI Serial protocol functionality.
+add_library(${PROJECT_NAME}_lib
+  src/dji_serial.cpp
+  src/crc.cpp
+)
 
-target_include_directories(rtt_node PUBLIC
+target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-target_compile_features(rtt_node PUBLIC c_std_99 cxx_std_17)
 
-ament_target_dependencies(rtt_node rclcpp std_msgs)
-ament_target_dependencies(test_serial rclcpp std_msgs stampede_msgs)
+ament_target_dependencies(${PROJECT_NAME}_lib rclcpp std_msgs stampede_msgs)
 
-install(TARGETS rtt_node test_serial
+install(TARGETS ${PROJECT_NAME}_lib
   DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  # Skip cpplint for now (adjust if needed)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()

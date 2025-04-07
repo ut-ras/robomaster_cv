@@ -2,7 +2,7 @@
 #include <std_msgs/msg/byte_multi_array.hpp>
 #include <stampede_msgs/msg/dji_packet.hpp>
 #include "dji_serial_packet.hpp"
-#include "crc.hpp"
+#include "crc.hpp" 
 
 class DJISerialNode : public rclcpp::Node
 {
