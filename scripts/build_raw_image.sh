@@ -11,7 +11,7 @@ IMAGE_KEY="ros2_humble.realsense_source.tools"
 
 print_info "Building $IMAGE_KEY base as image: $BASE_NAME"
 print_info "Running $ROOT/build_image_layers.sh -i \"$IMAGE_KEY\" --image_name \"$BASE_NAME\""
-$ROOT/build_image_layers.sh -i "$IMAGE_KEY" --image_name "$IMAGE_NAME" -r
+$ROOT/build_image_layers.sh -i "$IMAGE_KEY" --image_name "$IMAGE_NAME" -r --docker_arg "--platform=linux/amd64,linux/arm64"
 
 # Check result
 if [ $? -ne 0 ]; then
@@ -23,8 +23,4 @@ if [ $? -ne 0 ]; then
     fi
 fi
 
-# Check image is available
-if [[ -z $(docker image ls --quiet $IMAGE_NAME) ]]; then
-    print_error "No built image found for $IMAGE_NAME, aborting."
-    exit 1
-fi
+print_info "Finished building $IMAGE_KEY base as image: $BASE_NAME"

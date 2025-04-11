@@ -11,6 +11,7 @@
         "/opt/ros/humble/lib/python3.10/site-packages",
         "/opt/ros/humble/local/lib/python3.10/dist-packages"
     ],
+    "cmake.ignoreCMakeListsMissing": true,
     "files.associations": {
         "cctype": "cpp",
         "clocale": "cpp",
@@ -86,6 +87,5 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp"
-    },
-    "cmake.sourceDirectory": "/robomaster_cv/src/classical"
+    }
 }
