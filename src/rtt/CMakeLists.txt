@@ -11,8 +11,8 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(stampede_msgs REQUIRED)
 
+# Build the RTT node executable from src/rtt.cpp
 add_executable(rtt_node src/rtt.cpp)
-add_executable(test_serial src/test_serial.cpp)
 
 target_include_directories(rtt_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -21,9 +21,8 @@ target_include_directories(rtt_node PUBLIC
 target_compile_features(rtt_node PUBLIC c_std_99 cxx_std_17)
 
 ament_target_dependencies(rtt_node rclcpp std_msgs)
-ament_target_dependencies(test_serial rclcpp std_msgs stampede_msgs)
 
-install(TARGETS rtt_node test_serial
+install(TARGETS rtt_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -34,3 +33,4 @@ if(BUILD_TESTING)
 endif()
 
 ament_package()
+
