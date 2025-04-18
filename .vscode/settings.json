@@ -57,6 +57,7 @@
         "optional": "cpp",
         "random": "cpp",
         "ratio": "cpp",
+        "regex": "cpp",
         "string_view": "cpp",
         "system_error": "cpp",
         "tuple": "cpp",

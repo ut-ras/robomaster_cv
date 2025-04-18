@@ -23,7 +23,11 @@
 				"ms-vscode.cpptools"
 			]
 		}
-	}
+	},
+
+	"mounts": [
+    	"type=bind,source=${localEnv:HOME}/.ssh,target=/home/admin/.ssh,readonly",
+	]
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
