@@ -3,6 +3,9 @@
 #include <stampede_msgs/msg/dji_packet.hpp>
 #include "dji_serial_packet.hpp"
 #include "crc.hpp" 
+#include "pose_packet.hpp"
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <tf2/LinearMath/Quaternion.h>
 
 class DJISerialNode : public rclcpp::Node
 {
@@ -26,6 +29,8 @@ public:
         dji_rx_ = this->create_subscription<stampede_msgs::msg::DJIPacket>(
             dji_rx_topic_, 10,
             std::bind(&DJISerialNode::handle_dji_packet, this, std::placeholders::_1));
+
+        pose_pub_ = this->create_publisher<geometry_msgs::msg::PoseStamped>("sentry/pose", 10);
     }
 
 private:
@@ -39,6 +44,8 @@ private:
     rclcpp::Subscription<stampede_msgs::msg::DJIPacket>::SharedPtr dji_rx_;
 
     std::vector<uint8_t> buffer_;
+
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pose_pub_;
 
     void handle_dji_packet(const stampede_msgs::msg::DJIPacket::SharedPtr msg)
     {
@@ -124,6 +131,31 @@ private:
                 continue;
             }
 
+            #define MSG_TYPE_ODOMETRY_DATA 1
+
+            if (dji_packet.message_type == MSG_TYPE_ODOMETRY_DATA && dji_packet.body.size() == sizeof(OdometryData))
+            {
+                OdometryData data;
+                std::memcpy(&data, dji_packet.body.data(), sizeof(OdometryData));
+
+                geometry_msgs::msg::PoseStamped pose_msg;
+                pose_msg.header.stamp = this->now();
+                pose_msg.header.frame_id = "map";
+
+                pose_msg.pose.position.x = data.xPos;
+                pose_msg.pose.position.y = data.yPos;
+                pose_msg.pose.position.z = 0.0;
+
+                tf2::Quaternion q;
+                q.setRPY(0, 0, data.chassisYaw);
+                pose_msg.pose.orientation.x = q.x();
+                pose_msg.pose.orientation.y = q.y();
+                pose_msg.pose.orientation.z = q.z();
+                pose_msg.pose.orientation.w = q.w();
+
+                pose_pub_->publish(pose_msg);
+                RCLCPP_INFO(this->get_logger(), "Published Pose: (%.2f, %.2f, yaw=%.2f)", data.xPos, data.yPos, data.chassisYaw);
+            }
             // Publish the packet
             dji_tx_->publish(dji_packet);
 

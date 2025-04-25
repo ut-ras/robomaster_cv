@@ -10,6 +10,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(stampede_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(geometry_msgs REQUIRED)
 
 # Build a library for the DJI Serial protocol functionality.
 add_library(${PROJECT_NAME}_lib
@@ -22,7 +24,13 @@ target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(${PROJECT_NAME}_lib rclcpp std_msgs stampede_msgs)
+ament_target_dependencies(${PROJECT_NAME}_lib
+  rclcpp
+  std_msgs
+  stampede_msgs
+  tf2                  
+  geometry_msgs         
+)
 
 install(TARGETS ${PROJECT_NAME}_lib
   DESTINATION lib/${PROJECT_NAME}
