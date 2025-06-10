@@ -1,3 +1,4 @@
+.DS_Store
 build/
 install/
 log/
@@ -7,3 +8,7 @@ src/ros2_benchmark/
 CMakeFiles
 rosbags/
 /docker-compose.yml
+*.mp4
+*.png
+*.jpg
+*.mov
