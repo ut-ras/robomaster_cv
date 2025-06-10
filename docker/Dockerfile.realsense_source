@@ -17,3 +17,5 @@ COPY scripts/hotplug-realsense.sh /opt/realsense/hotplug-realsense.sh
 RUN chmod +x /opt/realsense/hotplug-realsense.sh
 COPY udev_rules/99-realsense-libusb-custom.rules /etc/udev/rules.d/99-realsense-libusb-custom.rules
 RUN sudo cp /root/librealsense/config/99-realsense-libusb.rules /etc/udev/rules.d/
+
+RUN rm -rf /root/librealsense
