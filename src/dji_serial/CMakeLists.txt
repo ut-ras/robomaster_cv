@@ -17,14 +17,25 @@ add_library(${PROJECT_NAME}_lib
   src/crc.cpp
 )
 
+add_executable(dji_serial
+  src/dji_serial.cpp
+  src/crc.cpp
+)
+
+add_executable(test_serial
+  src/test_serial.cpp
+)
+
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
 
 ament_target_dependencies(${PROJECT_NAME}_lib rclcpp std_msgs stampede_msgs)
+ament_target_dependencies(dji_serial rclcpp std_msgs stampede_msgs)
+ament_target_dependencies(test_serial rclcpp std_msgs stampede_msgs)
 
-install(TARGETS ${PROJECT_NAME}_lib
+install(TARGETS ${PROJECT_NAME}_lib dji_serial test_serial
   DESTINATION lib/${PROJECT_NAME}
 )
 
