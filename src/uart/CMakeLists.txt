@@ -38,54 +38,23 @@ install(
 )
 
 # uart_tx executable
-add_executable(uart_tx 
-  src/uart_tx.cpp
+add_executable(uart
+  src/uart.cpp
 )
-ament_target_dependencies(uart_tx 
+ament_target_dependencies(uart
   ${DEPENDENCIES}
 )
-target_link_libraries(uart_tx
+target_link_libraries(uart
   serial
 )
 
-target_include_directories(uart_tx
-  PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
-
-# uart_rx executable
-add_executable(uart_rx
-  src/uart_rx.cpp
-)
-ament_target_dependencies(uart_rx 
-  ${DEPENDENCIES}
-)
-target_link_libraries(uart_rx
-  serial
-)
-
-target_include_directories(uart_rx
-  PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
-
-# test_pub executable
-add_executable(test_pub
-  src/test_pub.cpp
-)
-ament_target_dependencies(test_pub 
-  ${DEPENDENCIES}
-)
-
-target_include_directories(test_pub
+target_include_directories(uart
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>")
 
 install(TARGETS
-  uart_tx
-  uart_rx
-  test_pub
+  uart
   DESTINATION lib/${PROJECT_NAME})
 
 install(
