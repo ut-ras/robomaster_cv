@@ -16,6 +16,7 @@
 
 using std::placeholders::_1;
 using vision_msgs::msg::Detection2DArray;
+using vision_msgs::msg::Detection2D;
 
 
 
@@ -198,6 +199,7 @@ public:
 class DetectionListener : public rclcpp::Node {
 public:
     DetectionListener() : Node("detection_listener") {
+        publisher_ = this->create_publisher<Detection2DArray>("predicted_points", 10); 
         subscription_ = this->create_subscription<Detection2DArray>(
             "detections", 10, std::bind(&DetectionListener::callback, this, _1));
         // RCLCPP_INFO(this->get_logger(), "Detection listener node started.");
@@ -205,6 +207,7 @@ public:
 
 private:
     rclcpp::Subscription<Detection2DArray>::SharedPtr subscription_;
+    rclcpp::Publisher<Detection2DArray>::SharedPtr publisher_;
 
     std::vector<Track> tracks_;
     int next_id_;
@@ -302,16 +305,35 @@ private:
             return t.unseen > 5;
         }), tracks_.end());
 
-        vector<Point2f> out;
+        Detection2DArray out;
+        out.header = msg->header; 
+
 
         for (auto& t : tracks_) {
             Point2f pt = t.filter.predict();
             RCLCPP_INFO(this->get_logger(), "X: %.2f, Y: %.2f", pt.x, pt.y);
-            out.push_back(pt);
 
+            Detection2D detection;
+            detection.bbox.center.position.x = pt.x;
+            detection.bbox.center.position.y = pt.y;
+            out.detections.push_back(detection); 
 
         }
 
+        // add acutal points here
+        Detection2D actualPoint; 
+        if (detections.size() >= 1){
+             actualPoint.bbox.center.position.x = detections[0].x;
+            actualPoint.bbox.center.position.y = detections[0].y;
+
+            out.detections.push_back(actualPoint);
+        }
+       
+
+        publisher_->publish(out);
+
+
+        
 
         //sort ros code here:
     }
