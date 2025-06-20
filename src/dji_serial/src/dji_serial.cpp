@@ -11,21 +11,21 @@ public:
     {
         this->declare_parameter<std::string>("serial_tx_topic", "uart_tx");
         this->declare_parameter<std::string>("serial_rx_topic", "uart_rx");
-        this->declare_parameter<std::string>("dji_tx_topic", "dji_rx");
-        this->declare_parameter<std::string>("dji_rx_topic", "dji_tx");
+        this->declare_parameter<std::string>("dji_tx_topic", "dji_tx");
+        this->declare_parameter<std::string>("dji_rx_topic", "dji_rx");
         this->get_parameter("serial_tx_topic", serial_tx_topic_);
         this->get_parameter("serial_rx_topic", serial_rx_topic_);
         this->get_parameter("dji_tx_topic", dji_tx_topic_);
         this->get_parameter("dji_rx_topic", dji_rx_topic_);
 
         rtt_tx_ = this->create_publisher<std_msgs::msg::ByteMultiArray>(serial_tx_topic_, 10);
+        dji_tx_ = this->create_subscription<stampede_msgs::msg::DJIPacket>(
+            dji_tx_topic_, 10,
+            std::bind(&DJISerialNode::handle_dji_packet, this, std::placeholders::_1));
         rtt_rx_ = this->create_subscription<std_msgs::msg::ByteMultiArray>(
             serial_rx_topic_, 10,
             std::bind(&DJISerialNode::handle_rtt_message, this, std::placeholders::_1));
-        dji_tx_ = this->create_publisher<stampede_msgs::msg::DJIPacket>(dji_tx_topic_, 10);
-        dji_rx_ = this->create_subscription<stampede_msgs::msg::DJIPacket>(
-            dji_rx_topic_, 10,
-            std::bind(&DJISerialNode::handle_dji_packet, this, std::placeholders::_1));
+        dji_rx_ = this->create_publisher<stampede_msgs::msg::DJIPacket>(dji_rx_topic_, 10);
     }
 
 private:
@@ -34,9 +34,9 @@ private:
     std::string dji_tx_topic_;
     std::string dji_rx_topic_;
     rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr rtt_tx_;
+    rclcpp::Subscription<stampede_msgs::msg::DJIPacket>::SharedPtr dji_tx_;
     rclcpp::Subscription<std_msgs::msg::ByteMultiArray>::SharedPtr rtt_rx_;
-    rclcpp::Publisher<stampede_msgs::msg::DJIPacket>::SharedPtr dji_tx_;
-    rclcpp::Subscription<stampede_msgs::msg::DJIPacket>::SharedPtr dji_rx_;
+    rclcpp::Publisher<stampede_msgs::msg::DJIPacket>::SharedPtr dji_rx_;
 
     std::vector<uint8_t> buffer_;
 
@@ -104,6 +104,9 @@ private:
                 return;
             }
 
+            RCLCPP_INFO(this->get_logger(), "Processing packet: seq=%d, type=%d, length=%d", 
+                dji_packet.frame_sequence_number, dji_packet.message_type, dji_packet.frame_data_length);
+
             // Parse the packet body and CRC16
             dji_packet.body.insert(dji_packet.body.end(), buffer_.begin() + 7, buffer_.begin() + 7 + dji_packet.frame_data_length);
             dji_packet.crc16 = static_cast<uint16_t>(buffer_[7 + dji_packet.frame_data_length]) | (static_cast<uint16_t>(buffer_[8 + dji_packet.frame_data_length]) << 8);
@@ -125,7 +128,10 @@ private:
             }
 
             // Publish the packet
-            dji_tx_->publish(dji_packet);
+            dji_rx_->publish(dji_packet);
+
+            RCLCPP_INFO(this->get_logger(), "Published DJI Packet: seq=%d, type=%d, length=%d", 
+                dji_packet.frame_sequence_number, dji_packet.message_type, dji_packet.frame_data_length);
 
             // Remove the processed packet from the buffer
             buffer_.erase(buffer_.begin(), buffer_.begin() + packet_size);
