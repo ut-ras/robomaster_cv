@@ -115,7 +115,7 @@ private:
             {
                 auto msg = std_msgs::msg::ByteMultiArray();
                 msg.data.insert(msg.data.end(), buffer, buffer + bytes_received);
-                RCLCPP_INFO(this->get_logger(), "Received: %.*s", msg.data.size(), msg.data.data());
+                RCLCPP_INFO(this->get_logger(), "Received: %.*s", (int) msg.data.size(), msg.data.data());
                 publisher_->publish(msg);
             }
             else if (bytes_received == 0)
@@ -150,7 +150,7 @@ private:
         }
         else
         {
-            RCLCPP_INFO(this->get_logger(), "Sent: %.*s", msg->data.size(), msg->data.data());
+            RCLCPP_INFO(this->get_logger(), "Sent: %.*s", (int) msg->data.size(), msg->data.data());
         }
     }
 

@@ -9,7 +9,7 @@
 class PoseNode : public rclcpp::Node {
 public:
     PoseNode() : Node("pose_node") {
-        this->declare_parameter<std::string>("dji_rx_topic", "dji_tx");
+        this->declare_parameter<std::string>("dji_rx_topic", "dji_rx");
         this->declare_parameter<std::string>("odometry_topic", "odometry_data");
         this->get_parameter("dji_rx_topic", dji_rx_topic_);
         this->get_parameter("odometry_topic", odometry_topic_);
@@ -37,6 +37,9 @@ private:
                         msg->body.size());
             odom_pub_->publish(odom_msg);
             RCLCPP_INFO(this->get_logger(), "Published OdometryData: (%.2f, %.2f, yaw=%.2f)", odom_msg.x_pos, odom_msg.y_pos, odom_msg.chassis_yaw);
+            RCLCPP_INFO(this->get_logger(), "Position: (%.2f, %.2f, %.2f)", odom_msg.x_pos, odom_msg.y_pos, odom_msg.z_pos);
+            RCLCPP_INFO(this->get_logger(), "Chassis Pitch: %.2f, Yaw: %.2f, Roll: %.2f", odom_msg.chassis_pitch, odom_msg.chassis_yaw, odom_msg.chassis_roll);
+            RCLCPP_INFO(this->get_logger(), "Turret Pitch: %.2f, Yaw: %.2f", odom_msg.turret_pitch, odom_msg.turret_yaw);
         }
     }
 };
