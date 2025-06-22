@@ -88,14 +88,14 @@ public:
     Kalman2D(geometry_msgs::msg::Point32 pt) {
         kf.init(4, 2, 0);
         kf.transitionMatrix = (Mat_<float>(4, 4) <<
-            1, 0, 1, 0,
-            0, 1, 0, 1,
+            1, 0, 3, 0,
+            0, 1, 0, 3,
             0, 0, 1, 0,
             0, 0, 0, 1);
         kf.measurementMatrix = Mat::eye(2, 4, CV_32F);
-        setIdentity(kf.processNoiseCov, Scalar::all(1e-2));
-        setIdentity(kf.measurementNoiseCov, Scalar::all(1e-1));
-        setIdentity(kf.errorCovPost, Scalar::all(1));
+        setIdentity(kf.processNoiseCov, Scalar::all(1e-2) * 0.2);         // Q
+        setIdentity(kf.measurementNoiseCov, Scalar::all(1e-1) * 2);     // R
+        setIdentity(kf.errorCovPost, Scalar::all(1) * 10000);               // P 
 
         kf.statePost.at<float>(0) = pt.x;
         kf.statePost.at<float>(1) = pt.y;
@@ -104,10 +104,8 @@ public:
     }
 
     Point2f predict() {
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "kf: %p", &kf);
 
         Mat prediction = kf.predict();
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "prediction: %p", &prediction);
         return Point2f(prediction.at<float>(0), prediction.at<float>(1));
     }
 
@@ -132,23 +130,16 @@ struct Track {
 class HungarianAlgorithm {
 public:
     void Solve(const vector<vector<float>>& costMatrix, vector<int>& assignment) {
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "Solve method starting");
 
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "Cost Matrix: %p", costMatrix);
         
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "creating n");
         size_t n = costMatrix.size(); 
 
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "creating m");
         size_t m = costMatrix[0].size();
         
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "create boolean vectors");
         vector<bool> usedRows(n, false), usedCols(m, false);
         
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "Assigning assignment vector");
         assignment.assign(n, -1);
 
-        // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "about to begin slogic");
         for (size_t i = 0; i < n; ++i) {
             float minCost = std::numeric_limits<float>::max();
             int bestJ = -1;
@@ -159,7 +150,6 @@ public:
                 }
             }
             if (bestJ != -1) {
-                // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "if bestJ != -1");
                 assignment[i] = bestJ;
                 usedCols[bestJ] = true;
             }
@@ -167,42 +157,12 @@ public:
     }
 };
 
-// ──────────────── ROS2 Node ────────────────
-// class MultiObjectTracker : public rclcpp::Node {
-// public:
-//     MultiObjectTracker() : Node("multi_object_tracker") {
-//         sub_ = this->create_subscription<geometry_msgs::msg::PoseArray>(
-//             "detections", 10, std::bind(&MultiObjectTracker::detection_callback, this, _1));
-
-//         pub_ = this->create_publisher<geometry_msgs::msg::PoseArray>("tracked_points", 10);
-//         next_id_ = 0;
-//     }
-
-// private:
-//     rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr sub_;
-//     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr pub_;
-//     std::vector<Track> tracks_;
-//     int next_id_;
-
-//     void detection_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg) {
-        
-//     }
-
-
-// };
-
-
-
-
-
-
 class DetectionListener : public rclcpp::Node {
 public:
     DetectionListener() : Node("detection_listener") {
         publisher_ = this->create_publisher<Detection2DArray>("predicted_points", 10); 
         subscription_ = this->create_subscription<Detection2DArray>(
             "detections", 10, std::bind(&DetectionListener::callback, this, _1));
-        // RCLCPP_INFO(this->get_logger(), "Detection listener node started.");
     }
 
 private:
@@ -211,6 +171,8 @@ private:
 
     std::vector<Track> tracks_;
     int next_id_;
+    int frame_number = 0;
+
 
     geometry_msgs::msg::Point32 toPoint(const Point2f point) const {
         geometry_msgs::msg::Point32 pt;
@@ -220,7 +182,7 @@ private:
     }
 
     void callback(const Detection2DArray::SharedPtr msg) {
-        // RCLCPP_INFO(this->get_logger(), "Received %zu detections", msg->detections.size());
+        frame_number++;
 
 
 
@@ -231,7 +193,7 @@ private:
         for (const auto &detection : msg->detections) {
             float x = detection.bbox.center.position.x;
             float y = detection.bbox.center.position.y;
-            // RCLCPP_INFO(this->get_logger(), "Detection - x: %.2f, y: %.2f, size x: %.2f, size y: %.2f", x, y, detection.bbox.size_x, detection.bbox.size_y);
+            // RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Detection - x: %.2f, y: %.2f", frame_number, x, y);
 
             // geometry_msgs::msg::Pose pose; 
 
@@ -247,18 +209,19 @@ private:
 
         }
 
-        RCLCPP_INFO(this->get_logger(), "tracks size: %d, detections size: %d", tracks_.size(), detections.size());
+
+
 
         // const auto& detections = msg->poses;
         vector<Point2f> predictions;
         int i = 0;
         for (auto& t : tracks_) {
             if (!detections.empty()){
-                // RCLCPP_INFO(this->get_logger(), "adding predict to predictions array: predicitions size %d", predictions.size());
                 Point2f val = t.filter.predict(); 
-                // RCLCPP_INFO(rclcpp::get_logger("tracking2_node"), "Pushing back prediction");
                 predictions.push_back(val);
-                RCLCPP_INFO(this->get_logger(), "prediction - x: %.2f, y: %.2f || detection - x: %.2f, y: %.2f", predictions.back().x, predictions.back().y, detections[i].x, detections[i].y);
+
+                RCLCPP_INFO(this->get_logger(), "Frame Number: %d, prediction - x: %.2f, y: %.2f || detection - x: %.2f, y: %.2f", frame_number, predictions.back().x, predictions.back().y, detections[i].x, detections[i].y);
+
                 i++;
             }
         }
@@ -269,21 +232,18 @@ private:
                 float dx = predictions[i].x - detections[j].x;
                 float dy = predictions[i].y - detections[j].y;
                 cost_matrix[i][j] = sqrt(dx * dx + dy * dy);
-                // RCLCPP_INFO(this->get_logger(), "Just added values to cost matrix");
             }
         }
 
 
         vector<int> assignment;
         if (!tracks_.empty()) {
-            // RCLCPP_INFO(this->get_logger(), "about to call Hungarian algo");
             HungarianAlgorithm().Solve(cost_matrix, assignment);
         }
 
         vector<bool> matched(detections.size(), false);
         for (size_t i = 0; i < tracks_.size(); ++i) {
             if (assignment[i] != -1 && cost_matrix[i][assignment[i]] < 50.0f) {
-                // RCLCPP_INFO(this->get_logger(), "About to correct track %d", tracks_[i].id);
                 tracks_[i].filter.correct(toPoint(detections[assignment[i]]));
                 tracks_[i].unseen = 0;
                 matched[assignment[i]] = true;
@@ -291,14 +251,12 @@ private:
                 tracks_[i].unseen++;
             }
         }
-        
 
-        // adding the track back after updating
-        for (size_t j = 0; j < detections.size(); ++j) {
-            if (!matched[j]) {
-                // RCLCPP_INFO(this->get_logger(), "adding a track");
-                tracks_.emplace_back(toPoint(detections[j]), next_id_++);
+        if (tracks_.empty()) {
+            for (const auto& det : detections) {
+                tracks_.emplace_back(toPoint(det), next_id_++);
             }
+            return;
         }
 
         tracks_.erase(remove_if(tracks_.begin(), tracks_.end(), [](const Track& t) {
@@ -311,8 +269,7 @@ private:
 
         for (auto& t : tracks_) {
             Point2f pt = t.filter.predict();
-            RCLCPP_INFO(this->get_logger(), "X: %.2f, Y: %.2f", pt.x, pt.y);
-
+            
             Detection2D detection;
             detection.bbox.center.position.x = pt.x;
             detection.bbox.center.position.y = pt.y;
@@ -323,9 +280,9 @@ private:
         // add acutal points here
         Detection2D actualPoint; 
         if (detections.size() >= 1){
-             actualPoint.bbox.center.position.x = detections[0].x;
+            actualPoint.bbox.center.position.x = detections[0].x;
             actualPoint.bbox.center.position.y = detections[0].y;
-
+            
             out.detections.push_back(actualPoint);
         }
        
