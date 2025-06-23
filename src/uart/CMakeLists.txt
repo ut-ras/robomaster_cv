@@ -41,9 +41,19 @@ install(
 add_executable(uart
   src/uart.cpp
 )
+
+add_executable(simulate_uart_rx
+  src/simulate_uart_rx.cpp
+)
+
 ament_target_dependencies(uart
   ${DEPENDENCIES}
 )
+
+ament_target_dependencies(simulate_uart_rx
+  ${DEPENDENCIES}
+)
+
 target_link_libraries(uart
   serial
 )
@@ -55,6 +65,7 @@ target_include_directories(uart
 
 install(TARGETS
   uart
+  simulate_uart_rx
   DESTINATION lib/${PROJECT_NAME})
 
 install(
