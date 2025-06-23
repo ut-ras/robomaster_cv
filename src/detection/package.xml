@@ -18,6 +18,7 @@
   <depend>vision_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>opencv2</depend>
+  <depend>realsense2_camera_msgs</depend>
 
 
   <export>
