@@ -1,3 +1,4 @@
+#ros2 launch realsense2_camera rs_launch.py rgb_camera.profile:=640x480x30 depth_module.profile:=6400x480x30 enable_color:=true enable_depth:=true enable_sync:=true camera_namespace:=robot camera_name:=rs2 align_depth.enable:=true enable_rgbd:=true
 ros2 launch realsense2_camera rs_launch.py rgb_camera.profile:=1280x720x30 depth_module.profile:=1280x720x30 enable_color:=true enable_depth:=true enable_sync:=true camera_namespace:=robot camera_name:=rs2 align_depth.enable:=true enable_rgbd:=true
 # ros2 launch realsense2_camera rs_launch.py rgb_camera.profile:=1280x720x30 depth_module.profile:=1280x720x6 enable_color:=true enable_depth:=true camera_namespace:=robot camera_name:=rs2
 # ros2 launch realsense2_camera rs_launch.py rgb_camera.profile:=1280x720x30 depth_module.profile:=1280x720x30 enable_rgbd:=true enable_sync:=true align_depth.enable:=true enable_color:=true enable_depth:=true camera_namespace:=robot camera_name:=rs2
