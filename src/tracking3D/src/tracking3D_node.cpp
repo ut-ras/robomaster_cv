@@ -2,6 +2,10 @@
 #include <rclcpp/rclcpp.hpp>
 #include <vision_msgs/msg/detection2_d_array.hpp>
 #include <vision_msgs/msg/detection2_d.hpp>
+
+#include <vision_msgs/msg/detection3_d_array.hpp>
+#include <vision_msgs/msg/detection3_d.hpp>
+
 #include <geometry_msgs/msg/pose2_d.hpp>
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/video/tracking.hpp"
@@ -38,7 +42,8 @@ using sensor_msgs::msg::CompressedImage;
 using vision_msgs::msg::Detection2D;
 using vision_msgs::msg::ObjectHypothesisWithPose;
 
-
+using vision_msgs::msg::Detection3DArray;
+using vision_msgs::msg::Detection3D;
 
 
 #define STATE_NUM 7
@@ -52,75 +57,83 @@ using namespace cv;
 * -----------------------------------------------
 * |                                             |
 * |                                             |
-* |               SortRect.hpp                  |
-* |                                             |
-* -----------------------------------------------
-*/
-struct SortRect {
-
-    int id;
-    float centerX;
-    float centerY;
-    float width;
-    float height;
-};
-
-
-
-
-/*
-* -----------------------------------------------
-* |                                             |
-* |                                             |
 * |               KalmanFilter.cpp                  |
 * |                                             |
 * -----------------------------------------------
 */
-// File: src/multi_object_tracker_node.cpp
 
+class Kalman3D {
+public:
+    cv::KalmanFilter kf;
+
+    Kalman3D(geometry_msgs::msg::Point32 det) {
+        kf.init(6, 3, 0);  // 3D pos + 3D vel
+
+        kf.transitionMatrix = (cv::Mat_<float>(6, 6) <<
+            1,0,0,1,0,0,
+            0,1,0,0,1,0,
+            0,0,1,0,0,1,
+            0,0,0,1,0,0,
+            0,0,0,0,1,0,
+            0,0,0,0,0,1);
+
+        kf.measurementMatrix = cv::Mat::zeros(3, 6, CV_32F);
+        kf.measurementMatrix.at<float>(0, 0) = 1.0f;
+        kf.measurementMatrix.at<float>(1, 1) = 1.0f;
+        kf.measurementMatrix.at<float>(2, 2) = 1.0f;
+
+        setIdentity(kf.processNoiseCov, cv::Scalar::all(1e-2));
+        setIdentity(kf.measurementNoiseCov, cv::Scalar::all(1e-1));
+        setIdentity(kf.errorCovPost, cv::Scalar::all(1));
+
+        kf.statePost.at<float>(0) = det.x;
+        kf.statePost.at<float>(1) = det.y;
+        kf.statePost.at<float>(2) = det.z;
+    }
 
 
 // ──────────────── Kalman Filter Class ────────────────
-class Kalman2D {
-public:
-    KalmanFilter kf;
-    Kalman2D(geometry_msgs::msg::Point32 pt) {
-        kf.init(4, 2, 0);
-        int dt = 1; 
-        kf.transitionMatrix = (Mat_<float>(4, 4) <<
-            1, 0, dt, 0,
-            0, 1, 0, dt,
-            0, 0, 1, 0,
-            0, 0, 0, 1);
-        kf.measurementMatrix = Mat::eye(2, 4, CV_32F);
-        setIdentity(kf.processNoiseCov, Scalar::all(1e-2) * 0.2);         // Q
-        setIdentity(kf.measurementNoiseCov, Scalar::all(1e-1) * 2);     // R
-        setIdentity(kf.errorCovPost, Scalar::all(1) * 10000);               // P 
+// class Kalman2D {
+// public:
+//     KalmanFilter kf;
+//     Kalman2D(geometry_msgs::msg::Point32 pt) {
+//         kf.init(4, 2, 0);
+//         int dt = 1; 
+//         kf.transitionMatrix = (Mat_<float>(4, 4) <<
+//             1, 0, dt, 0,
+//             0, 1, 0, dt,
+//             0, 0, 1, 0,
+//             0, 0, 0, 1);
+//         kf.measurementMatrix = Mat::eye(2, 4, CV_32F);
+//         setIdentity(kf.processNoiseCov, Scalar::all(1e-2) * 0.2);         // Q
+//         setIdentity(kf.measurementNoiseCov, Scalar::all(1e-1) * 2);     // R
+//         setIdentity(kf.errorCovPost, Scalar::all(1) * 10000);               // P 
 
-        kf.statePost.at<float>(0) = pt.x;
-        kf.statePost.at<float>(1) = pt.y;
-        kf.statePost.at<float>(2) = 0;
-        kf.statePost.at<float>(3) = 0;
-    }
+//         kf.statePost.at<float>(0) = pt.x;
+//         kf.statePost.at<float>(1) = pt.y;
+//         kf.statePost.at<float>(2) = 0;
+//         kf.statePost.at<float>(3) = 0;
+//     }
 
-    Point2f predict() {
+    Point3f predict() {
 
         Mat prediction = kf.predict();
-        return Point2f(prediction.at<float>(0), prediction.at<float>(1));
+        return Point3f(prediction.at<float>(0), prediction.at<float>(1), prediction.at<float>(2));
     }
 
-    Point2f correct(const geometry_msgs::msg::Point32& pt) {
+    Point3f correct(const geometry_msgs::msg::Point32& pt) {
         Mat meas(2, 1, CV_32F);
         meas.at<float>(0) = pt.x;
         meas.at<float>(1) = pt.y;
+        meas.at<float>(2) = pt.z;
         Mat estimate = kf.correct(meas);
-        return Point2f(estimate.at<float>(0), estimate.at<float>(1));
+        return Point3f(estimate.at<float>(0), estimate.at<float>(1), estimate.at<float>(2));
     }
 };
 
 // ──────────────── Track Management ────────────────
 struct Track {
-    Kalman2D filter;
+    Kalman3D filter;
     int id;
     int unseen = 0;
     Track(geometry_msgs::msg::Point32 pt, int id_) : filter(pt), id(id_) {}
@@ -163,7 +176,7 @@ public:
 class DetectionListener : public rclcpp::Node {
 public:
     DetectionListener() : Node("detection_listener") {
-        publisher_ = this->create_publisher<Detection2DArray>("predicted_points", 10); 
+        publisher_ = this->create_publisher<Detection3DArray>("predicted_points", 10); 
         // subscription_ = this->create_subscription<Detection2DArray>(
         //     "detections", 10, std::bind(&DetectionListener::callback, this, _1));
 
@@ -178,17 +191,18 @@ private:
     bool writer_initialized = false; 
     cv::VideoWriter writer_; 
     // rclcpp::Subscription<Detection2DArray>::SharedPtr subscription_;
-    rclcpp::Publisher<Detection2DArray>::SharedPtr publisher_;
+    rclcpp::Publisher<Detection3DArray>::SharedPtr publisher_;
 
     std::vector<Track> tracks_;
     int next_id_;
     int frame_number = 0;
 
 
-    geometry_msgs::msg::Point32 toPoint(const Point2f point) const {
+    geometry_msgs::msg::Point32 toPoint(const Point3f point) const {
         geometry_msgs::msg::Point32 pt;
         pt.x = point.x;
         pt.y = point.y;
+        pt.z = point.z;
         return pt;
     }
 
@@ -202,28 +216,30 @@ private:
         return edgesColor;
     }
 
-    void callback(const Detection2DArray::ConstSharedPtr msg,
+    void callback(const Detection3DArray::ConstSharedPtr msg,
                   const CompressedImage::ConstSharedPtr image_msg) {
         frame_number++;
         RCLCPP_INFO(this->get_logger(), "Frame Number: %d", frame_number);
 
 
 
-        vector<Point2f> detections; 
+        vector<Point3f> detections; 
 
 
         
         for (const auto &detection : msg->detections) {
             float x = detection.bbox.center.position.x;
             float y = detection.bbox.center.position.y;
-            // RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Detection - x: %.2f, y: %.2f", frame_number, x, y);
+            float z = detection.bbox.center.position.z;
 
             // geometry_msgs::msg::Pose pose; 
 
-            Point2f point;
+            Point3f point;
             
             point.x = x; 
             point.y = y; 
+            point.z = z; 
+            
 
 
             //geometry_msgs::msg::PoseArray::SharedPtr
@@ -236,14 +252,14 @@ private:
 
 
         // const auto& detections = msg->poses;
-        vector<Point2f> predictions;
+        vector<Point3f> predictions;
         int i = 0;
         for (auto& t : tracks_) {
             if (!detections.empty()){
-                Point2f val = t.filter.predict(); 
+                Point3f val = t.filter.predict(); 
                 predictions.push_back(val);
 
-                // RCLCPP_INFO(this->get_logger(), "Frame Number: %d, prediction - x: %.2f, y: %.2f || detection - x: %.2f, y: %.2f", frame_number, predictions.back().x, predictions.back().y, detections[i].x, detections[i].y);
+
 
                 i++;
             }
@@ -254,7 +270,8 @@ private:
             for (size_t j = 0; j < detections.size(); ++j) {
                 float dx = predictions[i].x - detections[j].x;
                 float dy = predictions[i].y - detections[j].y;
-                cost_matrix[i][j] = sqrt(dx * dx + dy * dy);
+                float dz = predictions[i].z - detections[j].z; 
+                cost_matrix[i][j] = sqrt(dx * dx + dy * dy + dz * dz);
             }
         }
 
@@ -279,7 +296,6 @@ private:
             for (const auto& det : detections) {
                 tracks_.emplace_back(toPoint(det), next_id_++);
             }
-            // RCLCPP_WARN(this->get_logger(), "BOUTA RETURN!!");
             return;
         }
 
@@ -287,16 +303,17 @@ private:
             return t.unseen > 2;
         }), tracks_.end());
 
-        Detection2DArray out;
+        Detection3DArray out;
         out.header = msg->header; 
 
 
         for (auto& t : tracks_) {
-            Point2f pt = t.filter.predict();
+            Point3f pt = t.filter.predict();
             
-            Detection2D detection;
+            Detection3D detection;
             detection.bbox.center.position.x = pt.x;
             detection.bbox.center.position.y = pt.y;
+            detection.bbox.center.position.z = pt.z;
             out.detections.push_back(detection); 
 
         }
@@ -325,9 +342,9 @@ private:
             for (auto& det : detections) {
                 auto detectedPoint = cv::Point();
                 detectedPoint.x = det.x; 
-                detectedPoint.y = det.y; 
+                detectedPoint.y = det.y;
                 circle(frame, detectedPoint, 10, Scalar(255, 0, 255), -1);
-                RCLCPP_INFO(this->get_logger(), "\tDetection - x: %.2f, y: %.2f", det.x, det.y);
+                RCLCPP_INFO(this->get_logger(), "\tDetection - x: %.2f, y: %.2f, z: %2f", det.x, det.y, det.z);
             }
 
             for (auto& pred : predictions) {
@@ -335,7 +352,7 @@ private:
                 predictedPoint.x = pred.x; 
                 predictedPoint.y = pred.y; 
                 circle(frame, predictedPoint, 10, Scalar(0, 255, 0), -1);
-                RCLCPP_INFO(this->get_logger(), "\tPrediction - x: %.2f, y: %.2f", pred.x, pred.y);
+                RCLCPP_INFO(this->get_logger(), "\tPrediction - x: %.2f, y: %.2f, z: %.2f", pred.x, pred.y, pred.z);
             }
 
 
@@ -353,10 +370,10 @@ private:
     }
 
 
-    message_filters::Subscriber<Detection2DArray> detection_sub_;
+    message_filters::Subscriber<Detection3DArray> detection_sub_;
     message_filters::Subscriber<CompressedImage> image_sub_;
 
-    using SyncPolicy = message_filters::sync_policies::ApproximateTime<Detection2DArray, CompressedImage>;
+    using SyncPolicy = message_filters::sync_policies::ApproximateTime<Detection3DArray, CompressedImage>;
     using Sync = message_filters::Synchronizer<SyncPolicy>;
     std::shared_ptr<Sync> sync_;
 
