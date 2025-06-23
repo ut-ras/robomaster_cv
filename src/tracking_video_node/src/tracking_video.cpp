@@ -48,18 +48,17 @@ public:
 private:
     bool writer_initialized = false; 
     cv::VideoWriter writer_; 
+
+    int frame_number = 0; 
+
     void callback(const Detection2DArray::ConstSharedPtr detection_msg,
                   const CompressedImage::ConstSharedPtr image_msg)
     {
-        if (detection_msg->detections.size() >= 2)
-        {
-            float predictedX = detection_msg->detections[0].bbox.center.position.x;
-            float predictedY = detection_msg->detections[0].bbox.center.position.y;
-            float detectedX = detection_msg->detections[1].bbox.center.position.x;
-            float detectedY = detection_msg->detections[1].bbox.center.position.y;
+            frame_number++;
 
-            RCLCPP_INFO(this->get_logger(), "Detection - x: %.2f, y: %.2f, Predicted x: %.2f, predicted y: %.2f",
-                        detectedX, detectedY, predictedX, predictedY);
+
+            // RCLCPP_INFO(this->get_logger(), "Detection - x: %.2f, y: %.2f, Predicted x: %.2f, predicted y: %.2f",
+            //             detectedX, detectedY, predictedX, predictedY);
 
             // Optional: use `image_msg` here
             try {
@@ -77,29 +76,57 @@ private:
                   writer_initialized = true;
               }
 
-              // draw two circles right here :) O O (like that <- :) )
-              auto actualPoint = cv::Point();
-              actualPoint.x = detectedX; 
-              actualPoint.y = detectedY; 
+            float predictedX; 
+            float predictedY;
+            float detectedX;
+            float detectedY;
+            if (detection_msg->detections.size() >= 2)
+            {
+                predictedX = detection_msg->detections[0].bbox.center.position.x;
+                predictedY = detection_msg->detections[0].bbox.center.position.y;
+
+                detectedX = detection_msg->detections[1].bbox.center.position.x;
+                detectedY = detection_msg->detections[1].bbox.center.position.y;
+
+                 // draw two circles right here :) O O (like that <- :) )
+                auto actualPoint = cv::Point();
+                actualPoint.x = detectedX; 
+                actualPoint.y = detectedY; 
+
+                circle(frame, actualPoint, 10, Scalar(255, 0, 255), -1);
+
+                auto predictedPoint = cv::Point();
+                predictedPoint.x = predictedX; 
+                predictedPoint.y = predictedY; 
+
+                circle(frame, predictedPoint, 10, Scalar(0, 255, 0), -1);
+                RCLCPP_INFO(this->get_logger(), "Framer Number: %d, Detection - x: %.2f, y: %.2f, Predicted x: %.2f, predicted y: %.2f", frame_number, detectedX, detectedY, predictedX, predictedY);
               
-              auto predictedPoint = cv::Point();
-              predictedPoint.x = predictedX; 
-              predictedPoint.y = predictedY; 
+                
 
-              
-              circle(frame, actualPoint, 10, Scalar(255, 0, 255), -1);
-              
-              circle(frame, predictedPoint, 10, Scalar(0, 255, 0), -1);
+            }
+            else if (detection_msg->detections.size() == 1){
+                predictedX = detection_msg->detections[0].bbox.center.position.x;
+                predictedY = detection_msg->detections[0].bbox.center.position.y;
+
+                auto predictedPoint = cv::Point();
+                predictedPoint.x = predictedX; 
+                predictedPoint.y = predictedY; 
+
+                circle(frame, predictedPoint, 10, Scalar(0, 255, 0), -1);
+                RCLCPP_INFO(this->get_logger(), "Framer Number: %d, Predicted x: %.2f, predicted y: %.2f", frame_number, predictedX, predictedY);
+            } else {
+                RCLCPP_INFO(this->get_logger(), "Frame Number: %d, No detections", frame_number);
+            }
 
 
-
-
-              writer_.write(frame);
+            writer_.write(frame);
+            // RCLCPP_INFO(this->get_logger(), "Frame Number: %d", frame_number);
 
             } catch (cv_bridge::Exception &e) {
                 RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
             }
-        }
+        
     }
 
     message_filters::Subscriber<Detection2DArray> detection_sub_;

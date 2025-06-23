@@ -12,12 +12,14 @@ find_package(vision_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(message_filters REQUIRED)
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
 add_executable(tracking2_node src/tracking2_node.cpp)
-ament_target_dependencies(tracking2_node rclcpp vision_msgs geometry_msgs cv_bridge OpenCV)
+ament_target_dependencies(tracking2_node rclcpp vision_msgs geometry_msgs cv_bridge OpenCV message_filters)
 target_include_directories(tracking2_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)

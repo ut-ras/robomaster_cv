@@ -1,32 +1,44 @@
 #include <cstdio>
-
-// int main(int argc, char ** argv)
-// {
-//   (void) argc;
-//   (void) argv;
-
-//   printf("hello world tracking2 package\n");
-//   return 0;
-// }
-
 #include <rclcpp/rclcpp.hpp>
 #include <vision_msgs/msg/detection2_d_array.hpp>
 #include <vision_msgs/msg/detection2_d.hpp>
 #include <geometry_msgs/msg/pose2_d.hpp>
-
-using std::placeholders::_1;
-using vision_msgs::msg::Detection2DArray;
-using vision_msgs::msg::Detection2D;
-
-
-
-
 #include "cv_bridge/cv_bridge.h"
 #include "opencv2/video/tracking.hpp"
 #include <cfloat>
 #include <set>
 #include <vector>
 #include <iostream>
+#include <geometry_msgs/msg/point32.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <std_msgs/msg/header.hpp>
+#include <cmath>
+#include <algorithm>
+#include <opencv2/opencv.hpp>
+#include <unordered_map>
+#include <sensor_msgs/msg/compressed_image.hpp>
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <opencv2/core.hpp>
+#include <vision_msgs/msg/object_hypothesis_with_pose.hpp>
+#include <opencv2/videoio.hpp>
+#include <rclcpp/parameter.hpp>
+
+using namespace std;
+using namespace cv;
+
+
+using std::placeholders::_1;
+using std::placeholders::_2;
+
+using vision_msgs::msg::Detection2DArray;
+using sensor_msgs::msg::CompressedImage;
+using vision_msgs::msg::Detection2D;
+using vision_msgs::msg::ObjectHypothesisWithPose;
+
+
 
 
 #define STATE_NUM 7
@@ -66,20 +78,7 @@ struct SortRect {
 */
 // File: src/multi_object_tracker_node.cpp
 
-#include <rclcpp/rclcpp.hpp>
-#include <geometry_msgs/msg/point32.hpp>
-#include <geometry_msgs/msg/pose_array.hpp>
-#include <geometry_msgs/msg/pose.hpp>
-#include <std_msgs/msg/header.hpp>
-#include <vector>
-#include <cmath>
-#include <algorithm>
-#include <opencv2/opencv.hpp>
-#include <unordered_map>
 
-using std::placeholders::_1;
-using namespace std;
-using namespace cv;
 
 // ──────────────── Kalman Filter Class ────────────────
 class Kalman2D {
@@ -161,12 +160,20 @@ class DetectionListener : public rclcpp::Node {
 public:
     DetectionListener() : Node("detection_listener") {
         publisher_ = this->create_publisher<Detection2DArray>("predicted_points", 10); 
-        subscription_ = this->create_subscription<Detection2DArray>(
-            "detections", 10, std::bind(&DetectionListener::callback, this, _1));
+        // subscription_ = this->create_subscription<Detection2DArray>(
+        //     "detections", 10, std::bind(&DetectionListener::callback, this, _1));
+
+        detection_sub_.subscribe(this, "detections");
+        image_sub_.subscribe(this, "/robot/rs2/color/image_raw/compressed");
+
+        sync_ = std::make_shared<Sync>(SyncPolicy(10), detection_sub_, image_sub_);
+        sync_->registerCallback(std::bind(&DetectionListener::callback, this, _1, _2));
     }
 
 private:
-    rclcpp::Subscription<Detection2DArray>::SharedPtr subscription_;
+    bool writer_initialized = false; 
+    cv::VideoWriter writer_; 
+    // rclcpp::Subscription<Detection2DArray>::SharedPtr subscription_;
     rclcpp::Publisher<Detection2DArray>::SharedPtr publisher_;
 
     std::vector<Track> tracks_;
@@ -181,7 +188,18 @@ private:
         return pt;
     }
 
-    void callback(const Detection2DArray::SharedPtr msg) {
+    Mat applyCanny(Mat& frame) {
+        Mat edges;
+        GaussianBlur(frame, frame, Size(5, 5), 1.5);
+        // Canny with thresholds 100 and 200
+        Canny(frame, edges, 100, 200);
+        Mat edgesColor;
+        cvtColor(edges, edgesColor, COLOR_GRAY2BGR);
+        return edgesColor;
+    }
+
+    void callback(const Detection2DArray::ConstSharedPtr msg,
+                  const CompressedImage::ConstSharedPtr image_msg) {
         frame_number++;
 
 
@@ -277,23 +295,92 @@ private:
 
         }
 
-        // add acutal points here
-        Detection2D actualPoint; 
-        if (detections.size() >= 1){
-            actualPoint.bbox.center.position.x = detections[0].x;
-            actualPoint.bbox.center.position.y = detections[0].y;
-            
-            out.detections.push_back(actualPoint);
-        }
        
 
         publisher_->publish(out);
+
+
+
+        try {
+
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(image_msg, sensor_msgs::image_encodings::BGR8);
+            Mat frame = cv_ptr->image;
+
+            Mat edges = applyCanny(frame);
+            
+            if (!writer_initialized) {
+                writer_.open("oneFile_predicted_video.mp4", cv::VideoWriter::fourcc('m','p','4','v'), 30, frame.size(), true);
+                if (!writer_.isOpened()) {
+                    RCLCPP_ERROR(this->get_logger(), "Could not open the output video for write");
+                }
+                writer_initialized = true;
+            }
+            
+
+            float predictedX; 
+            float predictedY;
+            float detectedX;
+            float detectedY;
+            
+            if (detections.size() >= 1)
+            {
+                predictedX = predictions[0].x;
+                predictedY = predictions[0].y;
+
+                detectedX = detections[0].x;
+                detectedY = detections[0].y;
+
+                 // draw two circles right here :) O O (like that <- :) )
+                auto actualPoint = cv::Point();
+                actualPoint.x = detectedX; 
+                actualPoint.y = detectedY; 
+
+                circle(frame, actualPoint, 10, Scalar(255, 0, 255), -1);
+
+                auto predictedPoint = cv::Point();
+                predictedPoint.x = predictedX; 
+                predictedPoint.y = predictedY; 
+
+                circle(frame, predictedPoint, 10, Scalar(0, 255, 0), -1);
+                RCLCPP_INFO(this->get_logger(), "Framer Number: %d, Detection - x: %.2f, y: %.2f, Predicted x: %.2f, predicted y: %.2f", frame_number, detectedX, detectedY, predictedX, predictedY);
+              
+                
+
+            }
+            
+            if (predictions.size() >= 1){
+                predictedX = predictions[0].x;
+                predictedY = predictions[0].y;
+
+                auto predictedPoint = cv::Point();
+                predictedPoint.x = predictedX; 
+                predictedPoint.y = predictedY; 
+
+                circle(frame, predictedPoint, 10, Scalar(0, 255, 0), -1);
+                RCLCPP_INFO(this->get_logger(), "Framer Number: %d, Predicted x: %.2f, predicted y: %.2f", frame_number, predictedX, predictedY);
+            } 
+
+
+            writer_.write(frame);
+
+        } catch (cv_bridge::Exception &e) {
+            RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+        }
+        
 
 
         
 
         //sort ros code here:
     }
+
+
+    message_filters::Subscriber<Detection2DArray> detection_sub_;
+    message_filters::Subscriber<CompressedImage> image_sub_;
+
+    using SyncPolicy = message_filters::sync_policies::ApproximateTime<Detection2DArray, CompressedImage>;
+    using Sync = message_filters::Synchronizer<SyncPolicy>;
+    std::shared_ptr<Sync> sync_;
 
 
 

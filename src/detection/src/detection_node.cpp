@@ -37,7 +37,7 @@ public:
     CVNode() : Node("CVNode"), writer_initialized(false), last_frame_time(this->now()) {
         printf("Initializing subscriber...\n");
         this->declare_parameter<bool>("debug", false);
-        this->declare_parameter<bool>("write_video", false);
+        this->declare_parameter<bool>("write_video", true);
         this->declare_parameter<string>("output_path", "output.mp4");
         this->get_parameter("debug", flag_debug_);
         this->get_parameter("write_video", flag_write_video_);
@@ -59,8 +59,12 @@ private:
     bool flag_write_video_;
     std::string output_video_path_;
 
+    int frame_number = 0; 
+
     void topic_callback(const sensor_msgs::msg::CompressedImage &msg) {
         try {
+
+            frame_number ++; 
 
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             Mat frame = cv_ptr->image;
@@ -76,12 +80,14 @@ private:
                 Detection2D detection;
                 detection.bbox.center.position.x = center.x;
                 detection.bbox.center.position.y = center.y;
+                RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Detection - x: %.2f, y: %.2f", frame_number, center.x, center.y);
                 detections_msg.detections.push_back(detection);
             }
 
             detections_publisher_->publish(detections_msg);
 
-            RCLCPP_INFO(this->get_logger(), "Published %zu detections", detections_msg.detections.size());
+            // RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Published %zu detections", frame_number, detections_msg.detections.size());
+
 
             // Update the last received frame timestamp
             last_frame_time = this->now();
