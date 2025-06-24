@@ -31,6 +31,10 @@ add_executable(pose_node
   src/pose_node.cpp
 )
 
+add_executable(color_node
+  src/color_node.cpp
+)
+
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
@@ -40,8 +44,9 @@ ament_target_dependencies(${PROJECT_NAME}_lib rclcpp std_msgs stampede_msgs)
 ament_target_dependencies(dji_serial rclcpp std_msgs stampede_msgs)
 ament_target_dependencies(test_serial rclcpp std_msgs stampede_msgs)
 ament_target_dependencies(pose_node rclcpp std_msgs stampede_msgs tf2)
+ament_target_dependencies(color_node rclcpp std_msgs stampede_msgs tf2)
 
-install(TARGETS ${PROJECT_NAME}_lib dji_serial test_serial pose_node
+install(TARGETS ${PROJECT_NAME}_lib dji_serial test_serial pose_node color_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
