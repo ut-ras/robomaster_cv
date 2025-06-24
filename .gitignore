@@ -1,3 +1,4 @@
+.DS_Store
 build/
 install/
 log/
@@ -8,3 +9,7 @@ CMakeFiles
 rosbags/
 __pycache__/
 /docker-compose.yml
+*.mp4
+*.png
+*.jpg
+*.mov
