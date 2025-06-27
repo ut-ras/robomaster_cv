@@ -13,6 +13,8 @@ find_package(sensor_msgs REQUIRED)
 find_package(vision_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(realsense2_camera_msgs REQUIRED)
+find_package(realsense2 REQUIRED)
 
 # Add video_publisher executable
 add_executable(video_publisher src/video_publisher.cpp)
@@ -24,7 +26,9 @@ target_compile_features(video_publisher PUBLIC c_std_99 cxx_std_17)
 
 # Add detection_node executable
 add_executable(detection_node src/detection_node.cpp)
-ament_target_dependencies(detection_node rclcpp sensor_msgs vision_msgs cv_bridge OpenCV)
+ament_target_dependencies(detection_node rclcpp sensor_msgs vision_msgs cv_bridge OpenCV realsense2 realsense2_camera_msgs)
+# Ensure the realsense2 library is linked correctly
+target_link_libraries(detection_node realsense2::realsense2)
 target_include_directories(detection_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
