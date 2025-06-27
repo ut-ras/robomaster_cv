@@ -27,7 +27,7 @@ public:
     CVNode() : Node("CVNode"), writer_initialized(false), last_frame_time(this->now()) {
         printf("Initializing subscriber...\n");
         this->declare_parameter<bool>("debug", false);
-        this->declare_parameter<bool>("write_video", true);
+        this->declare_parameter<bool>("write_video", false);
         this->declare_parameter<string>("output_path", "output.mp4");
         this->get_parameter("debug", flag_debug_);
         this->get_parameter("write_video", flag_write_video_);

@@ -45,10 +45,6 @@ using vision_msgs::msg::ObjectHypothesisWithPose;
 using vision_msgs::msg::Detection3DArray;
 using vision_msgs::msg::Detection3D;
 
-
-#define STATE_NUM 7
-#define MEASURE_NUM 4
-
 using namespace std; 
 using namespace cv;
 
