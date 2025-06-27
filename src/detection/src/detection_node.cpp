@@ -22,16 +22,6 @@ double angle(Point2f a, Point2f b);
 vector<vector<Point>> getContours(Mat& frame, const string& color);
 vector<Point2f> calculateCenters(Mat& frame, const string& color, bool draw = false, bool debug = false);
 
-Mat applyCanny(Mat& frame) {
-    Mat edges;
-    GaussianBlur(frame, frame, Size(5, 5), 1.5);
-    // Canny with thresholds 100 and 200
-    Canny(frame, edges, 100, 200);
-    Mat edgesColor;
-    cvtColor(edges, edgesColor, COLOR_GRAY2BGR);
-    return edgesColor;
-}
-
 class CVNode : public rclcpp::Node {
 public:
     CVNode() : Node("CVNode"), writer_initialized(false), last_frame_time(this->now()) {
@@ -59,15 +49,17 @@ private:
     bool flag_write_video_;
     std::string output_video_path_;
 
+    int frame_number = 0; 
+
     void topic_callback(const sensor_msgs::msg::CompressedImage &msg) {
         try {
+
+            frame_number ++; 
 
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             Mat frame = cv_ptr->image;
 
-            Mat edges = applyCanny(frame);
-
-            vector<Point2f> centers = calculateCenters(frame, "blue", flag_write_video_, flag_debug_);
+            vector<Point2f> centers = calculateCenters(frame, "red", flag_write_video_, flag_debug_);
 
             Detection2DArray detections_msg;
             detections_msg.header = msg.header;
@@ -76,12 +68,14 @@ private:
                 Detection2D detection;
                 detection.bbox.center.position.x = center.x;
                 detection.bbox.center.position.y = center.y;
+                RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Detection - x: %.2f, y: %.2f", frame_number, center.x, center.y);
                 detections_msg.detections.push_back(detection);
             }
 
             detections_publisher_->publish(detections_msg);
 
-            RCLCPP_INFO(this->get_logger(), "Published %zu detections", detections_msg.detections.size());
+            // RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Published %zu detections", frame_number, detections_msg.detections.size());
+
 
             // Update the last received frame timestamp
             last_frame_time = this->now();
