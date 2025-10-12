@@ -23,6 +23,11 @@ public:
         robots_ = this->create_subscription<vision_msgs::msg::Detection3DArray>("robots_topic", 10, 
                         std::bind(&AutonavNode::odometry_callback, this, std::placeholders::_1));
 
+        //Someone check me on this plz - Daniel
+        target_pub_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("target_topic", 10);
+
+        //TODO: make shoot pub - Daniel
+
         timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&AutonavNode::update_state_machine, this));
     }
 
@@ -71,8 +76,36 @@ private:
         }
 
         // patrol needs second condition checking that there are enemies on the point
+        /*
+            Required input:
+            1)Location
+            2)Health
+            3)Ammo
+            4)Detection
+
+            Required output:
+            1) State?
+            2) Target pose?
+            3) Target aim?
+
+            Design questions:
+            1) Where patrol? For now, stand still
+            2) How scan (camera/chassis movement)? For now, moving cam with target
+            3) When shoot? For now, on sight
+            4) Chase enemies? For now, only trace but not chase
+            5) Stay still or zigzag? For now, stay still
+            6) Take cover? For now, no
+            7) Focus/split fire? For now, focus on first target
+            Current design just stands still and focuses fire on first tgt
+        */
+        bool split_fire = false;
         if (health > HEALTH_THRESHOLD && robots.size() > 0){
-            // patrol 
+            RCLCPP_INFO(this->get_logger(), "Current State: Patrol");
+            //Aim and shoot at robot, think someone else is working on code for this
+
+            if(split_fire){
+                //Split fire between two tgts, need messages for two turrets first
+            }
         }
         
         // capturing the point needs second condition checking that there are no enemies on the point
@@ -87,6 +120,8 @@ private:
     rclcpp::Subscription<vision_msgs::msg::Detection3D>::SharedPtr localization_;
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr odometry_;
     rclcpp::Subscription<vision_msgs::msg::Detection3DArray>::SharedPtr robots_;
+
+    rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr target_pub_; //Target publisher - Daniel
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<cv::Point3f> robots; // a vector containing point3fs of detection data. each entry is a detection data
     std::vector<float> odometry_pos; // a vector of floats, containing position of the robot, x,y,z, and all turret/chassis data
