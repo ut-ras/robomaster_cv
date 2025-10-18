@@ -1,4 +1,5 @@
 {
+    "terminal.integrated.scrollback": 100000,
     "python.autoComplete.extraPaths": [
         "/robomaster_cv/install/stampede_msgs/local/lib/python3.10/dist-packages",
         "/robomaster_cv/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages",
