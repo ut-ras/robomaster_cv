@@ -47,7 +47,7 @@ static std::vector<std::vector<Point>> contour_generator(const Mat& frameBGR) {
     int upper = (int)std::min(255.0, 1.1 * med);
 
     Canny(blurImg, edges, lower, upper);
-    imshow("Edges", edges);
+    imwrite("Edges.jpeg", edges);
 
     // Find contours with hierarchy (like RETR_TREE)
     std::vector<std::vector<Point>> cnts;
@@ -102,14 +102,14 @@ static std::string determineColor(const Mat& markerBGR) {
     red = red1 + red2;
     inRange(hsv, lowerBlue, upperBlue, blue);
 
-    imshow("redMask1", red1);
-    imshow("redMask2", red2);
-    imshow("redMask", red);
-    imshow("blueMask", blue);
+    imwrite("redMask1.jpeg", red1);
+    imwrite("redMask2.jpeg", red2);
+    imwrite("redMask.jpeg", red);
+    imwrite("blueMask.jpeg", blue);
 
     if (sum(red)[0] > 0)  return "red";
     if (sum(blue)[0] > 0) return "blue";
-    return {};
+    return "None";
 }
 
 // Determine letter from warped grayscale tag
@@ -118,11 +118,11 @@ static std::string determineLetter(const Mat& markerGray) {
     const uchar white = 255;
 
     if (img_bw.at<uchar>(5,5) == white) {
-        return {}; // False
+        return "None"; // False
     }
     Mat cropped = img_bw(Rect(25,25,125,125));
-    imshow("Cropped", cropped);
-
+    imwrite("Cropped.jpeg", cropped);
+    
     auto px = [&](int y, int x)->uchar { return cropped.at<uchar>(y,x); };
 
     // replicate your pixel tests (note: second comment said 'B' but code returned 'C')
@@ -171,26 +171,27 @@ static bool findTranslationAndRotation(const std::vector<Point2f>& imgPts,
 class LocalNode : public rclcpp::Node {
 public:
     LocalNode() : Node("LocalNode"), dim_(175) {
-        // Declare camera index parameter with default value
-        this->declare_parameter("camera_index", 0);
-        int camera_index = this->get_parameter("camera_index").as_int();
         
-        // Try opening the camera with the specified index
-        cap_.open(camera_index);
-        if (!cap_.isOpened()) {
-            // If failed with index, try with /dev/video0
-            cap_.open("/dev/video0");
-            if (!cap_.isOpened()) {
-                RCLCPP_ERROR(this->get_logger(), "Error: Could not open webcam at index %d or /dev/video0", camera_index);
-                // Print available cameras
-                std::string cmd = "ls -l /dev/video*";
-                int ret = system(cmd.c_str());
-                if (ret == 0) {
-                    RCLCPP_ERROR(this->get_logger(), "Available video devices are listed above");
-                }
-                throw std::runtime_error("Failed to open webcam");
-            }
-        }
+        // // Declare camera index parameter with default value
+        // this->declare_parameter("camera_index", 0);
+        // int camera_index = this->get_parameter("camera_index").as_int();
+        
+        // // Try opening the camera with the specified index
+        // cap_.open(camera_index);
+        // if (!cap_.isOpened()) {
+        //     // If failed with index, try with /dev/video0
+        //     cap_.open("/dev/video0");
+        //     if (!cap_.isOpened()) {
+        //         RCLCPP_ERROR(this->get_logger(), "Error: Could not open webcam at index %d or /dev/video0", camera_index);
+        //         // Print available cameras
+        //         std::string cmd = "ls -l /dev/video*";
+        //         int ret = system(cmd.c_str());
+        //         if (ret == 0) {
+        //             RCLCPP_ERROR(this->get_logger(), "Available video devices are listed above");
+        //         }
+        //         throw std::runtime_error("Failed to open webcam");
+        //     }
+        // }
         
         RCLCPP_INFO(this->get_logger(), "Successfully opened camera");
         
@@ -212,10 +213,22 @@ private:
 
     void callback() {
         Mat frame;
-        if (!cap_.read(frame) || frame.empty()) {
-            RCLCPP_WARN(this->get_logger(), "Failed to read frame from camera");
-            return;
+        frame = imread("src/localization/src/Blue_E_Tag.jpeg");
+
+        // if (!cap_.read(frame) || frame.empty()) {
+        //     RCLCPP_WARN(this->get_logger(), "Failed to read frame from camera");
+        //     return;
+        // }
+
+        
+        
+        if (frame.empty()){
+            RCLCPP_INFO(this->get_logger(), "frame is empty");
+            return; 
         }
+        
+        imwrite("frame.jpeg", frame);
+
 
         auto contours = contour_generator(frame);
 
@@ -238,6 +251,8 @@ private:
             cvtColor(tag, grayTag, COLOR_BGR2GRAY);
             std::string letter = determineLetter(grayTag);
             std::string color = determineColor(tag);
+            RCLCPP_INFO(this->get_logger(), "Color: %s\n", color.c_str());
+            RCLCPP_INFO(this->get_logger(), "letter: %s", letter.c_str());
             if (letter.empty() || color.empty()) continue;
 
             Vec3d tvec, rpy;
@@ -253,7 +268,7 @@ private:
                 putText(frame, std::to_string((int)contourArea(c)), {bbox.x, bbox.y-5},
                         FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0,255,0), 1, LINE_AA);
 
-                imshow("Marker", tag);
+                imwrite("Marker.jpeg", tag);
             }
         }
 
@@ -264,7 +279,7 @@ private:
         int fps = (dt > 0.0) ? (int)std::round(1.0 / dt) : 0;
         putText(frame, std::to_string(fps), {7,70}, FONT_HERSHEY_SIMPLEX, 2.0, Scalar(0,255,0), 3, LINE_AA);
 
-        imshow("Outline", frame);
+        imwrite("Outline.jpeg", frame);
         
         // Process window events - using waitKey(1) for OpenCV window updates
         int key = waitKey(1) & 0xFF;
