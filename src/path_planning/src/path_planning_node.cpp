@@ -15,6 +15,7 @@ public:
   {
     printf("hello world from PathPlanning package\n");
     publisher_ = this->create_publisher<std_msgs::msg::Int32MultiArray>("int_array", 10);
+    subscription_ = this->create_subscription<std_msgs::msg::Int32MultiArray>("int_arrays", 10, std::bind(&PathPlanningNode::data_callback, this, std::placeholders::_1));
     timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&PathPlanningNode::callback, this));
   }
 
@@ -30,6 +31,8 @@ private:
     path_.reloadFromGrid(grid_);
 
     std::stringstream ss;
+    
+    ss << "From (" << p.x << "," << p.y << ") to ("<< p2.x << "," << p2.y << "): \n";
 
     std::vector<Pos> points = path_.calculate(p);
     for (Pos p : points)
@@ -39,16 +42,21 @@ private:
       ss << "(" << p.x << "," << p.y << "), ";
     }
 
-    ss << "Publised Array of " << msg.data.size()/2 << " points";
+    ss << "\nPath used " << points.size() << " points";
 
     RCLCPP_INFO(this->get_logger(), ss.str().c_str());
     publisher_->publish(msg);
   }
 
+  void data_callback(const std_msgs::msg::Int32MultiArray::SharedPtr msg) {
+        std::vector<int> out = msg->data;
+        RCLCPP_INFO(this->get_logger(), "Received: %d, %d, %d, %d, %d", out[0], out[1], out[2], out[3], out[4]);
+    }
+
   std::random_device rd;  // Provides a non-deterministic seed
   std::mt19937 gen = std::mt19937(rd()); // Seed the engine with a truly random value
-  std::uniform_int_distribution<> distribY = std::uniform_int_distribution<>(0, TILE_COUNT_X); // Range [0, TILE_COUNT_X]
-  std::uniform_int_distribution<> distribX = std::uniform_int_distribution<>(0, TILE_COUNT_Y); // Range [0, TILE_COUNT_Y]
+  std::uniform_int_distribution<> distribX = std::uniform_int_distribution<>(0, TILE_COUNT_X); // Range [0, TILE_COUNT_Y]
+  std::uniform_int_distribution<> distribY = std::uniform_int_distribution<>(0, TILE_COUNT_Y); // Range [0, TILE_COUNT_X]
   Pos getRandomPoint()
   {
     return Pos({distribX(gen), distribY(gen)});
@@ -58,6 +66,7 @@ private:
   Path path_;
 
   rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr publisher_;
+  rclcpp::Subscription<std_msgs::msg::Int32MultiArray>::SharedPtr subscription_;
   rclcpp::TimerBase::SharedPtr timer_;
 };
 
