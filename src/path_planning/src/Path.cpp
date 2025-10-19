@@ -112,7 +112,7 @@ std::vector<Pos> Path::calculate(int startX, int startY)
 	
 	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual>::iterator it = m_points.find(std::make_shared<Location>(startX, startY));
 	if(it == m_points.end()) {
-		return std::vector<Pos>();
+		return std::vector<Pos>(); // Start not found
 	}
 
 	std::shared_ptr<Location> startLocation = *it;
@@ -124,7 +124,7 @@ std::vector<Pos> Path::calculate(int startX, int startY)
 
 	it = m_points.find(std::make_shared<Location>(targetX, targetY));
 	if(it == m_points.end()) {
-		return std::vector<Pos>();
+		return std::vector<Pos>(); // Target not found
 	}
 	std::shared_ptr<Location> target = *it;
 
@@ -159,7 +159,7 @@ std::vector<Pos> Path::calculate(int startX, int startY)
 		for (std::shared_ptr<Location> neighbor : currentLocation->paths)
 		{
 			double newCostSoFar = currentLocation->costSoFar + neighbor->cost;
-			COMPARISON
+
 			if (neighbor != startLocation && (newCostSoFar < neighbor->costSoFar || neighbor->costSoFar == 0.0)) {
 				// Found a cheaper path to the neighbor (or first time visiting)
 				neighbor->costSoFar = newCostSoFar;
@@ -169,4 +169,6 @@ std::vector<Pos> Path::calculate(int startX, int startY)
 		}
 	}
 
+	return std::vector<Pos>(); // Valid Path not found
+	// This should probably return the most complete path in the future
 }

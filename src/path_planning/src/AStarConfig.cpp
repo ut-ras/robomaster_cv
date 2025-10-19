@@ -6,10 +6,6 @@ const float COST_EDGE_OF_FIELD = 0.25;
 const float COST_ADJACENT_TO_WALL = 0.5;
 const float COST_ROUGH_TERRAIN = 3.0;
 
-const bool PRINT_TO_CONSOLE = false;
-const bool DEBUG = true;
-int comparison_count = 0;
-
 HeuristicType CHOSEN_HURISTIC = HeuristicType::Euclidean;
 
 //All indexes are inclusive and 0-based

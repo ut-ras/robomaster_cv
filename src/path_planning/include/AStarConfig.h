@@ -14,12 +14,6 @@ extern const float COST_EDGE_OF_FIELD;
 extern const float COST_ADJACENT_TO_WALL;
 extern const float COST_ROUGH_TERRAIN;
 
-extern const bool PRINT_TO_CONSOLE;
-extern const bool DEBUG;
-extern int comparison_count;
-
-#define COMPARISON if (DEBUG) { comparison_count++; }
-
 enum class HeuristicType {
 	Euclidean,
 	Manhattan,

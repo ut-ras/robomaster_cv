@@ -13,61 +13,46 @@ Grid::Grid() : m_target(), m_hueristicMap(), m_costMap(), m_additionalCostMap()
 			m_additionalCostMap[y][x] = 0.0;
 			m_costMap[y][x] = COST_DEFAULT; // Default cost is 1.0
 
-			if (isEdgeTile({ x,y })) {
+			if (isEdgeTile({x, y}))
+			{
 				m_costMap[y][x] += COST_EDGE_OF_FIELD; // Cost for edge tiles
 			}
-			if (isRoughTerrain({ x,y })) {
+			if (isRoughTerrain({x, y}))
+			{
 				m_costMap[y][x] += COST_ROUGH_TERRAIN;
 			}
-			if (isAdjacentToWall({ x,y })) {
+			if (isAdjacentToWall({x, y}))
+			{
 				m_costMap[y][x] += COST_ADJACENT_TO_WALL;
-			}			
+			}
 		}
-	}
-
-	if (PRINT_TO_CONSOLE)
-	{
-	std::cout << "Grid initialized with dimensions: " << TILE_COUNT_X << "x" << TILE_COUNT_Y << std::endl;
-	// Print cost map with brackets and normalized spacing
-	std::cout << "Cost Map:" << std::endl;
-
-	for (int y = 0; y < TILE_COUNT_Y; ++y)
-	{
-		std::cout << "[";
-		for (int x = 0; x < TILE_COUNT_X; ++x)
-		{
-			std::cout << std::setw(3) << std::fixed << std::setprecision(1) << m_costMap[y][x];
-			if (x < TILE_COUNT_X - 1)
-				std::cout << ", ";
-		}
-		std::cout << "]" << std::endl;
-	}
-	std::cout << std::endl;
 	}
 }
 
-bool Grid::isEdgeTile(Pos p) {
+bool Grid::isEdgeTile(Pos p)
+{
 	return (p.x == 0 || p.x == TILE_COUNT_X - 1 ||
-				p.y == 0 || p.y == TILE_COUNT_Y - 1);
+			p.y == 0 || p.y == TILE_COUNT_Y - 1);
 }
 
 bool Grid::isAdjacentToWall(Pos p)
 {
 	for (size_t i = 0; i < walls.size(); i++)
 	{
-		if (walls[i].fromX <= p.x && walls[i].toX >= p.x
-			&& walls[i].fromY <= p.y && walls[i].toY >= p.y) {
+		if (walls[i].fromX <= p.x && walls[i].toX >= p.x && walls[i].fromY <= p.y && walls[i].toY >= p.y)
+		{
 			return true;
 		}
 	}
 	return false;
 }
 
-bool Grid::isRoughTerrain(Pos p) {
+bool Grid::isRoughTerrain(Pos p)
+{
 	for (size_t i = 0; i < roughTerrain.size(); i++)
 	{
-		if (roughTerrain[i].fromX <= p.x && roughTerrain[i].toX >= p.x
-			&& roughTerrain[i].fromY <= p.y && roughTerrain[i].toY >= p.y) {
+		if (roughTerrain[i].fromX <= p.x && roughTerrain[i].toX >= p.x && roughTerrain[i].fromY <= p.y && roughTerrain[i].toY >= p.y)
+		{
 			return true;
 		}
 	}
@@ -78,15 +63,17 @@ bool Grid::crossesWall(Pos from, Pos to)
 {
 	for (Wall w : walls)
 	{
-		if ((from.y == w.fromY && to.y == w.toY)
-			|| (to.y == w.fromY && from.y == w.toY)) {
-			if((from.x >= w.fromX && to.x <= w.toX) || (to.x >= w.fromX && from.x <= w.toX)) {
+		if ((from.y == w.fromY && to.y == w.toY) || (to.y == w.fromY && from.y == w.toY))
+		{
+			if ((from.x >= w.fromX && to.x <= w.toX) || (to.x >= w.fromX && from.x <= w.toX))
+			{
 				return true;
 			}
 		}
-		if ((from.x == w.fromX && to.x == w.toX)
-			|| (to.x == w.fromX && from.x == w.toX)) {
-			if ((from.y >= w.fromY && to.y <= w.toY) || (to.y >= w.fromY && from.y <= w.toY)) {
+		if ((from.x == w.fromX && to.x == w.toX) || (to.x == w.fromX && from.x == w.toX))
+		{
+			if ((from.y >= w.fromY && to.y <= w.toY) || (to.y >= w.fromY && from.y <= w.toY))
+			{
 				return true;
 			}
 		}
@@ -94,38 +81,22 @@ bool Grid::crossesWall(Pos from, Pos to)
 	return false;
 }
 
-
 void Grid::recalculateHueristicMap()
 {
-	if (PRINT_TO_CONSOLE) {
-		std::cout << "Hueristic Map:" << std::endl;
-		for (int y = 0; y < TILE_COUNT_Y; ++y)
+	for (int y = 0; y < TILE_COUNT_Y; ++y)
+	{
+		for (int x = 0; x < TILE_COUNT_X; ++x)
 		{
-			std::cout << "[";
-			for (int x = 0; x < TILE_COUNT_X; ++x)
-			{
-				m_hueristicMap[y][x] = calculateHueristic(x, y);
-				std::cout << std::setw(5) << std::fixed << std::setprecision(1) << m_hueristicMap[y][x] << " ";
-			}
-			std::cout << "]" << std::endl;
-		}
-		std::cout << std::endl;
-	}
-	else {
-		for (int y = 0; y < TILE_COUNT_Y; ++y)
-		{
-			for (int x = 0; x < TILE_COUNT_X; ++x)
-			{
-				m_hueristicMap[y][x] = calculateHueristic(x, y);
-			}
+			m_hueristicMap[y][x] = calculateHueristic(x, y);
 		}
 	}
 }
 
 void Grid::setTarget(int x, int y)
 {
-	if (x != m_target.x || y != m_target.y) {
-		m_target = { x, y };
+	if (x != m_target.x || y != m_target.y)
+	{
+		m_target = {x, y};
 		recalculateHueristicMap();
 	}
 }
