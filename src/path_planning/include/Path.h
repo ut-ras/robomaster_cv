@@ -12,8 +12,8 @@ struct Location {
 	int y;
 
 	double cost;
-	double hueristic;
 	double costSoFar;
+	double hueristic;
 
 	std::vector<std::shared_ptr<Location>> paths;
 	std::shared_ptr<Location> from{ nullptr };

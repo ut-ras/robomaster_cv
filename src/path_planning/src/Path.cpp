@@ -142,9 +142,6 @@ std::vector<Pos> Path::calculate(int startX, int startY)
 
 			std::shared_ptr<Location> trace = currentLocation;
 			while (trace != nullptr && trace != trace->from) {
-				if (PRINT_TO_CONSOLE) {
-					std::cout << "Path: (" << trace->x << ", " << trace->y << ")\n";
-				}
 				out.push_back({ trace->x, trace->y });
 
 				trace = trace->from;

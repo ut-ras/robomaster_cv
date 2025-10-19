@@ -5,9 +5,11 @@
 constexpr int TILE_COUNT_X = (12000 / 500);//24
 constexpr int TILE_COUNT_Y = (8000 / 500);//16
 
-//Converts each meter to 25 pixels
-constexpr int SCREEN_DIMENTION_X = (1000 / 25) * TILE_COUNT_X;
-constexpr int SCREEN_DIMENTION_Y = (1000 / 25) * TILE_COUNT_Y;
+constexpr int FIELD_DIMENTION_X = 12000;
+constexpr int FIELD_DIMENTION_Y = 8000;
+
+//Should be 500 (mm)
+constexpr int TILE_SIZE = FIELD_DIMENTION_X / TILE_COUNT_X;
 
 extern const float COST_DEFAULT;
 extern const float COST_EDGE_OF_FIELD;
