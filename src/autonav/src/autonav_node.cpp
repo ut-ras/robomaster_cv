@@ -68,16 +68,16 @@ private:
         }
     }
 
-    void health_callback(const std_msgs::msg::Float32::SharedPtr msg) {
-        latest_health = msg->data;
+    void health_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
+        latest_health = msg->data[0];
         RCLCPP_INFO(this->get_logger(), "Recieved: health = %d", latest_health);
         if (latest_health != -1 && latest_ammunition != -1) {
             update_state_machine();
         }
     }
 
-    void ammunition_callback(const std_msgs::msg::Float32::SharedPtr msg) {
-        latest_ammunition = msg->data;
+    void ammunition_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
+        latest_ammunition = msg->data[0];
         RCLCPP_INFO(this->get_logger(), "Recieved: ammunition = %d", latest_ammunition);
         if (latest_health != -1 && latest_ammunition != -1) {
             update_state_machine();
