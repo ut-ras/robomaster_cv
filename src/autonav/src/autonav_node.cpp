@@ -8,7 +8,7 @@
 #include <opencv2/core.hpp>
 
 // at what health should the robot retreat
-#define HEALTH_THRESHOLD 35
+#define HEALTH_THRESHOLD 35.0f 
 
 class AutonavNode : public rclcpp::Node {
 public:
@@ -23,7 +23,21 @@ public:
         robots_ = this->create_subscription<vision_msgs::msg::Detection3DArray>("robots_topic", 10, 
                         std::bind(&AutonavNode::odometry_callback, this, std::placeholders::_1));
 
+        health_subscriber_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("health", 10, 
+                        std::bind(&AutonavNode::health_callback, this, std::placeholders::_1));
+        ammunition_subscriber_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("ammunition", 10,
+                        std::bind(&AutonavNode::ammunition_callback, this, std::placeholders::_1));
+
         timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&AutonavNode::update_state_machine, this));
+
+    }
+
+    float get_latest_ammunition() const {
+        return latest_ammunition;
+    }
+
+    float get_latest_health() const {
+        return latest_health;
     }
 
 private:
@@ -54,29 +68,44 @@ private:
         }
     }
 
-    void health_callback(const std_msgs::msg::Int32::SharedPtr msg) {
-        health = msg->data;
-        RCLCPP_INFO(this->get_logger(), "Recieved: heath = %d", health);
+    void health_callback(const std_msgs::msg::Float32::SharedPtr msg) {
+        latest_health = msg->data;
+        RCLCPP_INFO(this->get_logger(), "Recieved: health = %d", latest_health);
+        if (latest_health != -1 && latest_ammunition != -1) {
+            update_state_machine();
+        }
     }
 
+    void ammunition_callback(const std_msgs::msg::Float32::SharedPtr msg) {
+        latest_ammunition = msg->data;
+        RCLCPP_INFO(this->get_logger(), "Recieved: ammunition = %d", latest_ammunition);
+        if (latest_health != -1 && latest_ammunition != -1) {
+            update_state_machine();
+        }
+    }
+    
+    // UPDATE THE MACHINE WHENEVER WE GET NEW DATA FROM HEALTH AND AMMUNITION CALLBACKS
     void update_state_machine() {
         /*If statement to Pick Behavior*/
 
-        if (health == 0){
+
+        if (latest_health == 0.0f){
             // retreat with out shooting 
         }
 
-        if (health <= HEALTH_THRESHOLD ) {
-            // retreat
+        else if (latest_health <= HEALTH_THRESHOLD ) {
+            // retreat with shooting
+            // CHANGE THE TARGET THE SPAWN POINT
+            // MAYBE SHOOT IF POSSIBLE 
         }
 
         // patrol needs second condition checking that there are enemies on the point
-        if (health > HEALTH_THRESHOLD && robots.size() > 0){
+        else if (latest_health > HEALTH_THRESHOLD && robots.size() > 0){
             // patrol 
         }
         
         // capturing the point needs second condition checking that there are no enemies on the point
-        if (health > HEALTH_THRESHOLD && robots.size() == 0){
+        else if (latest_health > HEALTH_THRESHOLD && robots.size() == 0){
             // capture
         }
 
@@ -90,8 +119,9 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<cv::Point3f> robots; // a vector containing point3fs of detection data. each entry is a detection data
     std::vector<float> odometry_pos; // a vector of floats, containing position of the robot, x,y,z, and all turret/chassis data
-    cv::Point3f localizaiton_pos; // a 3d point of the position of the robot, gotten from the localization data
-    int health; // health of the robot
+    cv::Point3f localization_pos; // a 3d point of the position of the robot, gotten from the localization data
+    float latest_health = -1.0f; // health of the robot
+    float latest_ammunition = -1.0f; // ammunition of the robot
 
 };
 
