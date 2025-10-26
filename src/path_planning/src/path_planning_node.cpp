@@ -42,7 +42,8 @@ private:
     ss << "From (" << robotPos_.x << "," << robotPos_.y << ") to (" << targetPos_.x << "," << targetPos_.y << "): \n";
 
     if(targetPosChanged_ || robotPosChanged_){
-      pathPoints_ = path_.calculate(robotPos_);
+      path_.calculate(robotPos_);
+      pathPoints_ = path_.getPath();
     }
 
     if (pathPoints_.size() > 1)

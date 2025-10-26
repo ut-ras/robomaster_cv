@@ -53,16 +53,20 @@ public:
 
 	bool hasVisited(std::shared_ptr<Location>);
 
-	std::vector<Pos> calculate(Pos start);
-	std::vector<Pos> calculate(int startX, int startY);
+	void calculate(Pos start);
+	void calculate(int startX, int startY);
 
-	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual> m_points;//Swap for better type if needed
-private:
+	std::vector<Pos> getPath();
 
-	int targetX;
-	int targetY;
-
+	private:
+	
+	int m_targetX;
+	int m_targetY;
+	
+	std::vector<Pos> m_path;
+	
 	std::priority_queue<std::shared_ptr<Location>, std::vector<std::shared_ptr<Location>>, comparator> m_frontier;
+	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual> m_points;//Swap for better type if needed
 	std::unordered_set<std::shared_ptr<Location>> m_reached;
 
 };
