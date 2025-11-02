@@ -8,6 +8,7 @@
 #include <opencv2/core.hpp>
 #include <cmath>
 #include <algorithm>
+#include <vector>
 #include <random>
 
 // at what health should the robot retreat
@@ -40,11 +41,10 @@ public:
 
 private:
     void localization_callback(const vision_msgs::msg::Detection3D::SharedPtr msg) {
-        cv::Point3f localizaiton_pos;
-        localizaiton_pos.x = msg->bbox.center.position.x;
-        localizaiton_pos.y = msg->bbox.center.position.y;
-        localizaiton_pos.z = msg->bbox.center.position.z;
-        RCLCPP_INFO(this->get_logger(), "Received: x = %d, y = %d, z = %d", localizaiton_pos.x, localizaiton_pos.y, localizaiton_pos.z);
+        localization_pos.x = msg->bbox.center.position.x;
+        localization_pos.y = msg->bbox.center.position.y;
+        localization_pos.z = msg->bbox.center.position.z;
+        RCLCPP_INFO(this->get_logger(), "Received: x = %d, y = %d, z = %d", localization_pos.x, localization_pos.y, localization_pos.z);
     }
  
     void odometry_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
@@ -128,7 +128,7 @@ private:
             double w_center = 1.0;
             double w_safe = 1.0;
 
-            cv::Point3f startingPosition = localizaiton_pos;
+            cv::Point3f startingPosition = localization_pos;
             double px_min = -boxWidth / 2.0;
             double px_max = boxWidth / 2.0;
 
@@ -283,6 +283,7 @@ private:
     rclcpp::Subscription<vision_msgs::msg::Detection3D>::SharedPtr localization_;
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr odometry_;
     rclcpp::Subscription<vision_msgs::msg::Detection3DArray>::SharedPtr robots_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr health_subscriber_;
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<cv::Point3f> robots; // a vector containing point3fs of detection data. each entry is a detection data
     std::vector<float> odometry_pos; // a vector of floats, containing position of the robot, x,y,z, and all turret/chassis data
