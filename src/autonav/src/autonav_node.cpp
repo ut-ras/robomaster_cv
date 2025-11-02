@@ -8,7 +8,7 @@
 #include <opencv2/core.hpp>
 
 // at what health should the robot retreat
-#define HEALTH_THRESHOLD 35.0f 
+#define HEALTH_THRESHOLD 67.0f 
 
 class AutonavNode : public rclcpp::Node {
 public:
