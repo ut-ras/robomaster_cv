@@ -1,3 +1,0 @@
-float32 ammunition_left
-
-bool has_ammunition

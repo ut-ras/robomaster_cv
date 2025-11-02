@@ -25,16 +25,11 @@ public:
 
         health_subscriber_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("health", 10, 
                         std::bind(&AutonavNode::health_callback, this, std::placeholders::_1));
-        ammunition_subscriber_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("ammunition", 10,
-                        std::bind(&AutonavNode::ammunition_callback, this, std::placeholders::_1));
 
         timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&AutonavNode::update_state_machine, this));
 
     }
 
-    float get_latest_ammunition() const {
-        return latest_ammunition;
-    }
 
     float get_latest_health() const {
         return latest_health;
@@ -71,20 +66,12 @@ private:
     void health_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
         latest_health = msg->data[0];
         RCLCPP_INFO(this->get_logger(), "Recieved: health = %d", latest_health);
-        if (latest_health != -1 && latest_ammunition != -1) {
-            update_state_machine();
-        }
-    }
-
-    void ammunition_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
-        latest_ammunition = msg->data[0];
-        RCLCPP_INFO(this->get_logger(), "Recieved: ammunition = %d", latest_ammunition);
-        if (latest_health != -1 && latest_ammunition != -1) {
+        if (latest_health != -1) {
             update_state_machine();
         }
     }
     
-    // UPDATE THE MACHINE WHENEVER WE GET NEW DATA FROM HEALTH AND AMMUNITION CALLBACKS
+    // UPDATE THE MACHINE WHENEVER WE GET NEW DATA FROM HEALTH CALLBACKS
     void update_state_machine() {
         /*If statement to Pick Behavior*/
 
@@ -121,7 +108,6 @@ private:
     std::vector<float> odometry_pos; // a vector of floats, containing position of the robot, x,y,z, and all turret/chassis data
     cv::Point3f localization_pos; // a 3d point of the position of the robot, gotten from the localization data
     float latest_health = -1.0f; // health of the robot
-    float latest_ammunition = -1.0f; // ammunition of the robot
 
 };
 
