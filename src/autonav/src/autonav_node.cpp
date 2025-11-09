@@ -10,10 +10,12 @@
 #include <algorithm>
 #include <vector>
 #include <random>
-#include <math.h>
+#include <numbers>
 
 // at what health should the robot retreat
 #define HEALTH_THRESHOLD 67.0f 
+#define PI 3.14159265358979323846
+
 
 class AutonavNode : public rclcpp::Node {
 public:
@@ -95,6 +97,35 @@ private:
         double dx = BOX_WIDTH / 2.0 - std::abs(p.x);
         double dy = BOX_HEIGHT / 2.0 - std::abs(p.y);
         return std::min(dx, dy);
+    }
+
+    bool point_taken(){
+        //Assuming absolute turret rotation (i.e. in relation to field)
+        //Assuming rotation = 0 at x axis
+
+        //x, y, angle
+        float pos_info[] = {odometry_pos[0], odometry_pos[1], odometry[6]};
+
+        for(cv::Point3f point : robots){
+
+            /* calculating the detected robots position*/
+            float theta_cam = atan(pos.x/pos.z); 
+            float theta_pos = pos_info[2] * PI / 180;   //degree -> radians
+            float theta_det = pos_info[2] - theta_cam; //affirm both angles in same unit
+            float x_det = pos_info[0] + pos.z * cos(theta_det);
+            float y_det = pos_info[1] + pos.z * sin(theta_det);
+
+            /*assuming pos in mm*/
+            float capture_center_x = 6000;
+            float capture_center_y = 6000;
+            
+            /* within 1/2 meter of capture zone*/
+            if(abs(x_det - capture_center_x) < 1000 || 
+                abs(y_det - capture_center_y) < 1000){
+                return true;
+            }
+        }
+        return false;
     }
 
 
