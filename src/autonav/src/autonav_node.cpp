@@ -25,8 +25,8 @@ public:
         odometry_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("odometry_topic", 10, 
                         std::bind(&AutonavNode::odometry_callback, this, std::placeholders::_1));
 
-        robots_ = this->create_subscription<vision_msgs::msg::Detection3DArray>("robots_topic", 10,  //what????
-                        std::bind(&AutonavNode::odometry_callback, this, std::placeholders::_1));
+        robots_ = this->create_subscription<vision_msgs::msg::Detection3DArray>("robots_topic", 10,
+                        std::bind(&AutonavNode::robots_callback, this, std::placeholders::_1));
 
         health_subscriber_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("health", 10, 
                         std::bind(&AutonavNode::health_callback, this, std::placeholders::_1));
@@ -45,17 +45,19 @@ private:
         localization_pos.x = msg->bbox.center.position.x;
         localization_pos.y = msg->bbox.center.position.y;
         localization_pos.z = msg->bbox.center.position.z;
-        RCLCPP_INFO(this->get_logger(), "Received: x = %d, y = %d, z = %d", localization_pos.x, localization_pos.y, localization_pos.z);
+        RCLCPP_INFO(this->get_logger(), "Received: x = %.2f, y = %.2f, z = %.2f", localization_pos.x, localization_pos.y, localization_pos.z);
     }
  
     void odometry_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
         odometry_pos = msg->data;
         RCLCPP_INFO(this->get_logger(), 
-                "Received: x = %d, y = %d, z = %d, chassis_pitch = %d, chassis_yaw = %d, chassis_roll = %d, turret_pitch = %d, turret_yaw = %d", 
+                "Received: x = %.2f, y = %.2f, z = %.2f, chassis_pitch = %.2f, chassis_yaw = %.2f, chassis_roll = %.2f, turret_pitch = %.2f, turret_yaw = %.2f", 
                 odometry_pos[0], odometry_pos[1], odometry_pos[2], odometry_pos[3], odometry_pos[4], odometry_pos[5], odometry_pos[6], odometry_pos[7]);
     }
 
     void robots_callback(const vision_msgs::msg::Detection3DArray::SharedPtr msg) {        
+        // Clear previous detections to get fresh data each time
+        robots.clear();
         // converting detections msg data into points in the robots vector
         for (const auto &robot : msg->detections) {
             cv::Point3f point;
@@ -63,13 +65,14 @@ private:
             point.y = robot.bbox.center.position.y;
             point.z = robot.bbox.center.position.z;
             robots.push_back(point);
-            RCLCPP_INFO(this->get_logger(), "Robot at: x = %d, y = %d, z = %d", point.x, point.y, point.z);
+            RCLCPP_INFO(this->get_logger(), "Robot detected at: x = %.2f, y = %.2f, z = %.2f", point.x, point.y, point.z);
         }
+        RCLCPP_INFO(this->get_logger(), "Total robots detected: %zu", robots.size());
     }
 
     void health_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
         latest_health = msg->data[0];
-        RCLCPP_INFO(this->get_logger(), "Recieved: health = %d", latest_health);
+        RCLCPP_INFO(this->get_logger(), "Recieved: health = %.2f", latest_health);
         if (latest_health != -1) {
             update_state_machine();
         }
@@ -111,50 +114,72 @@ private:
         
         // capturing the point needs second condition checking that there are no enemies on the point
         else if (latest_health){
+            RCLCPP_INFO(this->get_logger(), "=== CAPTURE STATE ACTIVATED ===");
+            RCLCPP_INFO(this->get_logger(), "Current health: %.2f", latest_health);
+            RCLCPP_INFO(this->get_logger(), "Current position (localization): x=%.2f, y=%.2f, z=%.2f", 
+                       localization_pos.x, localization_pos.y, localization_pos.z);
+            
             bool point_taken = false;
             if(robots.size() > 0){
+                RCLCPP_INFO(this->get_logger(), "Checking %zu detected robots for capture point occupancy", robots.size());
                 //Assuming absolute turret rotation (i.e. in relation to field)
                 //Assuming rotation = 0 at x axis
 
                 //x, y, angle
-                float pos_info[] = {odometry_pos[0], odometry_pos[1], odometry[6]};
+                if(odometry_pos.size() < 7) {
+                    RCLCPP_WARN(this->get_logger(), "Odometry data incomplete, skipping robot position check");
+                } else {
+                    float pos_info[] = {odometry_pos[0], odometry_pos[1], odometry_pos[6]};
 
-                for(cv::Point3f point : robots){
+                    for(cv::Point3f point : robots){
 
-                    /* calculating the detected robots position*/
-                    float theta_cam = atan(pos.x/pos.z); //check atan specs
-                    float theta_det = pos_info[2] - theta_cam; //affirm both angles in same unit
-                    float x_det = pos_info[0] + pos.z * cos(theta_det);
-                    float y_det = pos_info[1] + pos.z * sin(theta_det);
+                        /* calculating the detected robots position*/
+                        float theta_cam = atan(point.x/point.z); //check atan specs
+                        float theta_det = pos_info[2] - theta_cam; //affirm both angles in same unit
+                        float x_det = pos_info[0] + point.z * cos(theta_det);
+                        float y_det = pos_info[1] + point.z * sin(theta_det);
 
-                    /*assuming pos in mm*/
-                    float capture_center_x = 6000;
-                    float capture_center_y = 6000;
-                    
-                    /* within 1/2 meter of capture zone*/
-                    if(abs(x_det - capture_center_x) < 1000 || 
-                        abs(y_det - capture_center_y) < 1000){
-                        point_taken = true;
-                        break;
+                        /*assuming pos in mm*/
+                        float capture_center_x = 6000;
+                        float capture_center_y = 6000;
+                        
+                        /* within 1/2 meter of capture zone*/
+                        if(abs(x_det - capture_center_x) < 1000 || 
+                            abs(y_det - capture_center_y) < 1000){
+                            point_taken = true;
+                            RCLCPP_WARN(this->get_logger(), "Point is TAKEN! Robot detected at x=%.2f, y=%.2f (within capture zone)", x_det, y_det);
+                            break;
+                        }
                     }
                 }
+            } else {
+                RCLCPP_INFO(this->get_logger(), "No robots detected, capture point is clear");
             }
+            
+            if(point_taken) {
+                RCLCPP_WARN(this->get_logger(), "Capture point is occupied, skipping capture logic");
+                return;
+            }
+            
+            RCLCPP_INFO(this->get_logger(), "Starting capture logic...");
             // capture
 
+            // Constants adjusted for testing (field is typically 12m x 12m)
             double boxWidth = BOX_WIDTH;
             double boxHeight = BOX_HEIGHT;
-            double g = 10.0;
-            double rSafe = 10.0;
-            double minHoppingDistance = 5.0;
-            double maxHoppingDistance = 50.0;
-            double wallMargin = 5.0;
+            double g = 20.0;  // Increased grid resolution for better visualization
+            double rSafe = 1.0;  // Safe radius around robots (meters) - reduced for better testing
+            double minHoppingDistance = 0.5;  // Minimum movement distance (meters)
+            double maxHoppingDistance = 3.0;  // Maximum movement distance (meters)
+            double wallMargin = 0.5;  // Margin from walls (meters)
             double w_edge = 1.0;
             double w_center = 1.0;
-            double w_safe = 1.0;
+
+            RCLCPP_INFO(this->get_logger(), "Capture parameters: box=%.1fx%.1f, grid=%d, safe_radius=%.1f, hop_range=[%.1f,%.1f]", 
+                       boxWidth, boxHeight, static_cast<int>(g), rSafe, minHoppingDistance, maxHoppingDistance);
 
             cv::Point3f startingPosition = localization_pos;
             double px_min = -boxWidth / 2.0;
-            double px_max = boxWidth / 2.0;
 
             double d_max = std::min(boxWidth / 2.0f, boxHeight / 2.0f);
             double R = std::max(boxWidth / 2.0f, boxHeight / 2.0f);
@@ -162,11 +187,13 @@ private:
             const int G = static_cast<int>(g);
 
             double w_step = 1.0;
-            double dangerThreshold = 0.7;
-            int numCandidates = 5;
+            double dangerThreshold = 0.8;  // Increased threshold to reduce false positives
+            int numCandidates = 10;  // Increased for better selection
             double beta = 1.5;
             double eps = 1e-6;
             const double pi = std::acos(-1.0);
+            
+            RCLCPP_INFO(this->get_logger(), "Starting position: x=%.2f, y=%.2f", startingPosition.x, startingPosition.y);
 
             std::vector<std::vector<double>> edge_cost(G, std::vector<double>(G, 0.0));
             std::vector<std::vector<double>> center_cost(G, std::vector<double>(G, 0.0));
@@ -176,9 +203,13 @@ private:
             double py_min = -boxHeight / 2.0;
             double Hx = boxWidth / static_cast<double>(G);
             double Hy = boxHeight / static_cast<double>(G);
+            
+            RCLCPP_INFO(this->get_logger(), "Grid cell size: Hx=%.3f, Hy=%.3f", Hx, Hy);
 
             cv::Point2d reference(startingPosition.x, startingPosition.y);
+            RCLCPP_INFO(this->get_logger(), "Reference point (starting position): x=%.2f, y=%.2f", reference.x, reference.y);
 
+            RCLCPP_INFO(this->get_logger(), "Computing edge and center costs...");
             for (int i = 0; i < G; ++i) {
                 for (int j = 0; j < G; ++j) {
                     cv::Point2d center = cellCenter(i, j, px_min, py_min, Hx, Hy);
@@ -190,6 +221,7 @@ private:
                     center_cost[i][j] = cv::norm(center - reference) / R;
                 }
             }
+            RCLCPP_INFO(this->get_logger(), "Edge and center costs computed");
 
             for (int i = 0; i < G; ++i) {
                 for (int j = 0; j < G; ++j) {
@@ -197,8 +229,10 @@ private:
                 }
             }
 
+            RCLCPP_INFO(this->get_logger(), "Computing robot avoidance costs for %zu robots...", robots.size());
             for (const auto &robot : robots) {
                 cv::Point2d robotPos(robot.x, robot.y);
+                RCLCPP_INFO(this->get_logger(), "  Processing robot at: x=%.2f, y=%.2f", robotPos.x, robotPos.y);
 
                 for (int i = 0; i < G; ++i) {
                     for (int j = 0; j < G; ++j) {
@@ -211,8 +245,11 @@ private:
                     }
                 }
             }
+            RCLCPP_INFO(this->get_logger(), "Robot avoidance costs computed");
 
             cv::Point2d robotPose(startingPosition.x, startingPosition.y);
+            RCLCPP_INFO(this->get_logger(), "Current robot pose: x=%.2f, y=%.2f", robotPose.x, robotPose.y);
+            
             std::vector<cv::Point2d> candidatePoints;
             candidatePoints.reserve(numCandidates);
 
@@ -222,8 +259,9 @@ private:
             std::uniform_real_distribution<double> angleDist(-pi, pi);
 
             int attempts = 0;
-            int maxAttempts = numCandidates * 10;
+            int maxAttempts = numCandidates * 20;  // Increased attempts for better coverage
 
+            RCLCPP_INFO(this->get_logger(), "Generating %d candidate points...", numCandidates);
             while (candidatePoints.size() < static_cast<size_t>(numCandidates) &&
                 attempts < maxAttempts) {
                 ++attempts;
@@ -245,24 +283,33 @@ private:
 
                 candidatePoints.push_back(futureRobotPose);
             }
+            RCLCPP_INFO(this->get_logger(), "Generated %zu candidate points after %d attempts", candidatePoints.size(), attempts);
 
             std::vector<double> scoresForCandidates;
             scoresForCandidates.reserve(candidatePoints.size());
 
+            RCLCPP_INFO(this->get_logger(), "Evaluating candidate points...");
+            int candidate_idx = 0;
             for (const auto &candidate : candidatePoints) {
                 int ci = static_cast<int>((candidate.x - px_min) / Hx);
                 int cj = static_cast<int>((candidate.y - py_min) / Hy);
 
                 if (ci < 0 || ci >= G || cj < 0 || cj >= G) {
+                    RCLCPP_WARN(this->get_logger(), "  Candidate %d at (%.2f, %.2f) is out of bounds", 
+                               candidate_idx, candidate.x, candidate.y);
                     scoresForCandidates.push_back(1.0);
+                    candidate_idx++;
                     continue;
                 }
 
                 double step_cost = cv::norm(candidate - robotPose) / maxHoppingDistance;
 
                 if (robots_cost[ci][cj] > dangerThreshold) {
+                    // Dangerous candidates get a high penalty score (lower is better, but we want to avoid these)
                     final_cost[ci][cj] = 1.0;
-                    scoresForCandidates.push_back(1.0);
+                    scoresForCandidates.push_back(10.0);  // High penalty for dangerous candidates
+                    RCLCPP_WARN(this->get_logger(), "  Candidate %d at (%.2f, %.2f) is DANGEROUS (robot_cost=%.3f)", 
+                               candidate_idx, candidate.x, candidate.y, robots_cost[ci][cj]);
                 } else {
                     double combined = w_edge * edge_cost[ci][cj] +
                                     w_center * center_cost[ci][cj] +
@@ -270,13 +317,33 @@ private:
 
                     final_cost[ci][cj] = combined;
                     scoresForCandidates.push_back(combined);
+                    RCLCPP_INFO(this->get_logger(), "  Candidate %d at (%.2f, %.2f): edge=%.3f, center=%.3f, step=%.3f, combined=%.3f", 
+                               candidate_idx, candidate.x, candidate.y, 
+                               edge_cost[ci][cj], center_cost[ci][cj], step_cost, combined);
                 }
+                candidate_idx++;
             }
 
             if (!scoresForCandidates.empty()) {
+                RCLCPP_INFO(this->get_logger(), "Selecting best candidate from %zu options...", scoresForCandidates.size());
                 std::vector<double> weights(scoresForCandidates.size());
                 double maxScore = *std::max_element(
                     scoresForCandidates.begin(), scoresForCandidates.end());
+                double minScore = *std::min_element(
+                    scoresForCandidates.begin(), scoresForCandidates.end());
+                RCLCPP_INFO(this->get_logger(), "Score range: min=%.3f, max=%.3f (lower is better)", minScore, maxScore);
+                
+                // Count safe vs dangerous candidates
+                int safe_count = 0, dangerous_count = 0;
+                for (double score : scoresForCandidates) {
+                    if (score >= 10.0) {
+                        dangerous_count++;
+                    } else {
+                        safe_count++;
+                    }
+                }
+                RCLCPP_INFO(this->get_logger(), "Safe candidates: %d, Dangerous candidates: %d", safe_count, dangerous_count);
+                
                 double sum = 0.0;
 
                 for (size_t k = 0; k < scoresForCandidates.size(); ++k) {
@@ -293,9 +360,56 @@ private:
                         weights.begin(), weights.end());
                     size_t selectedIndex = chooser(rng);
                     cv::Point2d chosenPoint = candidatePoints[selectedIndex];
-                    (void)chosenPoint;
+                    
+                    RCLCPP_INFO(this->get_logger(), "=== SELECTED GOAL POINT ===");
+                    RCLCPP_INFO(this->get_logger(), "Chosen point: x=%.2f, y=%.2f", chosenPoint.x, chosenPoint.y);
+                    RCLCPP_INFO(this->get_logger(), "Distance from current position: %.2f meters", 
+                               cv::norm(chosenPoint - robotPose));
+                    RCLCPP_INFO(this->get_logger(), "Selected candidate index: %zu, score: %.3f", 
+                               selectedIndex, scoresForCandidates[selectedIndex]);
+                    
+                    // Log cost map summary
+                    double min_cost = 1.0, max_cost = 0.0, avg_cost = 0.0;
+                    double min_safe_cost = 1.0, max_safe_cost = 0.0, avg_safe_cost = 0.0;
+                    int valid_cells = 0;
+                    int safe_cells = 0;
+                    int dangerous_cells = 0;
+                    for (int i = 0; i < G; ++i) {
+                        for (int j = 0; j < G; ++j) {
+                            min_cost = std::min(min_cost, final_cost[i][j]);
+                            max_cost = std::max(max_cost, final_cost[i][j]);
+                            avg_cost += final_cost[i][j];
+                            valid_cells++;
+                            
+                            if (final_cost[i][j] < 1.0) {  // Safe cells (not dangerous)
+                                min_safe_cost = std::min(min_safe_cost, final_cost[i][j]);
+                                max_safe_cost = std::max(max_safe_cost, final_cost[i][j]);
+                                avg_safe_cost += final_cost[i][j];
+                                safe_cells++;
+                            } else {
+                                dangerous_cells++;
+                            }
+                        }
+                    }
+                    if (valid_cells > 0) {
+                        avg_cost /= valid_cells;
+                        RCLCPP_INFO(this->get_logger(), "Cost map stats (all cells): min=%.3f, max=%.3f, avg=%.3f", 
+                                   min_cost, max_cost, avg_cost);
+                        RCLCPP_INFO(this->get_logger(), "Safe cells: %d, Dangerous cells: %d", safe_cells, dangerous_cells);
+                        if (safe_cells > 0) {
+                            avg_safe_cost /= safe_cells;
+                            RCLCPP_INFO(this->get_logger(), "Safe cell costs: min=%.3f, max=%.3f, avg=%.3f", 
+                                       min_safe_cost, max_safe_cost, avg_safe_cost);
+                        }
+                    }
+                } else {
+                    RCLCPP_ERROR(this->get_logger(), "Failed to normalize weights!");
                 }
+            } else {
+                RCLCPP_WARN(this->get_logger(), "No valid candidates generated!");
             }
+            
+            RCLCPP_INFO(this->get_logger(), "=== CAPTURE LOGIC COMPLETE ===");
 
 
         }
