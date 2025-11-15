@@ -37,7 +37,7 @@ struct comparator
 {
 	bool operator()(std::shared_ptr<Location> lhs, std::shared_ptr<Location> rhs) const
 	{
-		if(lhs == nullptr || rhs == nullptr) {
+		if (lhs == nullptr || rhs == nullptr) {
 			return false;
 		}
 		return *lhs.get() > *rhs.get();
@@ -58,13 +58,15 @@ public:
 
 	std::vector<Pos> getPath();
 
-	private:
-	
+	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual> getPoints();
+
+private:
+
 	int m_targetX;
 	int m_targetY;
-	
+
 	std::vector<Pos> m_path;
-	
+
 	std::priority_queue<std::shared_ptr<Location>, std::vector<std::shared_ptr<Location>>, comparator> m_frontier;
 	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual> m_points;//Swap for better type if needed
 	std::unordered_set<std::shared_ptr<Location>> m_reached;

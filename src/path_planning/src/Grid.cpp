@@ -19,14 +19,46 @@ Grid::Grid() : m_target(), m_hueristicMap(), m_costMap(), m_additionalCostMap()
 			}
 			if (isRoughTerrain({x, y}))
 			{
-				m_costMap[y][x] += COST_ROUGH_TERRAIN;
+				m_costMap[y][x] += getRoughTerrain({x, y}); // Cost for rough terrain
 			}
 			if (isAdjacentToWall({x, y}))
 			{
-				m_costMap[y][x] += COST_ADJACENT_TO_WALL;
+				m_costMap[y][x] += COST_ADJACENT_TO_WALL; // Cost for tiles adjacent to walls
 			}
 		}
 	}
+
+	////Apply blur to each tile's cost based on surrounding tiles to create smoother transitions
+	//// Simple box blur
+	// std::array<std::array<double, TILE_COUNT_X>, TILE_COUNT_Y> blurredCostMap = m_costMap;
+	// for (int y = 0; y < TILE_COUNT_Y; ++y)
+	//{
+	//	for (int x = 0; x < TILE_COUNT_X; ++x)
+	//	{
+	//		double totalCost = 0.0;
+	//		int count = 0;
+	//		// Sum costs of neighboring tiles including itself
+	//		for (int dy = -1; dy <= 1; ++dy)
+	//		{
+	//			for (int dx = -1; dx <= 1; ++dx)
+	//			{
+	//				if(dx == dy) // Skip diagonals for simplicity
+	//					continue;
+
+	//				int nx = x + dx;
+	//				int ny = y + dy;
+	//				if (nx >= 0 && nx < TILE_COUNT_X && ny >= 0 && ny < TILE_COUNT_Y)
+	//				{
+	//					totalCost += m_costMap[ny][nx];
+	//					++count;
+	//				}
+	//			}
+	//		}
+	//		// Average the cost
+	//		blurredCostMap[y][x] = totalCost / count;
+	//	}
+	//}
+	// m_costMap = blurredCostMap;
 }
 
 bool Grid::isEdgeTile(Pos p)
@@ -57,6 +89,18 @@ bool Grid::isRoughTerrain(Pos p)
 		}
 	}
 	return false;
+}
+
+float Grid::getRoughTerrain(Pos p)
+{
+	for (size_t i = 0; i < roughTerrain.size(); i++)
+	{
+		if (roughTerrain[i].fromX <= p.x && roughTerrain[i].toX >= p.x && roughTerrain[i].fromY <= p.y && roughTerrain[i].toY >= p.y)
+		{
+			return roughTerrain[i].weight;
+		}
+	}
+	return 0.0f;
 }
 
 bool Grid::crossesWall(Pos from, Pos to)

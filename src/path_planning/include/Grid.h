@@ -37,6 +37,7 @@ public:
 
 	// Static helper methods to determine if a tile is an edge tile or rough terrain
 	static bool isRoughTerrain(Pos p);
+	static float getRoughTerrain(Pos p);
 	static bool isEdgeTile(Pos p);
 	static bool isAdjacentToWall(Pos p);
 
