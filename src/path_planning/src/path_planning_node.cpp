@@ -21,6 +21,8 @@ public:
     robotPos_subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("robotPos", 10, std::bind(&PathPlanningNode::robotPos_callback, this, std::placeholders::_1));
     targetPos_subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("targetPos", 10, std::bind(&PathPlanningNode::targetPos_callback, this, std::placeholders::_1));
 
+    otherRobotPoses_subscription_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("otherRobotPoses", 10, std::bind(&PathPlanningNode::otherRobotPoses_callback, this, std::placeholders::_1));
+
     timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&PathPlanningNode::periodic_callback, this));
   }
 
@@ -34,14 +36,21 @@ private:
     if (targetPosChanged_)
     {
       grid_.setTarget(targetPos_);
-      path_.reloadFromGrid(grid_);
     }
-
+    
+    if (otherRobotPosesChanged_){
+      for(Pos p : otherRobotPoses_){
+        grid_.addCostBox(p.x,p.y, COST_OTHER_ROBOT, COST_OTHER_ROBOT_ADJACENT);
+      }
+    }
+    
     std::stringstream ss;
-
+    
     ss << "From (" << robotPos_.x << "," << robotPos_.y << ") to (" << targetPos_.x << "," << targetPos_.y << "): \n";
-
-    if(targetPosChanged_ || robotPosChanged_){
+    
+    if (targetPosChanged_ || robotPosChanged_ || otherRobotPosesChanged_)
+    {
+      path_.reloadFromGrid(grid_);
       path_.calculate(robotPos_);
       pathPoints_ = path_.getPath();
     }
@@ -51,11 +60,15 @@ private:
       msg.data[0] = pathPoints_[1].x;
       msg.data[1] = pathPoints_[1].y;
       ss << "Next pos: (" << pathPoints_[1].x << pathPoints_[1].y << ")";
-    }else if (pathPoints_.size() > 0){
+    }
+    else if (pathPoints_.size() > 0)
+    {
       msg.data[0] = pathPoints_[0].x;
       msg.data[1] = pathPoints_[0].y;
       ss << "Next pos: (" << pathPoints_[0].x << pathPoints_[0].y << ")";
-    }else{
+    }
+    else
+    {
       ss << "Next points";
     }
 
@@ -71,7 +84,12 @@ private:
 
     // Do conversion from whatever unit to mm or something
 
-    robotPos_ = {(int)(out[0] / TILE_SIZE), (int)(out[1] / TILE_SIZE)};
+    Pos newRobotPos = {(int)(out[0] / TILE_SIZE), (int)(out[1] / TILE_SIZE)};
+    if (newRobotPos.x != robotPos_.x || newRobotPos.y != robotPos_.y)
+    {
+      robotPosChanged_ = true;
+      robotPos_ = newRobotPos;
+    }
     robotPosChanged_ = true;
 
     RCLCPP_INFO(this->get_logger(), "Setting robotPos to: %d, %d,", robotPos_.x, robotPos_.y);
@@ -82,10 +100,54 @@ private:
 
     // Do conversion from whatever unit to mm or something
 
-    targetPos_ = {(int)(out[0] / TILE_SIZE), (int)(out[1] / TILE_SIZE)};
-    targetPosChanged_ = true;
+    Pos newTargetPos = {(int)(out[0] / TILE_SIZE), (int)(out[1] / TILE_SIZE)};
+    if (newTargetPos.x != targetPos_.x || newTargetPos.y != targetPos_.y)
+    {
+      targetPosChanged_ = true;
+      targetPos_ = newTargetPos;
+    }
 
     RCLCPP_INFO(this->get_logger(), "Setting targetPos to: %d, %d,", targetPos_.x, targetPos_.y);
+  }
+  void otherRobotPoses_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+  {
+    std::vector<float> data = msg->data;
+    std::vector<Pos> out = std::vector<Pos>();
+
+    // Do conversion from whatever unit to mm or something
+
+    for (size_t i = 0; i < data.size(); i += 2)
+    {
+      Pos temp = {(int)data[i], (int)data[i + 1]};
+      RCLCPP_INFO(this->get_logger(), "Set otherRobotPos #%d to: %d, %d,", (int)(i / 2), temp.x, temp.y);
+      out.push_back(temp);
+    }
+
+    if (out.size() != otherRobotPoses_.size())
+    {
+      otherRobotPosesChanged_ = true;
+      otherRobotPoses_ = out;
+    }
+
+    for (Pos p : out)
+    {
+      bool found = false;
+      for (Pos otherPos : otherRobotPoses_)
+      {
+        if (p.x == otherPos.x && p.y == otherPos.y)
+        {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+      {
+        otherRobotPosesChanged_ = true;
+        otherRobotPoses_ = out;
+
+        break;
+      }
+    }
   }
 
   std::random_device rd;                                                                       // Provides a non-deterministic seed
@@ -102,12 +164,17 @@ private:
   Pos targetPos_;
   bool targetPosChanged_{false};
 
+  std::vector<Pos> otherRobotPoses_;
+  bool otherRobotPosesChanged_;
+
   Grid grid_;
   Path path_;
   std::vector<Pos> pathPoints_;
 
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr robotPos_subscription_;
   rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr targetPos_subscription_;
+
+  rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr otherRobotPoses_subscription_;
 
   rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr nextPos_publisher_;
 

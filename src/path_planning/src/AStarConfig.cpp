@@ -7,6 +7,9 @@ const float COST_ADJACENT_TO_WALL = 0.75;
 const float COST_ROUGH_TERRAIN = 3.0;
 const float COST_RAISED_TERRAIN = 2.0;
 
+const float COST_OTHER_ROBOT = 15.0;
+const float COST_OTHER_ROBOT_ADJACENT = 6.0;
+
 HeuristicType CHOSEN_HURISTIC = HeuristicType::Euclidean;
 
 //All indexes are inclusive and 0-based

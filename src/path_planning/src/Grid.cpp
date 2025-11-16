@@ -28,37 +28,42 @@ Grid::Grid() : m_target(), m_hueristicMap(), m_costMap(), m_additionalCostMap()
 		}
 	}
 
-	////Apply blur to each tile's cost based on surrounding tiles to create smoother transitions
-	//// Simple box blur
-	// std::array<std::array<double, TILE_COUNT_X>, TILE_COUNT_Y> blurredCostMap = m_costMap;
-	// for (int y = 0; y < TILE_COUNT_Y; ++y)
-	//{
-	//	for (int x = 0; x < TILE_COUNT_X; ++x)
-	//	{
-	//		double totalCost = 0.0;
-	//		int count = 0;
-	//		// Sum costs of neighboring tiles including itself
-	//		for (int dy = -1; dy <= 1; ++dy)
-	//		{
-	//			for (int dx = -1; dx <= 1; ++dx)
-	//			{
-	//				if(dx == dy) // Skip diagonals for simplicity
-	//					continue;
+	// blurCostMap();
+}
 
-	//				int nx = x + dx;
-	//				int ny = y + dy;
-	//				if (nx >= 0 && nx < TILE_COUNT_X && ny >= 0 && ny < TILE_COUNT_Y)
-	//				{
-	//					totalCost += m_costMap[ny][nx];
-	//					++count;
-	//				}
-	//			}
-	//		}
-	//		// Average the cost
-	//		blurredCostMap[y][x] = totalCost / count;
-	//	}
-	//}
-	// m_costMap = blurredCostMap;
+void Grid::blurCostMap()
+{
+	// Apply blur to each tile's cost based on surrounding tiles to create smoother transitions
+	//  Simple box blur
+	std::array<std::array<double, TILE_COUNT_X>, TILE_COUNT_Y> blurredCostMap = m_costMap;
+	for (int y = 0; y < TILE_COUNT_Y; ++y)
+	{
+		for (int x = 0; x < TILE_COUNT_X; ++x)
+		{
+			double totalCost = 0.0;
+			int count = 0;
+			// Sum costs of neighboring tiles including itself
+			for (int dy = -1; dy <= 1; ++dy)
+			{
+				for (int dx = -1; dx <= 1; ++dx)
+				{
+					if (dx == dy) // Skip diagonals for simplicity
+						continue;
+
+					int nx = x + dx;
+					int ny = y + dy;
+					if (nx >= 0 && nx < TILE_COUNT_X && ny >= 0 && ny < TILE_COUNT_Y)
+					{
+						totalCost += m_costMap[ny][nx];
+						++count;
+					}
+				}
+			}
+			// Average the cost
+			blurredCostMap[y][x] = totalCost / count;
+		}
+	}
+	m_costMap = blurredCostMap;
 }
 
 bool Grid::isEdgeTile(Pos p)
@@ -127,6 +132,7 @@ bool Grid::crossesWall(Pos from, Pos to)
 
 void Grid::recalculateHueristicMap()
 {
+
 	for (int y = 0; y < TILE_COUNT_Y; ++y)
 	{
 		for (int x = 0; x < TILE_COUNT_X; ++x)
@@ -203,6 +209,20 @@ void Grid::setAdditionalCost(int x, int y, double cost)
 	if (x >= 0 && x < TILE_COUNT_X && y >= 0 && y < TILE_COUNT_Y)
 	{
 		m_additionalCostMap[y][x] = cost;
+	}
+}
+
+void Grid::addCostBox(int x, int y, double centerCost, double adjacentCost)
+{
+	setAdditionalCost(x, y, centerCost);
+	for (int dx = -1; dx <= 1; ++dx)
+	{
+		for (int dy = -1; dy <= 1; ++dy)
+		{
+			if (dx == 0 && dy == 0)
+				continue; // Skip center tile
+			setAdditionalCost(x + dx, y + dy, adjacentCost);
+		}
 	}
 }
 

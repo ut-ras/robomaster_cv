@@ -18,6 +18,8 @@ class Grid
 public:
 	Grid();
 
+	void blurCostMap();
+
 	// Getters and setters for target
 	void setTarget(int x, int y);
 	void setTarget(Pos target);
@@ -34,6 +36,8 @@ public:
 	// Getters and setters for additional cost map
 	double getAdditionalCost(int x, int y) const;
 	void setAdditionalCost(int x, int y, double cost);
+
+	void addCostBox(int x, int y, double centerCost, double adjacentCost);
 
 	// Static helper methods to determine if a tile is an edge tile or rough terrain
 	static bool isRoughTerrain(Pos p);

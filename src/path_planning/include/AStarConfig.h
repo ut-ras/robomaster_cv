@@ -14,6 +14,10 @@ extern const float COST_DEFAULT;
 extern const float COST_EDGE_OF_FIELD;
 extern const float COST_ADJACENT_TO_WALL;
 extern const float COST_ROUGH_TERRAIN;
+extern const float COST_RAISED_TERRAIN;
+
+extern const float COST_OTHER_ROBOT;
+extern const float COST_OTHER_ROBOT_ADJACENT;
 
 enum class HeuristicType {
 	Euclidean,
