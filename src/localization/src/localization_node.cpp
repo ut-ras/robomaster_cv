@@ -6,14 +6,16 @@
 #include <chrono>
 #include <cmath>
 #include <numeric>
-
+#include <opencv2/aruco.hpp>
+#include <opencv2/aruco/charuco.hpp>
+// #include <opencv2/objdetect/aruco_detector.hpp>
 
 using namespace cv;
 using std::cout;
 using std::endl;
 
 // ---------------- Camera intrinsics (match your Python) ----------------
-static const float fid_size_m = 0.053f; // meters
+static const float fid_size_m = 0.15f; // meters
 static const Mat cameraMatrix = (Mat_<float>(3,3) <<
     1.25649815e+03f, 0.f, 7.12996774e+02f,
     0.f, 1.25820533e+03f, 4.69551858e+02f,
@@ -21,64 +23,7 @@ static const Mat cameraMatrix = (Mat_<float>(3,3) <<
 static const Mat distCoeffs = (Mat_<float>(1,5) <<
     -3.72271817e-03f, 5.33786890e-01f, -4.99625728e-04f, -1.65101232e-03f, -1.78505927e+00f);
 
-// ---------------- Color ranges (HSV) ----------------
-static const Scalar lowerRed1(  0,150,150), upperRed1( 10,255,255);
-static const Scalar lowerRed2(170,150,150), upperRed2(180,255,255);
-static const Scalar lowerBlue(100, 80,160), upperBlue(120,255,255);
-
 // ---------------- Helpers ----------------
-static std::vector<std::vector<Point>> contour_generator(const Mat& frameBGR) {
-    Mat gray, blurImg, edges;
-    cvtColor(frameBGR, gray, COLOR_BGR2GRAY);
-    GaussianBlur(gray, blurImg, Size(7,7), 0);
-
-    // Median-based Canny thresholds (like Python)
-    double med = 0.0; // Will be computed below
-    {
-        Mat tmp;
-        blurImg.reshape(0,1).copyTo(tmp);
-        // Fast median using nth_element
-        std::vector<uchar> v(tmp.begin<uchar>(), tmp.end<uchar>());
-        size_t mid = v.size()/2;
-        std::nth_element(v.begin(), v.begin()+mid, v.end());
-        med = v[mid];
-    }
-    int lower = (int)std::max(0.0, 0.3 * med);
-    int upper = (int)std::min(255.0, 1.1 * med);
-
-    Canny(blurImg, edges, lower, upper);
-    imwrite("Edges.jpeg", edges);
-
-    // Find contours with hierarchy (like RETR_TREE)
-    std::vector<std::vector<Point>> cnts;
-    std::vector<Vec4i> hierarchy;
-    findContours(edges.clone(), cnts, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
-
-    if (hierarchy.empty()) return {};
-
-    // Original code used complex parent logic and then filtered.
-    // We’ll reproduce the intent: gather quads with area/convex filter later.
-    std::vector<std::vector<Point>> result;
-    for (size_t i = 0; i < cnts.size(); ++i) {
-        // Try approximating this contour and (optionally) its previous sibling, like Python did
-        double peri = arcLength(cnts[i], true);
-        std::vector<Point> approx; approxPolyDP(cnts[i], approx, 0.02 * peri, true);
-        if (approx.size() > 4 && i > 0) {
-            double peri1 = arcLength(cnts[i-1], true);
-            std::vector<Point> corners; approxPolyDP(cnts[i-1], corners, 0.02 * peri1, true);
-            result.push_back(corners);
-        }
-    }
-
-    // Keep only quads, area>1000, convex
-    std::vector<std::vector<Point>> final_list;
-    for (auto& contour : result) {
-        if (contour.size() == 4 && contourArea(contour) > 1000.0 && isContourConvex(contour)) {
-            final_list.push_back(contour);
-        }
-    }
-    return final_list;
-}
 
 static std::vector<Point2f> order(const std::vector<Point2f>& pts) {
     CV_Assert(pts.size() == 4);
@@ -91,25 +36,6 @@ static std::vector<Point2f> order(const std::vector<Point2f>& pts) {
     int bl = int(std::distance(d.begin(), std::max_element(d.begin(), d.end())));
     rect[0]=pts[tl]; rect[2]=pts[br]; rect[1]=pts[tr]; rect[3]=pts[bl];
     return rect;
-}
-
-// Determine main color inside 175x175 tag image (BGR)
-static std::string determineColor(const Mat& markerBGR) {
-    Mat hsv; cvtColor(markerBGR, hsv, COLOR_BGR2HSV);
-    Mat red1, red2, red, blue;
-    inRange(hsv, lowerRed1, upperRed1, red1);
-    inRange(hsv, lowerRed2, upperRed2, red2);
-    red = red1 + red2;
-    inRange(hsv, lowerBlue, upperBlue, blue);
-
-    imwrite("redMask1.jpeg", red1);
-    imwrite("redMask2.jpeg", red2);
-    imwrite("redMask.jpeg", red);
-    imwrite("blueMask.jpeg", blue);
-
-    if (sum(red)[0] > 0)  return "red";
-    if (sum(blue)[0] > 0) return "blue";
-    return "None";
 }
 
 // Determine letter from warped grayscale tag
@@ -195,25 +121,24 @@ public:
         
         RCLCPP_INFO(this->get_logger(), "Successfully opened camera");
         
-        p1_ = {
-            {0.f,0.f}, {(float)(dim_-1),0.f}, {(float)(dim_-1),(float)(dim_-1)}, {0.f,(float)(dim_-1)}
-        };
         
         t_prev_ = std::chrono::steady_clock::now();
+        RCLCPP_INFO(this->get_logger(), "Initialized previous time point");
         timer_ = this->create_wall_timer(std::chrono::milliseconds(1000/30), std::bind(&LocalNode::callback, this));
+        RCLCPP_INFO(this->get_logger(), "Timer started for 30 FPS processing");
     }
 
-private:
+    private:
+
     VideoCapture cap_;
     const int dim_;
-    std::vector<Point2f> p1_;
     std::chrono::steady_clock::time_point t_prev_;
-
     Mat frame;
 
     void callback() {
         Mat frame;
-        frame = imread("src/localization/src/Blue_E_Tag.jpeg");
+        frame = imread("src/localization/src/tag0.png");
+        RCLCPP_INFO(this->get_logger(), "Past the reading frame + frame = %dx%d", frame.cols, frame.rows);
 
         // if (!cap_.read(frame) || frame.empty()) {
         //     RCLCPP_WARN(this->get_logger(), "Failed to read frame from camera");
@@ -230,45 +155,52 @@ private:
         imwrite("frame.jpeg", frame);
 
 
-        auto contours = contour_generator(frame);
+        // --- ArUco detection (6x6) ---
+        // TODO CHECK IF CORRECT DICTIONARY
+        cv::Ptr<cv::aruco::Dictionary> dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
+        cv::Ptr<cv::aruco::DetectorParameters> params = cv::aruco::DetectorParameters::create();
 
-        for (const auto& c : contours) {
-            // draw detected contour
-            polylines(frame, c, true, Scalar(0,255,0), 2);
+        std::vector<std::vector<cv::Point2f>> corners;
+        std::vector<int> ids;
+        std::vector<std::vector<cv::Point2f>> rejected;
 
-            // order corners
-            std::vector<Point2f> corners2f;
-            for (auto& p : c) corners2f.emplace_back((float)p.x, (float)p.y);
-            auto ord = order(corners2f);
+        cv::aruco::detectMarkers(frame, dict, corners, ids, params, rejected);
 
-            // homography
-            Mat H = findHomography(ord, p1_, RANSAC, 2.0);
-            if (H.empty()) continue;
+        // Optional: draw debug
+        if (!ids.empty()) {
+            cv::aruco::drawDetectedMarkers(frame, corners, ids);
+        }
 
-            // warp and process
-            Mat tag; warpPerspective(frame, tag, H, Size(dim_, dim_));
-            Mat grayTag;
-            cvtColor(tag, grayTag, COLOR_BGR2GRAY);
-            std::string letter = determineLetter(grayTag);
-            std::string color = determineColor(tag);
-            RCLCPP_INFO(this->get_logger(), "Color: %s\n", color.c_str());
-            RCLCPP_INFO(this->get_logger(), "letter: %s", letter.c_str());
-            if (letter.empty() || color.empty()) continue;
+        // For each detected marker, compute pose using your existing solver
+        for (size_t i = 0; i < ids.size(); ++i) {
+            RCLCPP_INFO(this->get_logger(), "Processing marker ID: %d", ids[i]);
+            // ArUco returns corners in order: tl, tr, br, bl
+            const auto &c = corners[i];
 
-            Vec3d tvec, rpy;
-            if (findTranslationAndRotation(ord, tvec, rpy)) {
-                RCLCPP_INFO(this->get_logger(), "Tag: %s, Color: %s", letter.c_str(), color.c_str());
-                RCLCPP_INFO(this->get_logger(), "CAMERA Position x=%f y=%f z=%f", 
-                           tvec[2], tvec[0], tvec[1]);
-                RCLCPP_INFO(this->get_logger(), "Camera tilt --- yaw=%f pitch=%f roll=%f",
-                           rpy[0], rpy[1], rpy[2]);
+            // Pose using your existing function (expects tl,tr,br,bl as Point2f)
+            cv::Vec3d tvec, rpy_deg;
+            if (findTranslationAndRotation(c, tvec, rpy_deg)) {
+                // Build a tiny JSON string (no new deps) for your existing messaging
+                // (Adjust field names as your framework expects.)
+                std::ostringstream oss;
+                oss << "{"
+                    << "\"type\":\"aruco\","
+                    << "\"id\":" << ids[i] << ","
+                    << "\"corners\":["
+                    << "[" << c[0].x << "," << c[0].y << "],"
+                    << "[" << c[1].x << "," << c[1].y << "],"
+                    << "[" << c[2].x << "," << c[2].y << "],"
+                    << "[" << c[3].x << "," << c[3].y << "]"
+                    << "],"
+                    << "\"camera_t\":["
+                    << tvec[0] << "," << tvec[1] << "," << tvec[2] << "],"
+                    << "\"camera_rpy_deg\":["
+                    << rpy_deg[0] << "," << rpy_deg[1] << "," << rpy_deg[2] << "]"
+                    << "}";
 
-                // area debug
-                Rect bbox = boundingRect(c);
-                putText(frame, std::to_string((int)contourArea(c)), {bbox.x, bbox.y-5},
-                        FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0,255,0), 1, LINE_AA);
-
-                imwrite("Marker.jpeg", tag);
+                // For now, log it. If your outer framework already has a publisher,
+                // just publish this JSON string there without changing the schema around it.
+                RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
             }
         }
 
