@@ -2,6 +2,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <opencv2/opencv.hpp>
 #include <iostream>
+#include <string>
+#include <sstream>
 #include <vector>
 #include <chrono>
 #include <cmath>
@@ -94,6 +96,125 @@ static bool findTranslationAndRotation(const std::vector<Point2f>& imgPts,
     return true;
 }
 
+std::string sampleGridColors(const cv::Mat& img, int rowsSearched, int colsSearched) {
+    // Basic validation
+    if (img.empty() || rowsSearched <= 0 || colsSearched <= 0) {
+        return R"({"samples":[]})";
+    }
+    if (img.type() != CV_8UC3) {
+        throw std::runtime_error("sampleGridColors expects CV_8UC3 image");
+    }
+
+    const int height = img.rows;
+    const int width  = img.cols;
+
+    std::ostringstream json;
+    json << R"({"samples":[)";
+
+    bool first = true;
+
+    for (int r = 0; r < rowsSearched; ++r) {
+        // Row position as fraction: (r+1)/(rowsSearched+1)
+        float rowFrac = static_cast<float>(r + 1) / static_cast<float>(rowsSearched + 1);
+        int y = static_cast<int>(std::round(rowFrac * height));
+
+        // Clamp to valid range just in case
+        if (y < 0) y = 0;
+        if (y >= height) y = height - 1;
+
+        for (int c = 0; c < colsSearched; ++c) {
+            // Column position as fraction: (c+1)/(colsSearched+1)
+            float colFrac = static_cast<float>(c + 1) / static_cast<float>(colsSearched + 1);
+            int x = static_cast<int>(std::round(colFrac * width));
+
+            if (x < 0) x = 0;
+            if (x >= width) x = width - 1;
+
+            // Get BGR pixel
+            const cv::Vec3b &bgr = img.at<cv::Vec3b>(y, x);
+            int b = static_cast<int>(bgr[0]);
+            int g = static_cast<int>(bgr[1]);
+            int rChannel = static_cast<int>(bgr[2]);
+
+            // Convert to RGB order for output
+            int rVal = rChannel;
+            int gVal = g;
+            int bVal = b;
+
+            // Human color: white if all channels > 128, else black
+            std::string humanColor =
+                (rVal > 128 && gVal > 128 && bVal > 128) ? "white" : "black";
+
+            // Append comma if not the first element
+            if (!first) {
+                json << ",";
+            }
+            first = false;
+
+            // JSON object for this sample
+            json << "{"
+                 << R"("row":)" << (r + 1) << ","
+                 << R"("col":)" << (c + 1) << ","
+                 << R"("rgb":[)" << rVal << "," << gVal << "," << bVal << "],"
+                 << R"("color":")" << humanColor << R"(")"
+                 << "}";
+        }
+    }
+
+    json << "]}";
+    return json.str();
+}
+
+void debugArucoDictionaries(const cv::Mat& img) {
+    using namespace cv;
+    using namespace cv::aruco;
+
+    if (img.empty()) {
+        std::cout << "Image is empty\n";
+        return;
+    }
+
+   std::vector<int> dicts = {
+    cv::aruco::DICT_4X4_50,
+    cv::aruco::DICT_4X4_100,
+    cv::aruco::DICT_4X4_250,
+    cv::aruco::DICT_4X4_1000,
+    cv::aruco::DICT_5X5_50,
+    cv::aruco::DICT_5X5_100,
+    cv::aruco::DICT_5X5_250,
+    cv::aruco::DICT_5X5_1000,
+    cv::aruco::DICT_6X6_50,
+    cv::aruco::DICT_6X6_100,
+    cv::aruco::DICT_6X6_250,
+    cv::aruco::DICT_6X6_1000,
+    cv::aruco::DICT_7X7_50,
+    cv::aruco::DICT_7X7_100,
+    cv::aruco::DICT_7X7_250,
+    cv::aruco::DICT_7X7_1000
+    // (Do NOT include AprilTag dictionaries unless you are using OpenCV 4.7+)
+};
+
+    for (auto d : dicts) {
+        auto dict = getPredefinedDictionary(d);
+        auto params = DetectorParameters::create();
+
+        std::vector<int> ids;
+        std::vector<std::vector<Point2f>> corners;
+
+        detectMarkers(img, dict, corners, ids, params);
+
+        if (!ids.empty()) {
+            std::cout << "Matched dictionary enum=" << static_cast<int>(d)
+                      << " with IDs:";
+            for (int id : ids) std::cout << " " << id;
+            std::cout << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "No predefined dictionary matched this image.\n";
+}
+
 class LocalNode : public rclcpp::Node {
 public:
     LocalNode() : Node("LocalNode"), dim_(175) {
@@ -157,12 +278,18 @@ public:
 
         // --- ArUco detection (6x6) ---
         // TODO CHECK IF CORRECT DICTIONARY
-        cv::Ptr<cv::aruco::Dictionary> dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_250);
+        cv::Ptr<cv::aruco::Dictionary> dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_1000);
         cv::Ptr<cv::aruco::DetectorParameters> params = cv::aruco::DetectorParameters::create();
 
         std::vector<std::vector<cv::Point2f>> corners;
         std::vector<int> ids;
         std::vector<std::vector<cv::Point2f>> rejected;
+
+        //std::string resultJson = sampleGridColors(frame, 30, 30);
+
+        // For debugging:
+        //std::cout << resultJson << std::endl;
+        debugArucoDictionaries(frame);
 
         cv::aruco::detectMarkers(frame, dict, corners, ids, params, rejected);
 
