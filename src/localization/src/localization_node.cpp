@@ -10,6 +10,7 @@
 #include <numeric>
 #include <opencv2/aruco.hpp>
 #include <opencv2/aruco/charuco.hpp>
+#include "TagDeclaration.hpp"
 // #include <opencv2/objdetect/aruco_detector.hpp>
 
 using namespace cv;
@@ -258,7 +259,7 @@ public:
 
     void callback() {
         Mat frame;
-        frame = imread("src/localization/src/tag0.png");
+        frame = imread("src/localization/src/tag8.png");
         RCLCPP_INFO(this->get_logger(), "Past the reading frame + frame = %dx%d", frame.cols, frame.rows);
 
         // if (!cap_.read(frame) || frame.empty()) {
@@ -278,7 +279,6 @@ public:
 
         // --- ArUco detection (6x6) ---
         // TODO CHECK IF CORRECT DICTIONARY
-        cv::Ptr<cv::aruco::Dictionary> dict = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_6X6_1000);
         cv::Ptr<cv::aruco::DetectorParameters> params = cv::aruco::DetectorParameters::create();
 
         std::vector<std::vector<cv::Point2f>> corners;
@@ -289,14 +289,43 @@ public:
 
         // For debugging:
         //std::cout << resultJson << std::endl;
-        debugArucoDictionaries(frame);
 
-        cv::aruco::detectMarkers(frame, dict, corners, ids, params, rejected);
+// Try 4 rotation steps: 0°, 90°, 180°, 270° CW
+for (int rotationSteps = 0; rotationSteps < 4; ++rotationSteps) {
+    // If your createArcMarkersDictionary currently takes no args,
+    // make an overload: createArcMarkersDictionary(int rotationSteps)
 
-        // Optional: draw debug
-        if (!ids.empty()) {
-            cv::aruco::drawDetectedMarkers(frame, corners, ids);
+    ids.clear();
+    corners.clear();
+    rejected.clear();
+
+    auto dict = createArcMarkersDictionary();
+    RCLCPP_INFO(this->get_logger(), "Custom dict rows=%d cols=%d",
+            dict->bytesList.rows, dict->bytesList.cols);
+
+    cv::aruco::detectMarkers(frame, dict, corners, ids, params, rejected);
+
+
+    // Label for logging
+    const char* label = nullptr;
+    switch (rotationSteps) {
+        case 0: label = "0 deg (no rotation)"; break;
+        case 1: label = "90 deg CW";           break;
+        case 2: label = "180 deg CW";          break;
+        case 3: label = "270 deg CW";          break;
+        default: label = "unknown";            break;
+    }
+
+    if (!ids.empty()) {
+        RCLCPP_INFO(this->get_logger(), "For %s, detected IDs:", label);
+        for (size_t i = 0; i < ids.size(); ++i) {
+            RCLCPP_INFO(this->get_logger(), "  ID %d", ids[i]);
         }
+
+    } else {
+        RCLCPP_INFO(this->get_logger(), "For %s, detected NO markers.", label);
+    }
+}
 
         // For each detected marker, compute pose using your existing solver
         for (size_t i = 0; i < ids.size(); ++i) {
