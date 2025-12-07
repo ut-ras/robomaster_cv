@@ -11,6 +11,8 @@
 #include <opencv2/aruco.hpp>
 #include <opencv2/aruco/charuco.hpp>
 #include "TagDeclaration.hpp"
+#include <bitset>
+
 // #include <opencv2/objdetect/aruco_detector.hpp>
 
 using namespace cv;
@@ -166,55 +168,86 @@ std::string sampleGridColors(const cv::Mat& img, int rowsSearched, int colsSearc
     return json.str();
 }
 
-void debugArucoDictionaries(const cv::Mat& img) {
-    using namespace cv;
-    using namespace cv::aruco;
+std::vector<int> sampleMarkerBitsFromCorners(const cv::Mat& frame,
+                                             const std::vector<cv::Point2f>& corners,
+                                             bool blackIsOne = true)
+{
+    CV_Assert(!frame.empty());
+    CV_Assert(corners.size() == 4);
 
-    if (img.empty()) {
-        std::cout << "Image is empty\n";
-        return;
+    // Warp to a canonical square
+    const int side = 120; // any reasonable size
+    std::vector<cv::Point2f> dstPts = {
+        cv::Point2f(0, 0),
+        cv::Point2f(side - 1, 0),
+        cv::Point2f(side - 1, side - 1),
+        cv::Point2f(0, side - 1)
+    };
+
+    cv::Mat H = cv::getPerspectiveTransform(corners, dstPts);
+    cv::Mat warped;
+    cv::warpPerspective(frame, warped, H, cv::Size(side, side));
+
+    // Convert to gray and threshold
+    cv::Mat gray, bin;
+    if (warped.channels() == 3 || warped.channels() == 4) {
+        cv::cvtColor(warped, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = warped;
     }
 
-   std::vector<int> dicts = {
-    cv::aruco::DICT_4X4_50,
-    cv::aruco::DICT_4X4_100,
-    cv::aruco::DICT_4X4_250,
-    cv::aruco::DICT_4X4_1000,
-    cv::aruco::DICT_5X5_50,
-    cv::aruco::DICT_5X5_100,
-    cv::aruco::DICT_5X5_250,
-    cv::aruco::DICT_5X5_1000,
-    cv::aruco::DICT_6X6_50,
-    cv::aruco::DICT_6X6_100,
-    cv::aruco::DICT_6X6_250,
-    cv::aruco::DICT_6X6_1000,
-    cv::aruco::DICT_7X7_50,
-    cv::aruco::DICT_7X7_100,
-    cv::aruco::DICT_7X7_250,
-    cv::aruco::DICT_7X7_1000
-    // (Do NOT include AprilTag dictionaries unless you are using OpenCV 4.7+)
-};
+    cv::adaptiveThreshold(gray, bin, 255,
+                          cv::ADAPTIVE_THRESH_MEAN_C,
+                          cv::THRESH_BINARY_INV, 11, 5);
 
-    for (auto d : dicts) {
-        auto dict = getPredefinedDictionary(d);
-        auto params = DetectorParameters::create();
+    // Ignore outer border: crop ~15% from each side
+    int margin = static_cast<int>(side * 0.15);
+    cv::Rect innerR(margin, margin,
+                    side - 2 * margin,
+                    side - 2 * margin);
+    innerR &= cv::Rect(0, 0, side, side);
+    cv::Mat inner = bin(innerR);
 
-        std::vector<int> ids;
-        std::vector<std::vector<Point2f>> corners;
+    const int N = 6;
+    int cellH = inner.rows / N;
+    int cellW = inner.cols / N;
 
-        detectMarkers(img, dict, corners, ids, params);
+    std::vector<int> bits;
+    bits.reserve(N * N);
 
-        if (!ids.empty()) {
-            std::cout << "Matched dictionary enum=" << static_cast<int>(d)
-                      << " with IDs:";
-            for (int id : ids) std::cout << " " << id;
-            std::cout << std::endl;
-            return;
+    for (int r = 0; r < N; ++r) {
+        for (int c = 0; c < N; ++c) {
+            int y0 = r * cellH;
+            int x0 = c * cellW;
+            int y1 = (r == N - 1) ? inner.rows : (r + 1) * cellH;
+            int x1 = (c == N - 1) ? inner.cols : (c + 1) * cellW;
+
+            cv::Rect cellR(x0, y0, x1 - x0, y1 - y0);
+            cv::Mat cell = inner(cellR);
+
+            double meanVal = cv::mean(cell)[0];
+            bool isBlack = (meanVal > 128.0);
+            int bit = blackIsOne ? (isBlack ? 1 : 0)
+                                 : (isBlack ? 0 : 1);
+            bits.push_back(bit);
         }
     }
 
-    std::cout << "No predefined dictionary matched this image.\n";
+    // Log it nicely
+    std::ostringstream oss;
+    oss << "Sampled bits:\n";
+    for (int r = 0; r < N; ++r) {
+        for (int c = 0; c < N; ++c) {
+            oss << bits[r * N + c] << " ";
+        }
+        oss << "\n";
+    }
+    RCLCPP_INFO(rclcpp::get_logger("debug"), "%s", oss.str().c_str());
+
+    return bits;
 }
+
+
 
 class LocalNode : public rclcpp::Node {
 public:
@@ -259,7 +292,7 @@ public:
 
     void callback() {
         Mat frame;
-        frame = imread("src/localization/src/tag8.png");
+        frame = imread("src/localization/src/tag1.png");
         RCLCPP_INFO(this->get_logger(), "Past the reading frame + frame = %dx%d", frame.cols, frame.rows);
 
         // if (!cap_.read(frame) || frame.empty()) {
@@ -291,7 +324,6 @@ public:
         //std::cout << resultJson << std::endl;
 
 // Try 4 rotation steps: 0°, 90°, 180°, 270° CW
-for (int rotationSteps = 0; rotationSteps < 4; ++rotationSteps) {
     // If your createArcMarkersDictionary currently takes no args,
     // make an overload: createArcMarkersDictionary(int rotationSteps)
 
@@ -299,33 +331,44 @@ for (int rotationSteps = 0; rotationSteps < 4; ++rotationSteps) {
     corners.clear();
     rejected.clear();
 
-    auto dict = createArcMarkersDictionary();
+    auto dict = createCustomDictionary();
+    cv::FileStorage fs("mydict.yml", cv::FileStorage::WRITE);
+
+fs << "nmarkers" << (int)dict->bytesList.rows;
+fs << "markersize" << dict->markerSize;
+fs << "maxCorrectionBits" << dict->maxCorrectionBits;
+
+fs << "bytesList" << dict->bytesList;
+
+fs.release();
+for (int r = 0; r < dict->bytesList.rows; ++r) {
+    std::ostringstream oss;
+    oss << "Row " << r << ": ";
+    for (int c = 0; c < dict->bytesList.cols; ++c) {
+        oss << std::bitset<8>(dict->bytesList.at<uchar>(r, c)) << " ";
+    }
+    RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
+}
+    dict->maxCorrectionBits = 0;
+   // params->minMarkerPerimeterRate = 0.1f;  // try 0.08–0.15 range
+//params->maxMarkerPerimeterRate = 4.0f;
     RCLCPP_INFO(this->get_logger(), "Custom dict rows=%d cols=%d",
             dict->bytesList.rows, dict->bytesList.cols);
 
     cv::aruco::detectMarkers(frame, dict, corners, ids, params, rejected);
 
 
-    // Label for logging
-    const char* label = nullptr;
-    switch (rotationSteps) {
-        case 0: label = "0 deg (no rotation)"; break;
-        case 1: label = "90 deg CW";           break;
-        case 2: label = "180 deg CW";          break;
-        case 3: label = "270 deg CW";          break;
-        default: label = "unknown";            break;
-    }
 
     if (!ids.empty()) {
-        RCLCPP_INFO(this->get_logger(), "For %s, detected IDs:", label);
+        RCLCPP_INFO(this->get_logger(), "Detected IDs:");
+        auto sampled = sampleMarkerBitsFromCorners(frame, corners[0], /*blackIsOne=*/true);
         for (size_t i = 0; i < ids.size(); ++i) {
             RCLCPP_INFO(this->get_logger(), "  ID %d", ids[i]);
         }
 
     } else {
-        RCLCPP_INFO(this->get_logger(), "For %s, detected NO markers.", label);
+        RCLCPP_INFO(this->get_logger(), "detected NO markers.");
     }
-}
 
         // For each detected marker, compute pose using your existing solver
         for (size_t i = 0; i < ids.size(); ++i) {
@@ -378,9 +421,6 @@ for (int rotationSteps = 0; rotationSteps < 4; ++rotationSteps) {
     }
     rclcpp::TimerBase::SharedPtr timer_;
 };
-
-
-
 
 
 

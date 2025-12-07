@@ -1,4 +1,4 @@
 #pragma once
 #include <opencv2/aruco.hpp>
 
-cv::Ptr<cv::aruco::Dictionary> createArcMarkersDictionary();
+cv::Ptr<cv::aruco::Dictionary> createCustomDictionary();
