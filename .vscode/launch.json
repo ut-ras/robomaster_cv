@@ -1,6 +1,7 @@
 {
   "version": "0.2.0",
   "configurations": [
+    
     {
       "name": "ROS2: Debug localization_node",
       "type": "cppdbg",

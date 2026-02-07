@@ -131,5 +131,15 @@ cv::Ptr<cv::aruco::Dictionary> createCustomDictionary() {
     return dict;
 }
 
-
-
+// Helper function to generate and save marker images for testing
+void saveMarkerImages(const cv::Ptr<cv::aruco::Dictionary>& dict, 
+                      const std::string& outputDir = ".", 
+                      int markerSizePixels = 200) {
+    for (int i = 0; i < dict->bytesList.rows; ++i) {
+        cv::Mat markerImg;
+        cv::aruco::drawMarker(dict, i, markerSizePixels, markerImg, 1);
+        
+        std::string filename = outputDir + "/marker_" + std::to_string(i) + ".png";
+        cv::imwrite(filename, markerImg);
+    }
+}

@@ -52,7 +52,7 @@ static std::string determineLetter(const Mat& markerGray) {
         return "None"; // False
     }
     Mat cropped = img_bw(Rect(25,25,125,125));
-    imwrite("Cropped.jpeg", cropped);
+    cv::imwrite("Cropped.jpeg", cropped);
     
     auto px = [&](int y, int x)->uchar { return cropped.at<uchar>(y,x); };
 
@@ -168,6 +168,38 @@ std::string sampleGridColors(const cv::Mat& img, int rowsSearched, int colsSearc
     return json.str();
 }
 
+
+// Helper to order corners: TL, TR, BR, BL
+std::vector<cv::Point2f> orderCorners(const std::vector<cv::Point2f>& pts) {
+    CV_Assert(pts.size() == 4);
+    std::vector<cv::Point2f> ordered(4);
+    
+    // Sum: top-left has smallest, bottom-right has largest
+    std::vector<float> sums(4);
+    for (int i = 0; i < 4; i++) {
+        sums[i] = pts[i].x + pts[i].y;
+    }
+    
+    int tlIdx = std::distance(sums.begin(), std::min_element(sums.begin(), sums.end()));
+    int brIdx = std::distance(sums.begin(), std::max_element(sums.begin(), sums.end()));
+    
+    // Diff: top-right has smallest, bottom-left has largest
+    std::vector<float> diffs(4);
+    for (int i = 0; i < 4; i++) {
+        diffs[i] = pts[i].y - pts[i].x;
+    }
+    
+    int trIdx = std::distance(diffs.begin(), std::min_element(diffs.begin(), diffs.end()));
+    int blIdx = std::distance(diffs.begin(), std::max_element(diffs.begin(), diffs.end()));
+    
+    ordered[0] = pts[tlIdx]; // TL
+    ordered[1] = pts[trIdx]; // TR
+    ordered[2] = pts[brIdx]; // BR
+    ordered[3] = pts[blIdx]; // BL
+    
+    return ordered;
+}
+
 std::vector<int> sampleMarkerBitsFromCorners(const cv::Mat& frame,
                                              const std::vector<cv::Point2f>& corners,
                                              bool blackIsOne = true)
@@ -196,11 +228,13 @@ std::vector<int> sampleMarkerBitsFromCorners(const cv::Mat& frame,
         gray = warped;
     }
 
+    // Use BINARY (not INV) so black pixels = 0, white = 255
     cv::adaptiveThreshold(gray, bin, 255,
                           cv::ADAPTIVE_THRESH_MEAN_C,
-                          cv::THRESH_BINARY_INV, 11, 5);
+                          cv::THRESH_BINARY, 11, 5);
 
-    // Ignore outer border: crop ~15% from each side
+    // Skip border: ArUco has 1 white + 1 black border = 2 cells on each side
+    // With 6x6 data, total is 8x8, so skip 2/8 = 25% on each side
     int margin = static_cast<int>(side * 0.15);
     cv::Rect innerR(margin, margin,
                     side - 2 * margin,
@@ -215,6 +249,7 @@ std::vector<int> sampleMarkerBitsFromCorners(const cv::Mat& frame,
     std::vector<int> bits;
     bits.reserve(N * N);
 
+    int zeroCount = 0;
     for (int r = 0; r < N; ++r) {
         for (int c = 0; c < N; ++c) {
             int y0 = r * cellH;
@@ -226,9 +261,11 @@ std::vector<int> sampleMarkerBitsFromCorners(const cv::Mat& frame,
             cv::Mat cell = inner(cellR);
 
             double meanVal = cv::mean(cell)[0];
-            bool isBlack = (meanVal > 128.0);
+            // After BINARY threshold: black=0, white=255
+            bool isBlack = (meanVal < 128.0);
             int bit = blackIsOne ? (isBlack ? 1 : 0)
                                  : (isBlack ? 0 : 1);
+            if (bit == 0) ++zeroCount;
             bits.push_back(bit);
         }
     }
@@ -242,9 +279,215 @@ std::vector<int> sampleMarkerBitsFromCorners(const cv::Mat& frame,
         }
         oss << "\n";
     }
-    RCLCPP_INFO(rclcpp::get_logger("debug"), "%s", oss.str().c_str());
+    if(zeroCount < N*N)
+        RCLCPP_INFO(rclcpp::get_logger("debug"), "%s", oss.str().c_str());
 
     return bits;
+}
+
+// ============================================================================
+// CUSTOM MARKER DETECTION FUNCTION
+// ============================================================================
+// This function replaces OpenCV's ArUco detection with a custom implementation
+// that gives full control over the matching process.
+//
+// HIGH-LEVEL ALGORITHM:
+// 1. Find all quadrilaterals (4-sided shapes) in the image
+// 2. For each quadrilateral:
+//    a. Warp it to a flat square
+//    b. Extract the 6x6 bit pattern from inside
+//    c. Try matching it against all markers in the dictionary (with 4 rotations)
+//    d. If match found within error tolerance, add to results
+// ============================================================================
+void customMarkerDetection(const cv::Mat& frame,
+                          const cv::Ptr<cv::aruco::Dictionary>& dict,
+                          std::vector<std::vector<cv::Point2f>>& outCorners,
+                          std::vector<int>& outIds,
+                          int maxCorrectionBits = 5)
+{
+    outCorners.clear();
+    outIds.clear();
+    
+    // STEP 1: Convert to grayscale for processing
+    cv::Mat gray;
+    if (frame.channels() == 3 || frame.channels() == 4) {
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = frame;
+    }
+    
+    // STEP 2: Threshold to black and white
+    // Adaptive threshold works better with varying lighting conditions
+    // Using BINARY_INV to find BLACK regions instead of white
+    cv::Mat binary;
+    cv::adaptiveThreshold(gray, binary, 255, cv::ADAPTIVE_THRESH_MEAN_C, 
+                         cv::THRESH_BINARY_INV, 19, 9);
+    
+    // Add white border so edge-touching regions are fully enclosed
+    cv::Mat binaryWithBorder;
+    cv::copyMakeBorder(binary, binaryWithBorder, 5, 5, 5, 5, 
+                      cv::BORDER_CONSTANT, cv::Scalar(0)); // 0 = black border (background)
+    
+    // STEP 3: Find all contours (outlines) in the binary image
+    // THIS IS WHERE WE FIND EACH INDIVIDUAL BOX/QUADRILATERAL
+    // findContours traces the boundary of every white region, so with BINARY_INV
+    // it will find the black regions from the original image
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binaryWithBorder, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
+    
+    // Optional: Visualize filled contours for debugging
+    cv::Mat contoursVis = frame.clone();
+    //cv::drawContours(contoursVis, contours, -1, cv::Scalar(0, 0, 0), -1); // Fill with black
+    //cv::imwrite("filled_contours_debug.jpg", contoursVis);
+    
+    // STEP 4: Process each contour to see if it's a marker candidate
+    // Loop through every outline found in the image
+    for (const auto& contour : contours) {
+        // STEP 4a: Simplify the contour to a polygon
+        // approxPolyDP reduces the number of points while preserving the shape
+        std::vector<cv::Point> approx;
+        double epsilon = 0.05 * cv::arcLength(contour, true);
+        cv::approxPolyDP(contour, approx, epsilon, true);
+        
+        // STEP 4b: Check if it's a valid quadrilateral (4-sided shape)
+        // Markers must be 4-cornered and convex (no indentations)
+        if (approx.size() != 4 || !cv::isContourConvex(approx)) {
+            continue; // Skip this contour, not a valid box
+        }
+        
+        // STEP 4c: Filter out tiny shapes that are too small to be markers
+        double area = cv::contourArea(approx);
+        if (area < 100) continue; // Skip tiny candidates
+        
+        // STEP 4d: Convert corner points to floating point for precision
+        // Adjust coordinates back by subtracting border offset
+        std::vector<cv::Point2f> corners(4);
+        for (int i = 0; i < 4; i++) {
+            corners[i] = cv::Point2f(approx[i].x - 5, approx[i].y - 5); // Subtract border offset
+        }
+        
+        // STEP 4e: Order corners consistently: TL, TR, BR, BL
+        // This ensures we always read the marker in the same orientation
+        corners = orderCorners(corners);
+        
+        // STEP 5: Warp the quadrilateral to a flat square for analysis
+        // This removes perspective distortion so we can read the bits accurately
+        const int warpSize = 80; // 8x8 cells @ 10 pixels each (higher res = better accuracy)
+        std::vector<cv::Point2f> dstPts = {
+            cv::Point2f(0, 0),                          // Top-left
+            cv::Point2f(warpSize - 1, 0),               // Top-right
+            cv::Point2f(warpSize - 1, warpSize - 1),    // Bottom-right
+            cv::Point2f(0, warpSize - 1)                // Bottom-left
+        };
+        
+        // Calculate perspective transform matrix and warp the marker
+        cv::Mat H = cv::getPerspectiveTransform(corners, dstPts);
+        cv::Mat warped;
+        cv::warpPerspective(gray, warped, H, cv::Size(warpSize, warpSize));
+        
+        // STEP 6: Threshold the warped image to pure black/white
+        // Use larger window size for better local contrast adaptation
+        cv::Mat warpedBin;
+        cv::adaptiveThreshold(warped, warpedBin, 255, cv::ADAPTIVE_THRESH_MEAN_C,
+                            cv::THRESH_BINARY, 11, 3);
+        
+        // STEP 7: Save debug image to see what the detector sees
+        static int candidateCounter = 0;
+        std::string debugFilename = "candidate_" + std::to_string(candidateCounter++) + "_warped.jpg";
+        cv::imwrite(debugFilename, warpedBin);
+        
+        // STEP 8: Extract the inner 6x6 data grid (skip the borders)
+        // Marker structure: 1 white border + 1 black border + 6x6 data = 8x8 total
+        int cellSize = warpSize / 8;
+        
+        // Skip the outer 2 cells (white + black border) to get to the data
+        int margin = cellSize * 1; // Skip 1 cell on each side (white + black borders)
+        cv::Rect innerRect(margin, margin, warpSize - 2*margin, warpSize - 2*margin);
+        cv::Mat innerData = warpedBin(innerRect);
+        
+        // STEP 9: Read the 6x6 bit pattern from the inner data area
+        // Divide the inner area into a 6x6 grid and sample each cell
+        std::vector<int> extractedBits(36);
+        int dataSize = innerData.rows;
+        int dataCellSize = dataSize / 6;
+        
+        for (int r = 0; r < 6; r++) {
+            for (int c = 0; c < 6; c++) {
+                // Calculate cell boundaries
+                int y0 = r * dataCellSize;
+                int x0 = c * dataCellSize;
+                int y1 = (r == 5) ? innerData.rows : (r + 1) * dataCellSize;
+                int x1 = (c == 5) ? innerData.cols : (c + 1) * dataCellSize;
+                
+                // Sample from the center 50% of the cell to avoid edge effects
+                int cellW = x1 - x0;
+                int cellH = y1 - y0;
+                int centerMargin = std::max(cellW / 4, 1); // 25% margin on each side
+                cv::Rect cellRect(x0 + centerMargin, y0 + centerMargin, 
+                                 cellW - 2*centerMargin, cellH - 2*centerMargin);
+                cv::Mat cell = innerData(cellRect);
+                
+                // Determine if cell is black (1) or white (0)
+                double meanVal = cv::mean(cell)[0];
+                // After BINARY threshold: black pixels have low values (< 128)
+                extractedBits[r * 6 + c] = (meanVal < 128.0) ? 1 : 0;
+            }
+        }
+        
+        // STEP 10: Log the extracted pattern for debugging
+        std::ostringstream bitsOss;
+        bitsOss << "Candidate " << (candidateCounter-1) << " extracted bits:\n";
+        for (int r = 0; r < 6; r++) {
+            for (int c = 0; c < 6; c++) {
+                bitsOss << extractedBits[r * 6 + c];
+            }
+            bitsOss << "\n";
+        }
+        RCLCPP_INFO(rclcpp::get_logger("custom_detection"), "%s", bitsOss.str().c_str());
+        
+        // STEP 11: Try matching this pattern against the dictionary
+        // We'll try all 4 rotations (0°, 90°, 180°, 270°) since we don't know orientation
+        for (int rot = 0; rot < 4; rot++) {
+            // STEP 11a: Compare against each marker in the dictionary
+            for (int markerIdx = 0; markerIdx < dict->bytesList.rows; markerIdx++) {
+                // STEP 11b: Decode the dictionary pattern for this marker ID
+                // Dictionary stores bits packed into bytes, so we unpack them
+                std::vector<int> dictBits(36);
+                for (int bit = 0; bit < 36; bit++) {
+                    int byteIdx = bit / 8;        // Which byte contains this bit
+                    int bitIdx = 7 - (bit % 8);   // Position within that byte (MSB first)
+                    uchar byteVal = dict->bytesList.at<uchar>(markerIdx, byteIdx);
+                    dictBits[bit] = (byteVal >> bitIdx) & 1;
+                }
+                
+                // STEP 11c: Count how many bits differ between extracted and dictionary
+                int differences = 0;
+                for (int i = 0; i < 36; i++) {
+                    if (extractedBits[i] != dictBits[i]) {
+                        differences++;
+                    }
+                }
+                
+                // STEP 11d: If close enough match, we found a marker!
+                if (differences <= maxCorrectionBits) {
+                    outCorners.push_back(corners);
+                    outIds.push_back(markerIdx);
+                    goto next_candidate; // Found match, skip checking other rotations/markers
+                }
+            }
+            
+            // STEP 11e: Rotate the extracted pattern 90° clockwise and try again
+            std::vector<int> rotated(36);
+            for (int r = 0; r < 6; r++) {
+                for (int c = 0; c < 6; c++) {
+                    rotated[c * 6 + (5 - r)] = extractedBits[r * 6 + c];
+                }
+            }
+            extractedBits = rotated;
+        }
+        
+        next_candidate:;
+    }
 }
 
 
@@ -279,7 +522,7 @@ public:
         
         t_prev_ = std::chrono::steady_clock::now();
         RCLCPP_INFO(this->get_logger(), "Initialized previous time point");
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(1000/30), std::bind(&LocalNode::callback, this));
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(1000/1), std::bind(&LocalNode::callback, this));
         RCLCPP_INFO(this->get_logger(), "Timer started for 30 FPS processing");
     }
 
@@ -291,8 +534,7 @@ public:
     Mat frame;
 
     void callback() {
-        Mat frame;
-        frame = imread("src/localization/src/tag1.png");
+        Mat frame = imread("src/localization/src/tag2OneM.png");
         RCLCPP_INFO(this->get_logger(), "Past the reading frame + frame = %dx%d", frame.cols, frame.rows);
 
         // if (!cap_.read(frame) || frame.empty()) {
@@ -307,84 +549,73 @@ public:
             return; 
         }
         
-        imwrite("frame.jpeg", frame);
+        cv::imwrite("frame.jpeg", frame);
 
+        // --- CUSTOM MARKER DETECTION ---
+        auto dict = createCustomDictionary();
+        
+        std::vector<std::vector<cv::Point2f>> detectedCorners;
+        std::vector<int> detectedIds;
+        
+        customMarkerDetection(frame, dict, detectedCorners, detectedIds);
+        
+        RCLCPP_INFO(this->get_logger(), "Custom detection: %zu markers found", detectedIds.size());
 
-        // --- ArUco detection (6x6) ---
-        // TODO CHECK IF CORRECT DICTIONARY
-        cv::Ptr<cv::aruco::DetectorParameters> params = cv::aruco::DetectorParameters::create();
-
-        std::vector<std::vector<cv::Point2f>> corners;
-        std::vector<int> ids;
-        std::vector<std::vector<cv::Point2f>> rejected;
-
-        //std::string resultJson = sampleGridColors(frame, 30, 30);
-
-        // For debugging:
-        //std::cout << resultJson << std::endl;
-
-// Try 4 rotation steps: 0°, 90°, 180°, 270° CW
-    // If your createArcMarkersDictionary currently takes no args,
-    // make an overload: createArcMarkersDictionary(int rotationSteps)
-
-    ids.clear();
-    corners.clear();
-    rejected.clear();
-
-    auto dict = createCustomDictionary();
-    cv::FileStorage fs("mydict.yml", cv::FileStorage::WRITE);
-
-fs << "nmarkers" << (int)dict->bytesList.rows;
-fs << "markersize" << dict->markerSize;
-fs << "maxCorrectionBits" << dict->maxCorrectionBits;
-
-fs << "bytesList" << dict->bytesList;
-
-fs.release();
-for (int r = 0; r < dict->bytesList.rows; ++r) {
-    std::ostringstream oss;
-    oss << "Row " << r << ": ";
-    for (int c = 0; c < dict->bytesList.cols; ++c) {
-        oss << std::bitset<8>(dict->bytesList.at<uchar>(r, c)) << " ";
-    }
-    RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
-}
-    dict->maxCorrectionBits = 0;
-   // params->minMarkerPerimeterRate = 0.1f;  // try 0.08–0.15 range
-//params->maxMarkerPerimeterRate = 4.0f;
-    RCLCPP_INFO(this->get_logger(), "Custom dict rows=%d cols=%d",
-            dict->bytesList.rows, dict->bytesList.cols);
-
-    cv::aruco::detectMarkers(frame, dict, corners, ids, params, rejected);
-
-
-
-    if (!ids.empty()) {
-        RCLCPP_INFO(this->get_logger(), "Detected IDs:");
-        auto sampled = sampleMarkerBitsFromCorners(frame, corners[0], /*blackIsOne=*/true);
-        for (size_t i = 0; i < ids.size(); ++i) {
-            RCLCPP_INFO(this->get_logger(), "  ID %d", ids[i]);
+        if (!detectedIds.empty()) {
+            RCLCPP_INFO(this->get_logger(), "\n=== DETECTED MARKERS ===");
+            
+            for (size_t i = 0; i < detectedIds.size(); ++i) {
+                int markerID = detectedIds[i];
+                RCLCPP_INFO(this->get_logger(), "Marker ID %d at corners: [%.1f,%.1f] [%.1f,%.1f] [%.1f,%.1f] [%.1f,%.1f]",
+                           markerID,
+                           detectedCorners[i][0].x, detectedCorners[i][0].y,
+                           detectedCorners[i][1].x, detectedCorners[i][1].y,
+                           detectedCorners[i][2].x, detectedCorners[i][2].y,
+                           detectedCorners[i][3].x, detectedCorners[i][3].y);
+            }
+            
+            // Draw detected markers
+            Mat frameWithMarkers = frame.clone();
+            for (size_t i = 0; i < detectedIds.size(); ++i) {
+                // Draw blue polylines
+                std::vector<cv::Point> intPoints;
+                for (const auto& pt : detectedCorners[i]) {
+                    intPoints.push_back(cv::Point(cvRound(pt.x), cvRound(pt.y)));
+                }
+                cv::polylines(frameWithMarkers, intPoints, true, cv::Scalar(255, 0, 0), 4);
+                
+                // Add ID label
+                cv::Point2f center(0, 0);
+                for (const auto& pt : detectedCorners[i]) {
+                    center += pt;
+                }
+                center.x /= 4;
+                center.y /= 4;
+                
+                cv::putText(frameWithMarkers, "ID:" + std::to_string(detectedIds[i]), 
+                           cv::Point(center.x, center.y),
+                           cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+            }
+            
+            cv::imwrite("detected_markers.jpg", frameWithMarkers);
+            RCLCPP_INFO(this->get_logger(), "Saved detected markers to detected_markers.jpg");
+        } else {
+            RCLCPP_WARN(this->get_logger(), "No markers detected");
         }
 
-    } else {
-        RCLCPP_INFO(this->get_logger(), "detected NO markers.");
-    }
-
         // For each detected marker, compute pose using your existing solver
-        for (size_t i = 0; i < ids.size(); ++i) {
-            RCLCPP_INFO(this->get_logger(), "Processing marker ID: %d", ids[i]);
-            // ArUco returns corners in order: tl, tr, br, bl
-            const auto &c = corners[i];
+        for (size_t i = 0; i < detectedIds.size(); ++i) {
+            RCLCPP_INFO(this->get_logger(), "Processing marker ID: %d", detectedIds[i]);
+            const auto &c = detectedCorners[i];
 
             // Pose using your existing function (expects tl,tr,br,bl as Point2f)
             cv::Vec3d tvec, rpy_deg;
             if (findTranslationAndRotation(c, tvec, rpy_deg)) {
                 // Build a tiny JSON string (no new deps) for your existing messaging
-                // (Adjust field names as your framework expects.)
                 std::ostringstream oss;
                 oss << "{"
                     << "\"type\":\"aruco\","
-                    << "\"id\":" << ids[i] << ","
+                    << "\"id\":" << detectedIds[i] << ","
                     << "\"corners\":["
                     << "[" << c[0].x << "," << c[0].y << "],"
                     << "[" << c[1].x << "," << c[1].y << "],"
@@ -408,12 +639,12 @@ for (int r = 0; r < dict->bytesList.rows; ++r) {
         double dt = std::chrono::duration<double>(t_now - t_prev_).count();
         t_prev_ = t_now;
         int fps = (dt > 0.0) ? (int)std::round(1.0 / dt) : 0;
-        putText(frame, std::to_string(fps), {7,70}, FONT_HERSHEY_SIMPLEX, 2.0, Scalar(0,255,0), 3, LINE_AA);
+        cv::putText(frame, std::to_string(fps), {7,70}, cv::FONT_HERSHEY_SIMPLEX, 2.0, cv::Scalar(0,255,0), 3, cv::LINE_AA);
 
-        imwrite("Outline.jpeg", frame);
+        cv::imwrite("Outline.jpeg", frame);
         
         // Process window events - using waitKey(1) for OpenCV window updates
-        int key = waitKey(1) & 0xFF;
+        int key = cv::waitKey(1) & 0xFF;
         if (key == 'q') {
             rclcpp::shutdown();
         }
