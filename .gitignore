@@ -13,3 +13,4 @@ __pycache__/
 *.png
 *.jpg
 *.mov
+rosbag2_*
