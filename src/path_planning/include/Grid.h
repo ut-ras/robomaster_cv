@@ -47,6 +47,8 @@ public:
 
 	static bool crossesWall(Pos from, Pos to);
 
+	static bool lineOfSight(Pos from, Pos to, float radius);
+
 private:
 	// Recalculate the entire hueristic map(called when the target changes)
 	void recalculateHueristicMap();

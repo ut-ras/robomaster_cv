@@ -37,21 +37,23 @@ private:
     {
       grid_.setTarget(targetPos_);
     }
-    
-    if (otherRobotPosesChanged_){
-      for(Pos p : otherRobotPoses_){
-        grid_.addCostBox(p.x,p.y, COST_OTHER_ROBOT, COST_OTHER_ROBOT_ADJACENT);
+
+    if (otherRobotPosesChanged_)
+    {
+      for (Pos p : otherRobotPoses_)
+      {
+        grid_.addCostBox(p.x, p.y, COST_OTHER_ROBOT, COST_OTHER_ROBOT_ADJACENT);
       }
     }
-    
+
     std::stringstream ss;
-    
+
     ss << "From (" << robotPos_.x << "," << robotPos_.y << ") to (" << targetPos_.x << "," << targetPos_.y << "): \n";
-    
+
     if (targetPosChanged_ || robotPosChanged_ || otherRobotPosesChanged_)
     {
       path_.reloadFromGrid(grid_);
-      path_.calculate(robotPos_);
+      path_.calculate(robotPos_, grid_);
       pathPoints_ = path_.getPath();
     }
 
