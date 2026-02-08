@@ -16,6 +16,12 @@
 #define HEALTH_THRESHOLD 67.0f 
 #define PI 3.14159265358979323846
 
+enum PointState {EMPTY = 0, ENEMY = 1, FRIENDLY = 2, CONTESTED = 3};
+
+//change with actual positions
+std::vector<float> retreat_pos = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+std::vector<float> camp_pos = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
 
 class AutonavNode : public rclcpp::Node {
 public:
@@ -27,11 +33,18 @@ public:
         odometry_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("odometry_topic", 10, 
                         std::bind(&AutonavNode::odometry_callback, this, std::placeholders::_1));
 
-        robots_ = this->create_subscription<vision_msgs::msg::Detection3DArray>("robots_topic", 10,
-                        std::bind(&AutonavNode::robots_callback, this, std::placeholders::_1));
+        enemies_ = this->create_subscription<vision_msgs::msg::Detection3DArray>("robots_topic", 10,
+                        std::bind(&AutonavNode::enemies_callback, this, std::placeholders::_1));
+
+        //Note change this with the actual friendlies node once created
+        friendlies_ = this->create_subscription<vision_msgs::msg::Detection3DArray>("robots_topic", 10,
+                        std::bind(&AutonavNode::friendlies_callback, this, std::placeholders::_1));
 
         health_subscriber_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("health", 10, 
                         std::bind(&AutonavNode::health_callback, this, std::placeholders::_1));
+
+        //Someone please check if this is right
+        target_pos_publisher_ = this->create_publisher<std_msgs::msg::Float32MultiArray>("target_pos", 10);
 
         timer_ = this->create_wall_timer(std::chrono::seconds(1), std::bind(&AutonavNode::update_state_machine, this));
 
@@ -57,19 +70,34 @@ private:
                 odometry_pos[0], odometry_pos[1], odometry_pos[2], odometry_pos[3], odometry_pos[4], odometry_pos[5], odometry_pos[6], odometry_pos[7]);
     }
 
-    void robots_callback(const vision_msgs::msg::Detection3DArray::SharedPtr msg) {        
+    void friendlies_callback(const vision_msgs::msg::Detection3DArray::SharedPtr msg) {        
         // Clear previous detections to get fresh data each time
-        robots.clear();
+        friendlies.clear();
         // converting detections msg data into points in the robots vector
         for (const auto &robot : msg->detections) {
             cv::Point3f point;
             point.x = robot.bbox.center.position.x;
             point.y = robot.bbox.center.position.y;
             point.z = robot.bbox.center.position.z;
-            robots.push_back(point);
-            RCLCPP_INFO(this->get_logger(), "Robot detected at: x = %.2f, y = %.2f, z = %.2f", point.x, point.y, point.z);
+            friendlies.push_back(point);
+            RCLCPP_INFO(this->get_logger(), "Friendly detected at: x = %.2f, y = %.2f, z = %.2f", point.x, point.y, point.z);
         }
-        RCLCPP_INFO(this->get_logger(), "Total robots detected: %zu", robots.size());
+        RCLCPP_INFO(this->get_logger(), "Total friendlies detected: %zu", friendlies.size());
+    }
+
+    void enemies_callback(const vision_msgs::msg::Detection3DArray::SharedPtr msg) {        
+        // Clear previous detections to get fresh data each time
+        enemies.clear();
+        // converting detections msg data into points in the robots vector
+        for (const auto &robot : msg->detections) {
+            cv::Point3f point;
+            point.x = robot.bbox.center.position.x;
+            point.y = robot.bbox.center.position.y;
+            point.z = robot.bbox.center.position.z;
+            enemies.push_back(point);
+            RCLCPP_INFO(this->get_logger(), "Enemy detected at: x = %.2f, y = %.2f, z = %.2f", point.x, point.y, point.z);
+        }
+        RCLCPP_INFO(this->get_logger(), "Total enemies detected: %zu", enemies.size());
     }
 
     void health_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
@@ -99,17 +127,23 @@ private:
         return std::min(dx, dy);
     }
 
-    bool point_taken(){
+    PointState point_taken(){
         //Assuming absolute turret rotation (i.e. in relation to field)
         //Assuming rotation = 0 at x axis
+        //Assuming rotation dir matches atan2 dir
+        //Might want to swap out odom_pos[1] for [2] (y, for z)
+        //Might need offset from center of robot to came pos but might be neglibable
 
         //x, y, angle
-        float pos_info[] = {odometry_pos[0], odometry_pos[1], odometry[6]};
+        float pos_info[] = {odometry_pos[0], odometry_pos[1], odometry_pos[6]};
 
-        for(cv::Point3f point : robots){
+        bool friendly_found = false;
+        bool enemy_found = false;
+
+        for(cv::Point3f pos : enemies){
 
             /* calculating the detected robots position*/
-            float theta_cam = atan(pos.x/pos.z); 
+            float theta_cam = std::atan2(pos.x, pos.z); 
             float theta_pos = pos_info[2] * PI / 180;   //degree -> radians
             float theta_det = pos_info[2] - theta_cam; //affirm both angles in same unit
             float x_det = pos_info[0] + pos.z * cos(theta_det);
@@ -120,12 +154,41 @@ private:
             float capture_center_y = 6000;
             
             /* within 1/2 meter of capture zone*/
-            if(abs(x_det - capture_center_x) < 1000 || 
-                abs(y_det - capture_center_y) < 1000){
-                return true;
+            if(std::fabs(x_det - capture_center_x) < 1000 && 
+                std::fabs(y_det - capture_center_y) < 1000){
+                enemy_found = true;
+                break;
             }
         }
-        return false;
+        for(cv::Point3f pos : friendlies){
+
+            /* calculating the detected robots position*/
+            float theta_cam = std::atan2(pos.x, pos.z); 
+            float theta_pos = pos_info[2] * PI / 180;   //degree -> radians
+            float theta_det = pos_info[2] - theta_cam; //affirm both angles in same unit
+            float x_det = pos_info[0] + pos.z * cos(theta_det);
+            float y_det = pos_info[1] + pos.z * sin(theta_det);
+
+            /*assuming pos in mm*/
+            float capture_center_x = 6000;
+            float capture_center_y = 6000;
+            
+            /* within 1/2 meter of capture zone*/
+            if(std::fabs(x_det - capture_center_x) < 1000 && 
+                std::fabs(y_det - capture_center_y) < 1000){
+                friendly_found = true;
+                break;
+            }
+        }
+        if(friendly_found && enemy_found){
+            return CONTESTED;
+        }else if(friendly_found){
+            return FRIENDLY;
+        }else if(enemy_found){
+            return ENEMY;
+        }else{
+            return EMPTY;
+        }
     }
 
 
@@ -135,6 +198,7 @@ private:
 
         if (latest_health == 0.0f){
             // retreat with out shooting 
+            // Can autoaim handle not shooting cmd?
         }
 
         else if (latest_health <= HEALTH_THRESHOLD ) {
@@ -151,8 +215,10 @@ private:
                        localization_pos.x, localization_pos.y, localization_pos.z);
             
             bool point_taken = false;
-            if(robots.size() > 0){
-                RCLCPP_INFO(this->get_logger(), "Checking %zu detected robots for capture point occupancy", robots.size());
+            enum PointState state = EMPTY;
+
+            if(enemies.size() + friendlies.size() > 0){
+                RCLCPP_INFO(this->get_logger(), "Checking %zu detected robots for capture point occupancy", enemies.size() + friendlies.size());
                 //Assuming absolute turret rotation (i.e. in relation to field)
                 //Assuming rotation = 0 at x axis
 
@@ -160,39 +226,22 @@ private:
                 if(odometry_pos.size() < 7) {
                     RCLCPP_WARN(this->get_logger(), "Odometry data incomplete, skipping robot position check");
                 } else {
-                    float pos_info[] = {odometry_pos[0], odometry_pos[1], odometry_pos[6]};
-
-                    for(cv::Point3f point : robots){
-
-                        /* calculating the detected robots position*/
-                        float theta_cam = atan(point.x/point.z); //check atan specs
-                        float theta_det = pos_info[2] - theta_cam; //affirm both angles in same unit
-                        float x_det = pos_info[0] + point.z * cos(theta_det);
-                        float y_det = pos_info[1] + point.z * sin(theta_det);
-
-                        /*assuming pos in mm*/
-                        float capture_center_x = 6000;
-                        float capture_center_y = 6000;
-                        
-                        /* within 1/2 meter of capture zone*/
-                        if(abs(x_det - capture_center_x) < 1000 || 
-                            abs(y_det - capture_center_y) < 1000){
-                            point_taken = true;
-                            RCLCPP_WARN(this->get_logger(), "Point is TAKEN! Robot detected at x=%.2f, y=%.2f (within capture zone)", x_det, y_det);
-                            break;
-                        }
-                    }
+                    state = point_taken();
                 }
             } else {
                 RCLCPP_INFO(this->get_logger(), "No robots detected, capture point is clear");
             }
             
-            if(point_taken) {
-                RCLCPP_WARN(this->get_logger(), "Capture point is occupied, skipping capture logic");
-                return;
+            if(point_taken == CONTESTED) {
+                RCLCPP_INFO(this->get_logger(), "Capture point is contested, helping friendly");
+            }else if(point_taken == ENEMY){
+                RCLCPP_INFO(this->get_logger(), "Capture point is taken by enemy, spin attack!");
+            }else if(point_taken == FRIENDLY){
+                RCLCPP_INFO(this->get_logger(), "Capture Point is taken by friendly, camp and protect");
+            }else{
+                RCLCPP_INFO(this->get_logger(), "Capture Point Empty, Starting capture logic...");
             }
             
-            RCLCPP_INFO(this->get_logger(), "Starting capture logic...");
             // capture
 
             // Constants adjusted for testing (field is typically 12m x 12m)
@@ -451,14 +500,15 @@ private:
     // subscriptions. Assume localization and odemetry are subscription datatypes are correct. 
     rclcpp::Subscription<vision_msgs::msg::Detection3D>::SharedPtr localization_;
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr odometry_;
-    rclcpp::Subscription<vision_msgs::msg::Detection3DArray>::SharedPtr robots_;
+    rclcpp::Subscription<vision_msgs::msg::Detection3DArray>::SharedPtr enemies_;
+    rclcpp::Subscription<vision_msgs::msg::Detection3DArray>::SharedPtr friendlies_;
     rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr health_subscriber_;
     rclcpp::TimerBase::SharedPtr timer_;
-    std::vector<cv::Point3f> robots; // a vector containing point3fs of detection data. each entry is a detection data
+    std::vector<cv::Point3f> enemies;
+    std::vector<cv::Point3f> friendlies; // a vector containing point3fs of detection data. each entry is a detection data
     std::vector<float> odometry_pos; // a vector of floats, containing position of the robot, x,y,z, and all turret/chassis data
     cv::Point3f localization_pos; // a 3d point of the position of the robot, gotten from the localization data
     float latest_health = -1.0f; // health of the robot
-
 };
 
 
