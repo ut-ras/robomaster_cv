@@ -1,0 +1,38 @@
+git pull lidar branch
+
+build lidar sllidar_ros2
+
+source install/setup.bash
+
+Because you are in docker, you need to connect usb outside of docker to inside
+
+install wsl ubuntu 
+wsl -d ubuntu
+wsl --set-default Ubuntu  (the name of it)
+
+Powershell as admin
+winget install --interactive --exact dorssel.usbipd-win
+close window
+open terminal again as admin
+
+usbipd list
+find the busid that correspond with the lidar
+(might want to do usbid list before and after to find busid)
+replace [busid]     EX: 2-6
+usbipd bind --busid [busid]
+usbipd attach --wsl --busid [busid]
+
+(detach if you want to)
+usbipd detach --wsl --busid 2
+
+
+in vscode, do this IN terminal 2
+ls /dev/ttyUSB*     ---> should show /dev/ttyUSB0
+sudo chmod 666 /dev/ttyUSB0
+
+In terminal 1
+ros2 run lidar lidar_node
+
+In terminal 2
+ros2 launch sllidar_ros2 sllidar_a1_launch.py serial_baudrate:=115200
+
