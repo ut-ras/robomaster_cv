@@ -3,4 +3,4 @@
 	url = https://github.com/IntelRealSense/realsense-ros.git
 [submodule "src/sllidar_ros2"]
 	path = src/sllidar_ros2
-	url = https://github.com/Slamtec/rplidar_ros
+	url = https://github.com/Slamtec/sllidar_ros2.git
