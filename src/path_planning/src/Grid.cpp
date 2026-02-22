@@ -130,6 +130,67 @@ bool Grid::crossesWall(Pos from, Pos to)
 	return false;
 }
 
+bool lineIntersectsBox(Pos p1, Pos p2, float minX, float minY, float maxX, float maxY)
+{
+	float tmin = 0.0f, tmax = 1.0f;
+	float dx = p2.x - p1.x;
+	float dy = p2.y - p1.y;
+
+	// Check Vertical line
+	if (abs(dx) < 0.00001f)
+	{
+		if (p1.x < minX || p1.x > maxX)
+			return false;
+	}
+	else
+	{
+		float invDx = 1.0f / dx;
+		float t1 = (minX - p1.x) * invDx;
+		float t2 = (maxX - p1.x) * invDx;
+		tmin = std::max(tmin, std::min(t1, t2));
+		tmax = std::min(tmax, std::max(t1, t2));
+	}
+
+	// Check Horizontal line
+	if (abs(dy) < 0.00001f)
+	{
+		if (p1.y < minY || p1.y > maxY)
+			return false;
+	}
+	else
+	{
+		float invDy = 1.0f / dy;
+		float t1 = (minY - p1.y) * invDy;
+		float t2 = (maxY - p1.y) * invDy;
+		tmin = std::max(tmin, std::min(t1, t2));
+		tmax = std::min(tmax, std::max(t1, t2));
+	}
+
+	return tmax >= tmin;
+}
+
+bool Grid::lineOfSight(Pos from, Pos to, float radius)
+{
+	Pos p1 = {(float)from.x, (float)from.y};
+	Pos p2 = {(float)to.x, (float)to.y};
+
+	for (const auto &w : walls)
+	{
+		// Assume walls have a standard tile width/height (e.g., 1.0)
+		// Adjust these if your walls occupy specific tile coordinates
+		float wallMinX = std::min(w.fromX, w.toX) - radius;
+		float wallMaxX = std::max(w.fromX, w.toX) + radius;
+		float wallMinY = std::min(w.fromY, w.toY) - radius;
+		float wallMaxY = std::max(w.fromY, w.toY) + radius;
+
+		if (lineIntersectsBox(p1, p2, wallMinX, wallMinY, wallMaxX, wallMaxY))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 void Grid::recalculateHueristicMap()
 {
 
