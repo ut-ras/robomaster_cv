@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cmath>
 #include <numeric>
+#include <fstream>
 #include <opencv2/aruco.hpp>
 #include <opencv2/aruco/charuco.hpp>
 #include "TagDeclaration.hpp"
@@ -20,13 +21,70 @@ using std::cout;
 using std::endl;
 
 // ---------------- Camera intrinsics (match your Python) ----------------
-static const float fid_size_m = 0.15f; // meters
-static const Mat cameraMatrix = (Mat_<float>(3,3) <<
-    1.25649815e+03f, 0.f, 7.12996774e+02f,
-    0.f, 1.25820533e+03f, 4.69551858e+02f,
+static const float fid_size_m = 0.115f; // meters
+
+// Original calibration done on 4024x3024 landscape image
+static const int CALIB_WIDTH = 4024;
+static const int CALIB_HEIGHT = 3024;
+
+static const Mat cameraMatrixCalib = (Mat_<float>(3,3) <<
+    3.02676977e+03f, 0.f, 2.00614248e+03f,
+    0.f, 3.02806416e+03f, 1.49949976e+03f,
     0.f, 0.f, 1.f);
+
 static const Mat distCoeffs = (Mat_<float>(1,5) <<
-    -3.72271817e-03f, 5.33786890e-01f, -4.99625728e-04f, -1.65101232e-03f, -1.78505927e+00f);
+    2.38428408e-01f, -1.10663831e+00f, -1.71794742e-03f, 8.04988144e-04f, 1.78553317e+00f);
+
+// Function to adjust camera matrix for runtime image size
+static Mat getScaledCameraMatrix(int runtimeWidth, int runtimeHeight) {
+    float scale_x = static_cast<float>(runtimeWidth) / CALIB_WIDTH;
+    float scale_y = static_cast<float>(runtimeHeight) / CALIB_HEIGHT;
+    
+    float fx = cameraMatrixCalib.at<float>(0, 0) * scale_x;
+    float fy = cameraMatrixCalib.at<float>(1, 1) * scale_y;
+    float cx = cameraMatrixCalib.at<float>(0, 2) * scale_x;
+    float cy = cameraMatrixCalib.at<float>(1, 2) * scale_y;
+    
+    Mat scaled = (Mat_<float>(3,3) <<
+        fx, 0.f, cx,
+        0.f, fy, cy,
+        0.f, 0.f, 1.f);
+    
+    return scaled;
+}
+
+// Function to prepare image for processing (rotate if needed to match calibration orientation)
+static Mat prepareImageForProcessing(const Mat& inputFrame, Mat& adjustedCameraMatrix) {
+    int width = inputFrame.cols;
+    int height = inputFrame.rows;
+    
+    bool calibIsLandscape = (CALIB_WIDTH > CALIB_HEIGHT);
+    bool runtimeIsLandscape = (width > height);
+    
+    Mat processedFrame;
+    
+    // If orientations don't match, rotate the runtime image
+    if (calibIsLandscape != runtimeIsLandscape) {
+        // Rotate 90 degrees COUNTER-clockwise to match calibration orientation
+        // This preserves the coordinate system correctly
+        cv::rotate(inputFrame, processedFrame, cv::ROTATE_90_COUNTERCLOCKWISE);
+        std::cout << "Rotated image COUNTER-CLOCKWISE from " << width << "x" << height 
+                  << " to " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
+        
+        // Get scaled camera matrix for rotated dimensions
+        adjustedCameraMatrix = getScaledCameraMatrix(processedFrame.cols, processedFrame.rows);
+    } else {
+        // No rotation needed, just scale the camera matrix
+        processedFrame = inputFrame.clone();
+        adjustedCameraMatrix = getScaledCameraMatrix(width, height);
+    }
+    
+    std::cout << "Calibration: " << CALIB_WIDTH << "x" << CALIB_HEIGHT << std::endl;
+    std::cout << "Runtime (after prep): " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
+    std::cout << "Adjusted camera matrix:\n" << adjustedCameraMatrix << std::endl;
+    
+    return processedFrame;
+}
 
 // ---------------- Helpers ----------------
 
@@ -81,13 +139,14 @@ static cv::Vec3d rotToEul(const Mat& R) {
 }
 
 static bool findTranslationAndRotation(const std::vector<Point2f>& imgPts,
-                                       Vec3d& tvec, Vec3d& rpy_deg)
+                                       Vec3d& tvec, Vec3d& rpy_deg,
+                                       const Mat& cameraMatrix)
 {
     std::vector<Point3f> objPts = {
-        { -fid_size_m/2.f,  fid_size_m/2.f, 0.f },
-        {  fid_size_m/2.f,  fid_size_m/2.f, 0.f },
-        {  fid_size_m/2.f, -fid_size_m/2.f, 0.f },
-        { -fid_size_m/2.f, -fid_size_m/2.f, 0.f }
+        { -fid_size_m/2.f, -fid_size_m/2.f, 0.f },  // TL: top-left
+        {  fid_size_m/2.f, -fid_size_m/2.f, 0.f },  // TR: top-right
+        {  fid_size_m/2.f,  fid_size_m/2.f, 0.f },  // BR: bottom-right
+        { -fid_size_m/2.f,  fid_size_m/2.f, 0.f }   // BL: bottom-left
     };
     Mat rvec, tvecMat;
     bool ok = solvePnP(objPts, imgPts, cameraMatrix, distCoeffs, rvec, tvecMat, false, SOLVEPNP_IPPE_SQUARE);
@@ -97,6 +156,115 @@ static bool findTranslationAndRotation(const std::vector<Point2f>& imgPts,
     rpy_deg = rotToEul(R);
     tvec = Vec3d(tvecMat.at<double>(0,0), tvecMat.at<double>(1,0), tvecMat.at<double>(2,0));
     return true;
+}
+
+// Compute camera position relative to tag (inverted transformation)
+// Returns camera's XYZ coordinates in the tag's reference frame
+static bool getCameraPositionRelativeToTag(const std::vector<Point2f>& imgPts,
+                                           Vec3d& camPosRelativeToTag,
+                                           const Mat& cameraMatrix)
+{
+    std::vector<Point3f> objPts = {
+        { -fid_size_m/2.f, -fid_size_m/2.f, 0.f },  // TL: top-left
+        {  fid_size_m/2.f, -fid_size_m/2.f, 0.f },  // TR: top-right
+        {  fid_size_m/2.f,  fid_size_m/2.f, 0.f },  // BR: bottom-right
+        { -fid_size_m/2.f,  fid_size_m/2.f, 0.f }   // BL: bottom-left
+    };
+    Mat rvec, tvecMat;
+    bool ok = solvePnP(objPts, imgPts, cameraMatrix, distCoeffs, rvec, tvecMat, false, SOLVEPNP_IPPE_SQUARE);
+    if (!ok) return false;
+
+    Vec3d rvecVec = Vec3d(tvecMat.at<double>(0,0), 
+                                 tvecMat.at<double>(1,0), 
+                                 tvecMat.at<double>(2,0));
+    // Convert rotation vector to rotation matrix
+    Mat R;
+    Rodrigues(rvec, R);
+    
+    // Invert the transformation to get camera position in tag frame
+    // R_inv = R^T (transpose), t_inv = -R^T * t
+    Mat R_inv = R.t();
+    Mat tvec_inv = -R_inv * tvecMat;
+    
+    camPosRelativeToTag = Vec3d(tvec_inv.at<double>(0,0), 
+                                 tvec_inv.at<double>(1,0), 
+                                 tvec_inv.at<double>(2,0));
+    return true;
+}
+
+// Visualize reprojected corners to verify pose estimation
+static void visualizeReprojection(Mat& frame,
+                                  const std::vector<Point2f>& detectedCorners,
+                                  const Mat& rvec,
+                                  const Mat& tvec,
+                                  const Mat& cameraMatrix,
+                                  const std::string& filename = "reprojection_debug.jpg", )
+{
+    // Define 3D object points (must match solvePnP)
+    std::vector<Point3f> objPts = {
+        { -fid_size_m/2.f, -fid_size_m/2.f, 0.f },  // TL
+        {  fid_size_m/2.f, -fid_size_m/2.f, 0.f },  // TR
+        {  fid_size_m/2.f,  fid_size_m/2.f, 0.f },  // BR
+        { -fid_size_m/2.f,  fid_size_m/2.f, 0.f }   // BL
+    };
+    
+    // Project 3D points back to 2D using the estimated pose
+    std::vector<Point2f> reprojectedCorners;
+    projectPoints(objPts, rvec, tvec, cameraMatrix, distCoeffs, reprojectedCorners);
+    
+    Mat debugFrame = frame.clone();
+    
+    // Draw detected corners in GREEN (circles)
+    for (size_t i = 0; i < detectedCorners.size(); i++) {
+        circle(debugFrame, detectedCorners[i], 8, Scalar(0, 255, 0), -1);
+        putText(debugFrame, "D" + std::to_string(i), detectedCorners[i] + Point2f(10, 10),
+                FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 255, 0), 2);
+    }
+    
+    // Draw reprojected corners in RED (crosses)
+    for (size_t i = 0; i < reprojectedCorners.size(); i++) {
+        // Draw cross
+        Point2f pt = reprojectedCorners[i];
+        line(debugFrame, pt + Point2f(-8, 0), pt + Point2f(8, 0), Scalar(0, 0, 255), 2);
+        line(debugFrame, pt + Point2f(0, -8), pt + Point2f(0, 8), Scalar(0, 0, 255), 2);
+        putText(debugFrame, "R" + std::to_string(i), pt + Point2f(10, -10),
+                FONT_HERSHEY_SIMPLEX, 0.6, Scalar(0, 0, 255), 2);
+    }
+    
+    // Draw axes for visualization
+    std::vector<Point3f> axisPoints = {
+        {0, 0, 0},                    // Origin
+        {fid_size_m, 0, 0},          // X-axis (red)
+        {0, fid_size_m, 0},          // Y-axis (green)
+        {0, 0, -fid_size_m}          // Z-axis (blue, pointing toward camera)
+    };
+    std::vector<Point2f> imageAxisPoints;
+    projectPoints(axisPoints, rvec, tvec, cameraMatrix, distCoeffs, imageAxisPoints);
+    
+    // Draw coordinate axes
+    line(debugFrame, imageAxisPoints[0], imageAxisPoints[1], Scalar(0, 0, 255), 3);  // X: red
+    line(debugFrame, imageAxisPoints[0], imageAxisPoints[2], Scalar(0, 255, 0), 3);  // Y: green
+    line(debugFrame, imageAxisPoints[0], imageAxisPoints[3], Scalar(255, 0, 0), 3);  // Z: blue
+    
+    // Add labels
+    putText(debugFrame, "X", imageAxisPoints[1], FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255), 2);
+    putText(debugFrame, "Y", imageAxisPoints[2], FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
+    putText(debugFrame, "Z", imageAxisPoints[3], FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 0, 0), 2);
+    
+    // Calculate and display reprojection error
+    double totalError = 0.0;
+    for (size_t i = 0; i < detectedCorners.size(); i++) {
+        double error = norm(detectedCorners[i] - reprojectedCorners[i]);
+        totalError += error;
+    }
+    double avgError = totalError / detectedCorners.size();
+    
+    putText(debugFrame, "Avg Reproj Error: " + std::to_string(avgError) + "px",
+            Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(255, 255, 0), 2);
+    putText(debugFrame, "GREEN=Detected, RED=Reprojected",
+            Point(10, 60), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(255, 255, 255), 2);
+    
+    imwrite(filename, debugFrame);
 }
 
 std::string sampleGridColors(const cv::Mat& img, int rowsSearched, int colsSearched) {
@@ -394,7 +562,7 @@ void customMarkerDetection(const cv::Mat& frame,
         // STEP 7: Save debug image to see what the detector sees
         static int candidateCounter = 0;
         std::string debugFilename = "candidate_" + std::to_string(candidateCounter++) + "_warped.jpg";
-        cv::imwrite(debugFilename, warpedBin);
+        //cv::imwrite(debugFilename, warpedBin);
         
         // STEP 8: Extract the inner 6x6 data grid (skip the borders)
         // Marker structure: 1 white border + 1 black border + 6x6 data = 8x8 total
@@ -434,16 +602,6 @@ void customMarkerDetection(const cv::Mat& frame,
             }
         }
         
-        // STEP 10: Log the extracted pattern for debugging
-        std::ostringstream bitsOss;
-        bitsOss << "Candidate " << (candidateCounter-1) << " extracted bits:\n";
-        for (int r = 0; r < 6; r++) {
-            for (int c = 0; c < 6; c++) {
-                bitsOss << extractedBits[r * 6 + c];
-            }
-            bitsOss << "\n";
-        }
-        RCLCPP_INFO(rclcpp::get_logger("custom_detection"), "%s", bitsOss.str().c_str());
         
         // STEP 11: Try matching this pattern against the dictionary
         // We'll try all 4 rotations (0°, 90°, 180°, 270°) since we don't know orientation
@@ -490,40 +648,61 @@ void customMarkerDetection(const cv::Mat& frame,
     }
 }
 
-
+// Test case structure for validation
+struct TestCase {
+    std::string filename;
+    double expected_z;  // meters
+    double expected_x;  // meters
+};
 
 class LocalNode : public rclcpp::Node {
 public:
-    LocalNode() : Node("LocalNode"), dim_(175) {
+    LocalNode() : Node("LocalNode"), dim_(175), current_test_index_(0), enable_testing_(true) {
         
-        // // Declare camera index parameter with default value
-        // this->declare_parameter("camera_index", 0);
-        // int camera_index = this->get_parameter("camera_index").as_int();
+        // ========== CONFIGURE YOUR TEST CASES HERE ==========
+        // Add test images with their expected x and z offsets (in meters)
+        // x = horizontal offset, z = distance from tag
+        test_cases_ = {
+            // Example format: {"path/to/image.png", expected_z, expected_x}
+             {"test_images/61d_-28t_1.jpeg", .61, -.28},
+             {"test_images/61d_0t_1.jpeg", .61, 0},
+             {"test_images/61d_0t_2.jpeg", .61, 0},
+             {"test_images/61d_28t_1.jpeg", .61, .28},
+             {"test_images/81d_-31.5t_1.jpeg", .81, -.315},
+             {"test_images/81d_0t_1.jpeg", .81, 0},
+             {"test_images/81d_0t_2.jpeg", .81, 0},
+             {"test_images/81d_0t_3.jpeg", .81, 0},
+             {"test_images/81d_31.5t_1.jpeg", .81, .315},
+             {"test_images/81d_31.5t_2.jpeg", .81, .315},
+             {"test_images/140d_0t_1.jpeg", 1.40, 0},
+             {"test_images/140d_0t_2.jpeg", 1.40, 0},
+             {"test_images/140d_-25.4t_1.jpeg", 1.40, -.254},
+             {"test_images/140d_25.4t_1.jpeg", 1.40, .254},
+        };
+        // ====================================================
         
-        // // Try opening the camera with the specified index
-        // cap_.open(camera_index);
-        // if (!cap_.isOpened()) {
-        //     // If failed with index, try with /dev/video0
-        //     cap_.open("/dev/video0");
-        //     if (!cap_.isOpened()) {
-        //         RCLCPP_ERROR(this->get_logger(), "Error: Could not open webcam at index %d or /dev/video0", camera_index);
-        //         // Print available cameras
-        //         std::string cmd = "ls -l /dev/video*";
-        //         int ret = system(cmd.c_str());
-        //         if (ret == 0) {
-        //             RCLCPP_ERROR(this->get_logger(), "Available video devices are listed above");
-        //         }
-        //         throw std::runtime_error("Failed to open webcam");
-        //     }
-        // }
-        
-        RCLCPP_INFO(this->get_logger(), "Successfully opened camera");
-        
+        if (enable_testing_ && !test_cases_.empty()) {
+            // Open CSV file for writing results
+            csv_file_.open("localization_test_results.csv");
+            csv_file_ << "Test#,Filename,Expected_X,Expected_Z,Calculated_X,Calculated_Z,"
+                      << "Error_X,Error_Z,Distance_Error,Status\n";
+            
+            RCLCPP_INFO(this->get_logger(), "Testing mode enabled with %zu test cases", test_cases_.size());
+            RCLCPP_INFO(this->get_logger(), "Results will be saved to: localization_test_results.csv");
+        } else {
+            RCLCPP_INFO(this->get_logger(), "Live camera mode (testing disabled)");
+        }
         
         t_prev_ = std::chrono::steady_clock::now();
-        RCLCPP_INFO(this->get_logger(), "Initialized previous time point");
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(1000/1), std::bind(&LocalNode::callback, this));
-        RCLCPP_INFO(this->get_logger(), "Timer started for 30 FPS processing");
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&LocalNode::callback, this));
+        RCLCPP_INFO(this->get_logger(), "Localization node started");
+    }
+    
+    ~LocalNode() {
+        if (csv_file_.is_open()) {
+            csv_file_.close();
+            RCLCPP_INFO(this->get_logger(), "Test results saved to localization_test_results.csv");
+        }
     }
 
     private:
@@ -532,24 +711,65 @@ public:
     const int dim_;
     std::chrono::steady_clock::time_point t_prev_;
     Mat frame;
+    
+    // Testing variables
+    std::vector<TestCase> test_cases_;
+    size_t current_test_index_;
+    bool enable_testing_;
+    std::ofstream csv_file_;
 
     void callback() {
-        Mat frame = imread("src/localization/src/tag2OneM.png");
-        RCLCPP_INFO(this->get_logger(), "Past the reading frame + frame = %dx%d", frame.cols, frame.rows);
-
-        // if (!cap_.read(frame) || frame.empty()) {
-        //     RCLCPP_WARN(this->get_logger(), "Failed to read frame from camera");
-        //     return;
-        // }
-
+        // Check if testing is complete
+        if (enable_testing_ && current_test_index_ >= test_cases_.size()) {
+            RCLCPP_INFO(this->get_logger(), "\n========== ALL TESTS COMPLETE ==========");
+            RCLCPP_INFO(this->get_logger(), "Results saved to: localization_test_results.csv");
+            timer_->cancel();  // Stop the timer
+            return;
+        }
         
+        Mat frame;
+        std::string current_filename;
+        double expected_x = 0.0, expected_z = 0.0;
+        
+        if (enable_testing_ && !test_cases_.empty()) {
+            // Testing mode: load test image
+            const TestCase& test = test_cases_[current_test_index_];
+            current_filename = test.filename;
+            expected_x = test.expected_x;
+            expected_z = test.expected_z;
+            
+            frame = imread(test.filename);
+            RCLCPP_INFO(this->get_logger(), "\n========== TEST %zu/%zu ==========", 
+                       current_test_index_ + 1, test_cases_.size());
+            RCLCPP_INFO(this->get_logger(), "File: %s", test.filename.c_str());
+            RCLCPP_INFO(this->get_logger(), "Expected: x=%.3f m, z=%.3f m", expected_x, expected_z);
+        } else {
+            // Live camera mode (future use)
+            // if (!cap_.read(frame) || frame.empty()) {
+            //     RCLCPP_WARN(this->get_logger(), "Failed to read frame from camera");
+            //     return;
+            // }
+            current_filename = "live_camera";
+        }
         
         if (frame.empty()){
-            RCLCPP_INFO(this->get_logger(), "frame is empty");
+            RCLCPP_ERROR(this->get_logger(), "Failed to load image: %s", current_filename.c_str());
+            if (enable_testing_) {
+                csv_file_ << current_test_index_ + 1 << "," << current_filename << ","
+                          << expected_x << "," << expected_z << ","
+                          << "N/A,N/A,N/A,N/A,N/A,FAILED_TO_LOAD\n";
+                current_test_index_++;
+            }
             return; 
         }
         
-        cv::imwrite("frame.jpeg", frame);
+        RCLCPP_INFO(this->get_logger(), "Original image size: %dx%d", frame.cols, frame.rows);
+        
+        // Prepare image and get adjusted camera matrix
+        Mat adjustedCameraMatrix;
+        Mat processedFrame = prepareImageForProcessing(frame, adjustedCameraMatrix);
+        
+        cv::imwrite("frame.jpeg", processedFrame);
 
         // --- CUSTOM MARKER DETECTION ---
         auto dict = createCustomDictionary();
@@ -557,25 +777,27 @@ public:
         std::vector<std::vector<cv::Point2f>> detectedCorners;
         std::vector<int> detectedIds;
         
-        customMarkerDetection(frame, dict, detectedCorners, detectedIds);
+        customMarkerDetection(processedFrame, dict, detectedCorners, detectedIds);
         
         RCLCPP_INFO(this->get_logger(), "Custom detection: %zu markers found", detectedIds.size());
 
         if (!detectedIds.empty()) {
             RCLCPP_INFO(this->get_logger(), "\n=== DETECTED MARKERS ===");
             
-            for (size_t i = 0; i < detectedIds.size(); ++i) {
+            //for (size_t i = 0; i < detectedIds.size(); ++i) {
+                size_t i = detectedIds.size() - 1;
                 int markerID = detectedIds[i];
+                
                 RCLCPP_INFO(this->get_logger(), "Marker ID %d at corners: [%.1f,%.1f] [%.1f,%.1f] [%.1f,%.1f] [%.1f,%.1f]",
                            markerID,
                            detectedCorners[i][0].x, detectedCorners[i][0].y,
                            detectedCorners[i][1].x, detectedCorners[i][1].y,
                            detectedCorners[i][2].x, detectedCorners[i][2].y,
                            detectedCorners[i][3].x, detectedCorners[i][3].y);
-            }
+            //}
             
             // Draw detected markers
-            Mat frameWithMarkers = frame.clone();
+            Mat frameWithMarkers = processedFrame.clone();
             for (size_t i = 0; i < detectedIds.size(); ++i) {
                 // Draw blue polylines
                 std::vector<cv::Point> intPoints;
@@ -604,13 +826,61 @@ public:
         }
 
         // For each detected marker, compute pose using your existing solver
-        for (size_t i = 0; i < detectedIds.size(); ++i) {
-            RCLCPP_INFO(this->get_logger(), "Processing marker ID: %d", detectedIds[i]);
-            const auto &c = detectedCorners[i];
+        bool marker_processed = false;
+        if (!detectedIds.empty()) {
+            //for (size_t i = 0; i < detectedIds.size(); ++i) {
+                size_t i = detectedIds.size() - 1;
+                RCLCPP_INFO(this->get_logger(), "Processing marker ID: %d", detectedIds[i]);
+                const auto &c = detectedCorners[i];
 
-            // Pose using your existing function (expects tl,tr,br,bl as Point2f)
-            cv::Vec3d tvec, rpy_deg;
-            if (findTranslationAndRotation(c, tvec, rpy_deg)) {
+                // Pose using your existing function (expects tl,tr,br,bl as Point2f)
+                cv::Vec3d tvec, rpy_deg;
+            if (findTranslationAndRotation(c, tvec, rpy_deg, adjustedCameraMatrix)) {
+                // Visualize the reprojection to verify pose accuracy
+                Mat rvec, tvecMat;
+                std::vector<Point3f> objPts = {
+                    { -fid_size_m/2.f, -fid_size_m/2.f, 0.f },
+                    {  fid_size_m/2.f, -fid_size_m/2.f, 0.f },
+                    {  fid_size_m/2.f,  fid_size_m/2.f, 0.f },
+                    { -fid_size_m/2.f,  fid_size_m/2.f, 0.f }
+                };
+                solvePnP(objPts, c, adjustedCameraMatrix, distCoeffs, rvec, tvecMat, false, SOLVEPNP_IPPE_SQUARE);
+                visualizeReprojection(processedFrame, c, rvec, tvecMat, adjustedCameraMatrix, "reprojection_" + std::to_string(detectedIds[i]) + ".jpg");
+                
+                // Camera position relative to tag (x, y, z in tag's reference frame)
+                cv::Vec3d cameraPositionRelativeToTag;
+                if (getCameraPositionRelativeToTag(c, cameraPositionRelativeToTag, adjustedCameraMatrix)) {
+                    double calc_x = cameraPositionRelativeToTag[0];
+                    double calc_y = cameraPositionRelativeToTag[1];
+                    double calc_z = cameraPositionRelativeToTag[2];
+                    
+                    RCLCPP_INFO(this->get_logger(), 
+                               "Calculated position: x=%.3f m, y=%.3f m, z=%.3f m",
+                               calc_x, calc_y, calc_z);
+                    
+                    // Calculate errors if in testing mode
+                    if (enable_testing_) {
+                        double error_x = calc_x - expected_x;
+                        double error_z = calc_z - expected_z;
+                        double distance_error = std::sqrt(error_x*error_x + error_z*error_z);
+                        
+                        RCLCPP_INFO(this->get_logger(), "Expected position: x=%.3f m, z=%.3f m", 
+                                   expected_x, expected_z);
+                        RCLCPP_INFO(this->get_logger(), "Error: x=%.3f m, z=%.3f m, distance=%.3f m",
+                                   error_x, error_z, distance_error);
+                        
+                        // Write to CSV
+                        csv_file_ << current_test_index_ + 1 << ","
+                                  << current_filename << ","
+                                  << expected_x << "," << expected_z << ","
+                                  << calc_x << "," << calc_z << ","
+                                  << error_x << "," << error_z << ","
+                                  << distance_error << ",SUCCESS\n";
+                        csv_file_.flush();  // Ensure data is written immediately
+                        
+                        marker_processed = true;
+                    }
+                }
                 // Build a tiny JSON string (no new deps) for your existing messaging
                 std::ostringstream oss;
                 oss << "{"
@@ -632,6 +902,22 @@ public:
                 // just publish this JSON string there without changing the schema around it.
                 RCLCPP_INFO(this->get_logger(), "%s", oss.str().c_str());
             }
+        //}
+        } // end if (!detectedIds.empty())
+        
+        // Handle case where no markers detected in testing mode
+        if (enable_testing_ && !marker_processed && detectedIds.empty()) {
+            RCLCPP_WARN(this->get_logger(), "No markers detected in test image");
+            csv_file_ << current_test_index_ + 1 << ","
+                      << current_filename << ","
+                      << expected_x << "," << expected_z << ","
+                      << "N/A,N/A,N/A,N/A,N/A,NO_MARKER_DETECTED\n";
+            csv_file_.flush();
+        }
+        
+        // Move to next test in testing mode
+        if (enable_testing_) {
+            current_test_index_++;
         }
 
         // FPS overlay
@@ -639,9 +925,9 @@ public:
         double dt = std::chrono::duration<double>(t_now - t_prev_).count();
         t_prev_ = t_now;
         int fps = (dt > 0.0) ? (int)std::round(1.0 / dt) : 0;
-        cv::putText(frame, std::to_string(fps), {7,70}, cv::FONT_HERSHEY_SIMPLEX, 2.0, cv::Scalar(0,255,0), 3, cv::LINE_AA);
+        cv::putText(processedFrame, std::to_string(fps), {7,70}, cv::FONT_HERSHEY_SIMPLEX, 2.0, cv::Scalar(0,255,0), 3, cv::LINE_AA);
 
-        cv::imwrite("Outline.jpeg", frame);
+        cv::imwrite("Outline.jpeg", processedFrame);
         
         // Process window events - using waitKey(1) for OpenCV window updates
         int key = cv::waitKey(1) & 0xFF;
