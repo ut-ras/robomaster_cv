@@ -21,7 +21,7 @@ using std::cout;
 using std::endl;
 
 // ---------------- Camera intrinsics (match your Python) ----------------
-static const float fid_size_m = 0.115f; // meters
+static const float fid_size_m = 0.135f; // meters
 
 // Original calibration done on 4024x3024 landscape image
 static const int CALIB_WIDTH = 4024;
@@ -35,6 +35,10 @@ static const Mat cameraMatrixCalib = (Mat_<float>(3,3) <<
 static const Mat distCoeffs = (Mat_<float>(1,5) <<
     2.38428408e-01f, -1.10663831e+00f, -1.71794742e-03f, 8.04988144e-04f, 1.78553317e+00f);
 
+// Preprocessing orientation behavior.
+// 0 = no rotation, 1 = 90 CW, 2 = 90 CCW, 3 = 180
+static const int ORIENTATION_MISMATCH_ROTATION_MODE = 0;
+
 // Function to adjust camera matrix for runtime image size
 static Mat getScaledCameraMatrix(int runtimeWidth, int runtimeHeight) {
     float scale_x = static_cast<float>(runtimeWidth) / CALIB_WIDTH;
@@ -44,6 +48,16 @@ static Mat getScaledCameraMatrix(int runtimeWidth, int runtimeHeight) {
     float fy = cameraMatrixCalib.at<float>(1, 1) * scale_y;
     float cx = cameraMatrixCalib.at<float>(0, 2) * scale_x;
     float cy = cameraMatrixCalib.at<float>(1, 2) * scale_y;
+    
+    std::cout << "\n=== CAMERA MATRIX SCALING ===" << std::endl;
+    std::cout << "Calibration: " << CALIB_WIDTH << "x" << CALIB_HEIGHT << std::endl;
+    std::cout << "Runtime: " << runtimeWidth << "x" << runtimeHeight << std::endl;
+    std::cout << "Scale factors: x=" << scale_x << ", y=" << scale_y << std::endl;
+    std::cout << "Original focal length: fx=" << cameraMatrixCalib.at<float>(0, 0) 
+              << ", fy=" << cameraMatrixCalib.at<float>(1, 1) << std::endl;
+    std::cout << "Scaled focal length: fx=" << fx << ", fy=" << fy << std::endl;
+    std::cout << "Tag size: " << fid_size_m << " meters" << std::endl;
+    std::cout << "=========================" << std::endl;
     
     Mat scaled = (Mat_<float>(3,3) <<
         fx, 0.f, cx,
@@ -63,13 +77,25 @@ static Mat prepareImageForProcessing(const Mat& inputFrame, Mat& adjustedCameraM
     
     Mat processedFrame;
     
-    // If orientations don't match, rotate the runtime image
+    // If orientations don't match, rotate the runtime image based on configured mode
     if (calibIsLandscape != runtimeIsLandscape) {
-        // Rotate 90 degrees COUNTER-clockwise to match calibration orientation
-        // This preserves the coordinate system correctly
-        cv::rotate(inputFrame, processedFrame, cv::ROTATE_90_COUNTERCLOCKWISE);
-        std::cout << "Rotated image COUNTER-CLOCKWISE from " << width << "x" << height 
-                  << " to " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
+        if (ORIENTATION_MISMATCH_ROTATION_MODE == 1) {
+            cv::rotate(inputFrame, processedFrame, cv::ROTATE_90_CLOCKWISE);
+            std::cout << "Rotated image CLOCKWISE from " << width << "x" << height
+                      << " to " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
+        } else if (ORIENTATION_MISMATCH_ROTATION_MODE == 2) {
+            cv::rotate(inputFrame, processedFrame, cv::ROTATE_90_COUNTERCLOCKWISE);
+            std::cout << "Rotated image COUNTER-CLOCKWISE from " << width << "x" << height
+                      << " to " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
+        } else if (ORIENTATION_MISMATCH_ROTATION_MODE == 3) {
+            cv::rotate(inputFrame, processedFrame, cv::ROTATE_180);
+            std::cout << "Rotated image 180 degrees from " << width << "x" << height
+                      << " to " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
+        } else {
+            processedFrame = inputFrame.clone();
+            std::cout << "Orientation mismatch detected but rotation disabled; using raw orientation "
+                      << width << "x" << height << std::endl;
+        }
         
         // Get scaled camera matrix for rotated dimensions
         adjustedCameraMatrix = getScaledCameraMatrix(processedFrame.cols, processedFrame.rows);
@@ -198,7 +224,7 @@ static void visualizeReprojection(Mat& frame,
                                   const Mat& rvec,
                                   const Mat& tvec,
                                   const Mat& cameraMatrix,
-                                  const std::string& filename = "reprojection_debug.jpg", )
+                                  const std::string& filename = "reprojection_debug.jpg")
 {
     // Define 3D object points (must match solvePnP)
     std::vector<Point3f> objPts = {
@@ -781,8 +807,11 @@ public:
         
         RCLCPP_INFO(this->get_logger(), "Custom detection: %zu markers found", detectedIds.size());
 
+        static int testNum = 0;
+
         if (!detectedIds.empty()) {
             RCLCPP_INFO(this->get_logger(), "\n=== DETECTED MARKERS ===");
+            testNum++;
             
             //for (size_t i = 0; i < detectedIds.size(); ++i) {
                 size_t i = detectedIds.size() - 1;
@@ -818,8 +847,9 @@ public:
                            cv::Point(center.x, center.y),
                            cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
             }
-            
-            cv::imwrite("detected_markers.jpg", frameWithMarkers);
+            std::string jpg = ".jpg";
+            std::string loc = "detected_markers_" + std::to_string(testNum) + jpg;
+            cv::imwrite(loc, frameWithMarkers);
             RCLCPP_INFO(this->get_logger(), "Saved detected markers to detected_markers.jpg");
         } else {
             RCLCPP_WARN(this->get_logger(), "No markers detected");
@@ -850,9 +880,9 @@ public:
                 // Camera position relative to tag (x, y, z in tag's reference frame)
                 cv::Vec3d cameraPositionRelativeToTag;
                 if (getCameraPositionRelativeToTag(c, cameraPositionRelativeToTag, adjustedCameraMatrix)) {
-                    double calc_x = cameraPositionRelativeToTag[0];
+                    double calc_x = (cameraPositionRelativeToTag[0] - .00736) / .0153;
                     double calc_y = cameraPositionRelativeToTag[1];
-                    double calc_z = cameraPositionRelativeToTag[2];
+                    double calc_z = (cameraPositionRelativeToTag[2] - .0114) / .264;
                     
                     RCLCPP_INFO(this->get_logger(), 
                                "Calculated position: x=%.3f m, y=%.3f m, z=%.3f m",
