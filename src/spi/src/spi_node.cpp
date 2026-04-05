@@ -5,11 +5,12 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-
+    
 #include <thread>
 #include <string>
 #include <vector>
 #include <cstring>
+#include <cerrno>
 
 class SpiNode : public rclcpp::Node
 {
@@ -17,7 +18,7 @@ public:
     SpiNode() : Node("spi_node")
     {
         this->declare_parameter<std::string>("device", "/dev/spidev0.0");
-        this->declare_parameter<int>("speed_hz", 500000);
+        this->declare_parameter<int>("speed_hz", 660000);
         this->get_parameter("device", device_);
         this->get_parameter("speed_hz", speed_hz_);
 
@@ -55,7 +56,9 @@ private:
         fd_ = open(device_.c_str(), O_RDWR);
         if (fd_ < 0)
         {
-            RCLCPP_ERROR(this->get_logger(), "Failed to open SPI device %s", device_.c_str());
+            RCLCPP_ERROR(this->get_logger(), "Failed to open SPI device %s: %s", device_.c_str(), std::strerror(errno));
+
+
             return false;
         }
 
@@ -77,19 +80,40 @@ private:
 
     void read_from_spi()
     {
-        uint8_t buffer[1024];
         while (running_ && rclcpp::ok())
         {
-            ssize_t bytes = read(fd_, buffer, sizeof(buffer));
-            if (bytes > 0)
+            uint8_t tx[1] = {0x00};   // dummy byte to generate clock
+            uint8_t rx[1] = {0x00};
+
+            spi_ioc_transfer tr{};
+            tr.tx_buf = (unsigned long)tx;
+            tr.rx_buf = (unsigned long)rx;
+            tr.len = 1;
+            tr.speed_hz = speed_hz_;
+            tr.bits_per_word = 8;
+            // tr.cs_change = 0; // keep default
+
+            int ret = ioctl(fd_, SPI_IOC_MESSAGE(1), &tr);
+            if (ret < 0)
             {
+                RCLCPP_ERROR(this->get_logger(), "SPI read transfer failed: %s", std::strerror(errno));
+            }
+            else
+            {
+                uint8_t b = rx[0];
                 std_msgs::msg::ByteMultiArray msg;
-                msg.data.insert(msg.data.end(), buffer, buffer + bytes);
+                msg.data.push_back(b);
                 publisher_->publish(msg);
 
-                RCLCPP_INFO(this->get_logger(), "Received %zd bytes via SPI", bytes);
+                RCLCPP_INFO(this->get_logger(),
+                    "RX: 0x%02X  DEC:%u  BIN:%u%u%u%u%u%u%u%u",
+                    b, b,
+                    (b >> 7) & 1, (b >> 6) & 1, (b >> 5) & 1, (b >> 4) & 1,
+                    (b >> 3) & 1, (b >> 2) & 1, (b >> 1) & 1, (b >> 0) & 1
+                );
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+            // std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
 
