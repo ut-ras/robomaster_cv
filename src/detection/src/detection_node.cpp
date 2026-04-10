@@ -1,8 +1,12 @@
 #include <cstdio>
+#include <cmath>
+#include <vector>
+#include <algorithm>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/compressed_image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <vision_msgs/msg/detection2_d_array.hpp>
 #include <vision_msgs/msg/detection2_d.hpp>
 #include <vision_msgs/msg/object_hypothesis_with_pose.hpp>
@@ -16,11 +20,152 @@ using vision_msgs::msg::Detection2DArray;
 using vision_msgs::msg::Detection2D;
 using vision_msgs::msg::ObjectHypothesisWithPose;
 
-double sim(double a, double b);
-double distSq(Point2f a, Point2f b);
-double angle(Point2f a, Point2f b);
-vector<vector<Point>> getContours(Mat& frame, const string& color);
-vector<Point2f> calculateCenters(Mat& frame, const string& color, bool draw = false, bool debug = false);
+// ──────────────────────────────────────────────────────────────────
+// TUNABLE DETECTION PARAMETERS
+// ──────────────────────────────────────────────────────────────────
+
+static const Scalar RED_LOW1(0, 80, 90);
+static const Scalar RED_HIGH1(8, 255, 255);
+static const Scalar RED_LOW2(172, 80, 90);
+static const Scalar RED_HIGH2(180, 255, 255);
+
+static const double MIN_BAR_AREA = 10.0;
+static const double MAX_BAR_AREA = 80000.0;
+static const double MIN_ASPECT_RATIO = 0.15;
+static const double MAX_AREA_RATIO = 3.0;
+static const double MAX_VERTICAL_GAP = 55.0;
+static const double MIN_HORIZONTAL_SEP = 5.0;
+
+// Distance estimation: distance = K / pixel_separation
+static const double K_DISTANCE = 116.5;
+
+// ──────────────────────────────────────────────────────────────────
+// BAR CANDIDATE STRUCT
+// ──────────────────────────────────────────────────────────────────
+
+struct BarCandidate {
+    int cx, cy, x, y, w, h;
+    double area, sat, val, aspect;
+};
+
+// ──────────────────────────────────────────────────────────────────
+// DETECTION FUNCTIONS
+// ──────────────────────────────────────────────────────────────────
+
+static double estimate_distance(double pixel_separation) {
+    if (pixel_separation <= 0.0) return -1.0;
+    return K_DISTANCE / pixel_separation;
+}
+
+static vector<BarCandidate> detect_color_bars(const Mat& hsv) {
+    Mat mask_r1, mask_r2, mask;
+
+    inRange(hsv, RED_LOW1, RED_HIGH1, mask_r1);
+    inRange(hsv, RED_LOW2, RED_HIGH2, mask_r2);
+    mask = mask_r1 | mask_r2;
+
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+    morphologyEx(mask, mask, MORPH_CLOSE, kernel, Point(-1, -1), 2);
+    morphologyEx(mask, mask, MORPH_OPEN, kernel, Point(-1, -1), 1);
+
+    vector<vector<Point>> contours;
+    findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    // Split HSV channels once for mean calculations
+    vector<Mat> hsv_channels;
+    split(hsv, hsv_channels);
+    const Mat& s_channel = hsv_channels[1];
+    const Mat& v_channel = hsv_channels[2];
+
+    vector<BarCandidate> bars;
+    for (auto& cnt : contours) {
+        double area = contourArea(cnt);
+        if (area < MIN_BAR_AREA || area > MAX_BAR_AREA)
+            continue;
+
+        Rect bbox = boundingRect(cnt);
+        double aspect = (double)bbox.width / max(bbox.height, 1);
+
+        if (aspect < MIN_ASPECT_RATIO)
+            continue;
+
+        // Compute average saturation and value within contour
+        Mat roi_mask = Mat::zeros(mask.size(), CV_8UC1);
+        drawContours(roi_mask, vector<vector<Point>>{cnt}, -1, Scalar(255), FILLED);
+        Scalar avg_s = mean(s_channel, roi_mask);
+        Scalar avg_v = mean(v_channel, roi_mask);
+
+        BarCandidate bar;
+        bar.cx = bbox.x + bbox.width / 2;
+        bar.cy = bbox.y + bbox.height / 2;
+        bar.x = bbox.x;
+        bar.y = bbox.y;
+        bar.w = bbox.width;
+        bar.h = bbox.height;
+        bar.area = area;
+        bar.sat = avg_s[0];
+        bar.val = avg_v[0];
+        bar.aspect = aspect;
+        bars.push_back(bar);
+    }
+
+    return bars;
+}
+
+/**
+ * Find the best left-right pair of LED bars.
+ * Returns true if a valid pair was found; populates left/right and midpoint.
+ */
+static bool find_best_pair(const vector<BarCandidate>& bars,
+                           BarCandidate& out_left,
+                           BarCandidate& out_right) {
+    if (bars.size() < 2) return false;
+
+    double best_score = -1.0;
+    bool found = false;
+
+    for (size_t i = 0; i < bars.size(); i++) {
+        for (size_t j = i + 1; j < bars.size(); j++) {
+            const auto& b1 = bars[i];
+            const auto& b2 = bars[j];
+
+            double vgap = abs(b1.cy - b2.cy);
+            double hsep = abs(b1.cx - b2.cx);
+
+            if (vgap > MAX_VERTICAL_GAP || hsep < MIN_HORIZONTAL_SEP)
+                continue;
+
+            double area_ratio = max(b1.area, b2.area) / max(min(b1.area, b2.area), 1.0);
+            if (area_ratio > MAX_AREA_RATIO)
+                continue;
+
+            double sat_avg = (b1.sat + b2.sat) / 2.0;
+            double area_sim = 1.0 / (1.0 + area_ratio);
+            double vert_score = 1.0 / (1.0 + vgap);
+            double min_area = min(b1.area, b2.area);
+
+            double score = pow(sat_avg, 10.0) * area_sim * vert_score * min_area;
+
+            if (score > best_score) {
+                best_score = score;
+                if (b1.cx < b2.cx) {
+                    out_left = b1;
+                    out_right = b2;
+                } else {
+                    out_left = b2;
+                    out_right = b1;
+                }
+                found = true;
+            }
+        }
+    }
+
+    return found;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// ROS2 NODE
+// ──────────────────────────────────────────────────────────────────
 
 class CVNode : public rclcpp::Node {
 public:
@@ -41,7 +186,7 @@ public:
 private:
     rclcpp::Publisher<Detection2DArray>::SharedPtr detections_publisher_;
     bool writer_initialized;
-    cv::VideoWriter writer_;  // new member for video writing
+    cv::VideoWriter writer_;
     rclcpp::Time last_frame_time;
     rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr subscription_;
     rclcpp::TimerBase::SharedPtr timer_;
@@ -49,41 +194,81 @@ private:
     bool flag_write_video_;
     std::string output_video_path_;
 
-    int frame_number = 0; 
+    int frame_number = 0;
 
     void topic_callback(const sensor_msgs::msg::CompressedImage &msg) {
         try {
-
-            frame_number ++; 
+            frame_number++;
 
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             Mat frame = cv_ptr->image;
 
-            vector<Point2f> centers = calculateCenters(frame, "red", flag_write_video_, flag_debug_);
+            // Convert to HSV once
+            Mat hsv;
+            cvtColor(frame, hsv, COLOR_BGR2HSV);
 
+            // Detect LED bar candidates
+            vector<BarCandidate> bars = detect_color_bars(hsv);
+
+            // Find the best left-right pair
+            BarCandidate left, right;
+            bool pair_found = find_best_pair(bars, left, right);
+
+            // Build detections message
             Detection2DArray detections_msg;
             detections_msg.header = msg.header;
 
-            for (const auto& center : centers) {
+            if (pair_found) {
+                int mid_x = (left.cx + right.cx) / 2;
+                int mid_y = (left.cy + right.cy) / 2;
+                double pixel_sep = sqrt(pow(right.cx - left.cx, 2) + pow(right.cy - left.cy, 2));
+                double dist_m = estimate_distance(pixel_sep);
+
                 Detection2D detection;
-                detection.bbox.center.position.x = center.x;
-                detection.bbox.center.position.y = center.y;
-                RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Detection - x: %.2f, y: %.2f", frame_number, center.x, center.y);
+                detection.bbox.center.position.x = static_cast<double>(mid_x);
+                detection.bbox.center.position.y = static_cast<double>(mid_y);
+                // Store pixel separation in bbox size_x and distance in size_y
+                detection.bbox.size_x = pixel_sep;
+                detection.bbox.size_y = dist_m;
                 detections_msg.detections.push_back(detection);
+
+                RCLCPP_INFO(this->get_logger(),
+                    "Frame %d: target=(%d,%d) sep=%.0fpx dist=%.2fm",
+                    frame_number, mid_x, mid_y, pixel_sep, dist_m);
+
+                // Draw on frame for video output
+                if (flag_write_video_) {
+                    rectangle(frame, Point(left.x, left.y),
+                              Point(left.x + left.w, left.y + left.h),
+                              Scalar(255, 255, 0), 2);
+                    rectangle(frame, Point(right.x, right.y),
+                              Point(right.x + right.w, right.y + right.h),
+                              Scalar(255, 255, 0), 2);
+                    line(frame, Point(left.cx, left.cy),
+                         Point(right.cx, right.cy), Scalar(0, 255, 255), 1);
+                    circle(frame, Point(mid_x, mid_y), 5, Scalar(255, 0, 255), -1);
+                    circle(frame, Point(mid_x, mid_y), 7, Scalar(255, 255, 255), 2);
+                    int cs = 20;
+                    line(frame, Point(mid_x - cs, mid_y), Point(mid_x + cs, mid_y),
+                         Scalar(255, 0, 255), 1);
+                    line(frame, Point(mid_x, mid_y - cs), Point(mid_x, mid_y + cs),
+                         Scalar(255, 0, 255), 1);
+                    putText(frame, format("%.2fm", dist_m),
+                            Point(mid_x + 15, mid_y - 15),
+                            FONT_HERSHEY_SIMPLEX, 0.7, Scalar(255, 0, 255), 2);
+                }
             }
 
             detections_publisher_->publish(detections_msg);
 
-            // RCLCPP_INFO(this->get_logger(), "Frame Number: %d, Published %zu detections", frame_number, detections_msg.detections.size());
-
-
-            // Update the last received frame timestamp
             last_frame_time = this->now();
 
             // Write video only if flag is true
             if (flag_write_video_) {
                 if (!writer_initialized) {
-                    writer_.open(output_video_path_, cv::VideoWriter::fourcc('m','p','4','v'), 30, frame.size(), true);
+                    writer_.open(output_video_path_,
+                                 cv::VideoWriter::fourcc('m', 'p', '4', 'v'),
+                                 30, frame.size(), true);
                     if (!writer_.isOpened()) {
                         RCLCPP_ERROR(this->get_logger(), "Could not open the output video for write");
                     }
@@ -97,149 +282,6 @@ private:
         }
     }
 };
-
-double sim(double a, double b) {
-    return min(a, b) / (a + b);
-}
-
-double distSq(Point2f a, Point2f b) {
-    return pow(a.x - b.x, 2) + pow(a.y - b.y, 2);
-}
-
-double angle(Point2f a, Point2f b) {
-    if (a.x == b.x) return 90;
-    Point2f right = (a.x > b.x) ? a : b;
-    Point2f left = (a.x > b.x) ? b : a;
-    return atan((right.y - left.y) / (right.x - left.x)) * 180.0 / CV_PI;
-}
-
-vector<vector<Point>> getContours(Mat& frame, const string& color) {
-    Mat frameHSV, mask1, mask2, frameThreshold;
-
-    cvtColor(frame, frameHSV, COLOR_BGR2HSV);
-
-    if (color == "red") {
-        inRange(frameHSV, Scalar(0, 70, 50), Scalar(20, 255, 255), mask1);
-        inRange(frameHSV, Scalar(170, 70, 50), Scalar(230, 255, 255), mask2);
-    } else {
-        inRange(frameHSV, Scalar(90, 100, 100), Scalar(115, 255, 255), mask1);
-        inRange(frameHSV, Scalar(115, 100, 100), Scalar(135, 255, 255), mask2);
-    }
-    frameThreshold = mask1 | mask2;
-
-    erode(frameThreshold, frameThreshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
-    dilate(frameThreshold, frameThreshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
-    dilate(frameThreshold, frameThreshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
-    erode(frameThreshold, frameThreshold, getStructuringElement(MORPH_ELLIPSE, Size(5, 5)));
-
-    vector<vector<Point>> contours;
-    findContours(frameThreshold, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
-
-    return contours;
-}
-
-vector<Point2f> calculateCenters(Mat& frame, const string& color, bool draw, bool debug) {
-    auto contours = getContours(frame, color);
-    vector<RotatedRect> bboxes;
-    vector<Point2f> centers;
-
-    for (auto& contour : contours) {
-        RotatedRect bbox = minAreaRect(contour);
-        bboxes.push_back(bbox);
-
-        Point2f bboxPoints[4];
-        bbox.points(bboxPoints);
-        if (draw) {
-            for (int j = 0; j < 4; j++) {
-                line(frame, bboxPoints[j], bboxPoints[(j + 1) % 4], Scalar(0, 255, 0), 2);
-            }
-        }
-    }
-
-    int thresh = 20;
-    double widthSimThresh = 0.1, lengthSimThresh = 0.3, yThresh = 0.15, angleThresh = 15;
-
-    for (size_t i = 0; i < bboxes.size(); i++) {
-        auto& bbox1 = bboxes[i];
-        Point2f center1 = bbox1.center;
-        double width1 = bbox1.size.width;
-        double length1 = bbox1.size.height;
-        double angle1 = bbox1.angle;
-
-        if (length1 < width1) {
-            swap(length1, width1); // Ensure length1 is always the longer dimension
-            angle1 += 90; // Adjust angle accordingly
-            if (angle1 >= 180) {
-                angle1 -= 180; // Normalize angle to be within [0, 180)
-            }
-        }
-
-        if (max(length1, width1) < thresh) continue;
-
-        for (size_t j = i + 1; j < bboxes.size(); j++) {
-            auto& bbox2 = bboxes[j];
-            Point2f center2 = bbox2.center;
-            double width2 = bbox2.size.width;
-            double length2 = bbox2.size.height;
-            double angle2 = bbox2.angle;
-
-            if (length2 < width2) {
-                swap(length2, width2); // Ensure length2 is always the longer dimension
-                angle2 += 90; // Adjust angle accordingly
-                if (angle2 >= 180) {
-                    angle2 -= 180; // Normalize angle to be within [0, 180)
-                }
-            }
-
-            if (max(length2, width2) < thresh) continue;
-
-            double angleDiff = abs(angle1 - angle2);
-            double yDiff = abs(center1.y - center2.y);
-
-            bool isWidthValid = sim(width1, width2) > widthSimThresh;
-            bool isLengthValid = sim(length1, length2) > lengthSimThresh;
-            bool isYDiffValid = yDiff < yThresh * (length1 + length2) / 2.0;
-            bool isAngleValid = (angleDiff < angleThresh || (angleDiff > 180 - angleThresh));
-
-            int validConditions = 0;
-            if (isWidthValid) validConditions++;
-            if (isLengthValid) validConditions++;
-            if (isYDiffValid) validConditions++;
-            if (isAngleValid) validConditions++;
-
-            Point centerMid((center1.x + center2.x) / 2, (center1.y + center2.y) / 2);
-
-            if (validConditions == 4) {
-                centers.push_back(centerMid);
-                if (draw) {
-                    circle(frame, centerMid, 10, Scalar(255, 0, 255), -1);
-                }
-            }
-
-            if (!draw || !debug || validConditions < 2) continue; // Skip if less than 3 conditions are satisfied
-            line(frame, center1, center2, Scalar(255, 255, 255), 1);
-            if (validConditions <= 3) {
-                if (validConditions == 3) {
-                    // Highlight the center if 3 conditions are satisfied
-                    circle(frame, centerMid, 7, Scalar(0, 255, 255), -1);
-                } else {
-                    // If only 2 conditions are satisfied, use a smaller circle
-                    circle(frame, centerMid, 5, Scalar(0, 0, 255), -1);
-                }
-                // Display which condition(s) failed
-                putText(frame, 
-                        "Width: " + to_string(isWidthValid) + 
-                        ", Length: " + to_string(isLengthValid) + 
-                        ", YDiff: " + to_string(isYDiffValid) + 
-                        ", Angle: " + to_string(isAngleValid), 
-                        Point(centerMid.x + 10, centerMid.y - 10), 
-                        FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
-            }
-        }
-    }
-
-    return centers;
-}
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
