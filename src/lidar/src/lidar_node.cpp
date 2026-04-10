@@ -22,11 +22,11 @@ public:
 private:
   void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg) const
   {
-    float min_distance = msg->range_max;
+    double min_distance = msg->range_max;
     
     // Loop through the array of distances to find the closest object
     for (size_t i = 0; i < msg->ranges.size(); ++i) {
-      float current_range = msg->ranges[i];
+      double current_range = msg->ranges[i];
       
       // Filter out invalid readings (infinite or out of sensor bounds)
       if (current_range >= msg->range_min && current_range <= msg->range_max) {
@@ -37,7 +37,7 @@ private:
     }
 
     if (min_distance < msg->range_max) {
-      RCLCPP_INFO(this->get_logger(), "Closest obstacle detected at: %.2f meters", min_distance);
+      RCLCPP_INFO(this->get_logger(), "Closest obstacle detected at: %.4f meters", min_distance);
     } else {
       RCLCPP_INFO(this->get_logger(), "No obstacles detected within range.");
     }

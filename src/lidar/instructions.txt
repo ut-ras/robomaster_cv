@@ -19,7 +19,7 @@ usbipd list
 find the busid that correspond with the lidar
 (might want to do usbid list before and after to find busid)
 replace [busid]     EX: 2-6
-usbipd bind --busid [busid]
+usbipd bind --busid [busid]     (no need to run if it already says shared for STATE)
 usbipd attach --wsl --busid [busid]
 
 (detach if you want to)
