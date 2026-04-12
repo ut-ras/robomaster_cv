@@ -171,8 +171,8 @@ bool lineIntersectsBox(Pos p1, Pos p2, float minX, float minY, float maxX, float
 
 bool Grid::lineOfSight(Pos from, Pos to, float radius)
 {
-	Pos p1 = {(float)from.x, (float)from.y};
-	Pos p2 = {(float)to.x, (float)to.y};
+	Pos p1 = {from.x, from.y};
+	Pos p2 = {to.x, to.y};
 
 	for (const auto &w : walls)
 	{

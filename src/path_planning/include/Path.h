@@ -7,8 +7,7 @@
 #include <set>
 #include <unordered_set>
 
-struct Location
-{
+struct Location {
 	int x;
 	int y;
 
@@ -17,31 +16,28 @@ struct Location
 	double hueristic;
 
 	std::vector<std::shared_ptr<Location>> paths;
-	std::shared_ptr<Location> from{nullptr};
+	std::shared_ptr<Location> from{ nullptr };
 
 	Location();
 	Location(int x, int y);
 
-	bool operator>(const Location &other) const;
-	bool operator==(const Location &l) const;
+	bool operator>(const Location& other) const;
+	bool operator==(const Location& l) const;
 };
 
-struct LocationPtrHash
-{
-	size_t operator()(const std::shared_ptr<Location> &l) const;
+struct LocationPtrHash {
+	size_t operator()(const std::shared_ptr<Location>& l) const;
 };
 
-struct LocationPtrEqual
-{
-	bool operator()(const std::shared_ptr<Location> &lhs, const std::shared_ptr<Location> &rhs) const;
+struct LocationPtrEqual {
+	bool operator()(const std::shared_ptr<Location>& lhs, const std::shared_ptr<Location>& rhs) const;
 };
 
 struct comparator
 {
 	bool operator()(std::shared_ptr<Location> lhs, std::shared_ptr<Location> rhs) const
 	{
-		if (lhs == nullptr || rhs == nullptr)
-		{
+		if (lhs == nullptr || rhs == nullptr) {
 			return false;
 		}
 		return *lhs.get() > *rhs.get();
@@ -57,20 +53,25 @@ public:
 
 	bool hasVisited(std::shared_ptr<Location>);
 
-	void calculate(Pos start, Grid &g);
-	void calculate(int startX, int startY, Grid &g);
+	void calculate(Pos start, Grid& g);
+	void calculate(int startX, int startY, Grid& g);
 
 	std::vector<Pos> getPath();
 
 	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual> getPoints();
 
 private:
+
+	static bool lineOfSight(Grid& g, std::shared_ptr<Location> l1, std::shared_ptr<Location> l2);
+
 	int m_targetX;
 	int m_targetY;
 
 	std::vector<Pos> m_path;
 
 	std::priority_queue<std::shared_ptr<Location>, std::vector<std::shared_ptr<Location>>, comparator> m_frontier;
-	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual> m_points; // Swap for better type if needed
+	std::unordered_set<std::shared_ptr<Location>, LocationPtrHash, LocationPtrEqual> m_points;//Swap for better type if needed
 	std::unordered_set<std::shared_ptr<Location>> m_reached;
+
 };
+
