@@ -16,6 +16,8 @@
 
 using namespace std::chrono_literals;
 
+
+
 class FtdiSpiNode : public rclcpp::Node
 {
 public:
@@ -24,8 +26,11 @@ public:
         this->declare_parameter<int>("vendor_id", 0x0403);    // this is the first part of the usb id run lsusb to get the list of active usb ids
         this->declare_parameter<int>("product_id", 0x6014);   // FT232H default (second part of the usb id)
         this->declare_parameter<int>("clock_divisor", 29);    // ~1 MHz for 60 MHz base
-        this->declare_parameter<int>("poll_ms", 250);
-        this->declare_parameter<int>("transfer_len", 8);
+        this->declare_parameter<int>("poll_ms", 10);
+        this->declare_parameter<int>("transfer_len", 1);
+
+        
+
 
         vendor_id_ = this->get_parameter("vendor_id").as_int();
         product_id_ = this->get_parameter("product_id").as_int();
@@ -168,13 +173,16 @@ private:
         cmd.push_back(0x87);       // send immediate
 
         write_all(cmd);
+        // RCLCPP_INFO(this->get_logger(), "Sent SPI command with %zu bytes", tx.size());
+        // RCLCPP_INFO(this->get_logger(), "Sending: %s : %s: %s: %s: %s: %s: %s: %s", bits(tx[0]).c_str(), bits(tx[1]).c_str(), bits(tx[2]).c_str(), bits(tx[3]).c_str(), bits(tx[4]).c_str(), bits(tx[5]).c_str(), bits(tx[6]).c_str(), bits(tx[7]).c_str());
+        // RCLCPP_INFO(this->get_logger(), "Sent Bytes: %s", bits(tx[0]).c_str());
         return read_exact(static_cast<int>(tx.size()));
     }
 
     void poll_once()
     {
         try {
-            std::vector<uint8_t> tx(transfer_len_, 0x00);
+            std::vector<uint8_t> tx(transfer_len_, counter_++); // this is the data that we are sending back
             auto rx = spi_exchange(tx);
 
             std_msgs::msg::ByteMultiArray msg;
@@ -188,12 +196,20 @@ private:
                          << std::uppercase << std::hex << std::setw(2)
                          << std::setfill('0') << static_cast<int>(b);
             }
-            RCLCPP_INFO(this->get_logger(), "%s", hex_line.str().c_str());
+            // RCLCPP_INFO(this->get_logger(), "%s", hex_line.str().c_str());
 
             for (size_t i = 0; i < rx.size(); ++i) {
+                if (static_cast<int>(rx[i]) == 70){
+                    RCLCPP_INFO(this->get_logger(), "BEGINNING MESSAGE STREAM");
+                }
+
                 RCLCPP_INFO(this->get_logger(),
-                            "byte[%zu] = 0x%02X = %s",
-                            i, rx[i], bits(rx[i]).c_str());
+                            "byte[%zu] = 0x%02X = %s = %d",
+                            i, rx[i], bits(rx[i]).c_str(), static_cast<int>(rx[i]));
+                
+                if (static_cast<int>(rx[i]) == 57){
+                    RCLCPP_INFO(this->get_logger(), "END OF MESSAGE STREAM");
+                }
             }
 
             std::ostringstream bitstream;
@@ -201,7 +217,7 @@ private:
             for (auto b : rx) {
                 bitstream << " " << bits(b);
             }
-            RCLCPP_INFO(this->get_logger(), "%s", bitstream.str().c_str());
+            // RCLCPP_INFO(this->get_logger(), "%s", bitstream.str().c_str());
         } catch (const std::exception& e) {
             RCLCPP_ERROR(this->get_logger(), "poll_once failed: %s", e.what());
         }
@@ -221,8 +237,9 @@ private:
     int vendor_id_ = 0;
     int product_id_ = 0;
     int clock_divisor_ = 29;
-    int poll_ms_ = 250;
-    int transfer_len_ = 8;
+    int poll_ms_ = 10;
+    int transfer_len_ = 1;
+    uint8_t counter_ = 0;
 
     rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
