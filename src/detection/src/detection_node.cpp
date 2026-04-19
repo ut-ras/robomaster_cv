@@ -21,6 +21,8 @@ using vision_msgs::msg::Detection3DArray;
 using vision_msgs::msg::Detection3D;
 using vision_msgs::msg::ObjectHypothesisWithPose;
 
+enum Color { RED, BLUE };
+
 // ──────────────────────────────────────────────────────────────────
 // TUNABLE DETECTION PARAMETERS
 // ──────────────────────────────────────────────────────────────────
@@ -29,6 +31,9 @@ static const Scalar RED_LOW1(0, 80, 90);
 static const Scalar RED_HIGH1(8, 255, 255);
 static const Scalar RED_LOW2(172, 80, 90);
 static const Scalar RED_HIGH2(180, 255, 255);
+
+static const Scalar BLUE_LOW(90, 90, 90);
+static const Scalar BLUE_HIGH(125, 255, 255);
 
 static const double MIN_BAR_AREA = 10.0;
 static const double MAX_BAR_AREA = 80000.0;
@@ -65,6 +70,7 @@ struct BarCandidate {
     int idx;  // unique index for greedy tracking
     int cx, cy, x, y, w, h;
     double area, sat, val, aspect;
+    Color color;
 };
 
 // ──────────────────────────────────────────────────────────────────
@@ -87,19 +93,6 @@ static double estimate_distance(double pixel_separation) {
 }
 
 static vector<BarCandidate> detect_color_bars(const Mat& hsv) {
-    Mat mask_r1, mask_r2, mask;
-
-    inRange(hsv, RED_LOW1, RED_HIGH1, mask_r1);
-    inRange(hsv, RED_LOW2, RED_HIGH2, mask_r2);
-    mask = mask_r1 | mask_r2;
-
-    Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
-    morphologyEx(mask, mask, MORPH_CLOSE, kernel, Point(-1, -1), 2);
-    morphologyEx(mask, mask, MORPH_OPEN, kernel, Point(-1, -1), 1);
-
-    vector<vector<Point>> contours;
-    findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-
     vector<Mat> hsv_channels;
     split(hsv, hsv_channels);
     const Mat& s_channel = hsv_channels[1];
@@ -107,18 +100,29 @@ static vector<BarCandidate> detect_color_bars(const Mat& hsv) {
 
     vector<BarCandidate> bars;
     int bar_idx = 0;
-    for (auto& cnt : contours) {
+
+    // Detect red bars
+    Mat mask_r1, mask_r2, mask_red;
+    inRange(hsv, RED_LOW1, RED_HIGH1, mask_r1);
+    inRange(hsv, RED_LOW2, RED_HIGH2, mask_r2);
+    mask_red = mask_r1 | mask_r2;
+
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+    morphologyEx(mask_red, mask_red, MORPH_CLOSE, kernel, Point(-1, -1), 2);
+    morphologyEx(mask_red, mask_red, MORPH_OPEN, kernel, Point(-1, -1), 1);
+
+    vector<vector<Point>> contours_red;
+    findContours(mask_red, contours_red, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    for (auto& cnt : contours_red) {
         double area = contourArea(cnt);
-        if (area < MIN_BAR_AREA || area > MAX_BAR_AREA)
-            continue;
+        if (area < MIN_BAR_AREA || area > MAX_BAR_AREA) continue;
 
         Rect bbox = boundingRect(cnt);
         double aspect = (double)bbox.width / max(bbox.height, 1);
+        if (aspect < MIN_ASPECT_RATIO) continue;
 
-        if (aspect < MIN_ASPECT_RATIO)
-            continue;
-
-        Mat roi_mask = Mat::zeros(mask.size(), CV_8UC1);
+        Mat roi_mask = Mat::zeros(mask_red.size(), CV_8UC1);
         drawContours(roi_mask, vector<vector<Point>>{cnt}, -1, Scalar(255), FILLED);
         Scalar avg_s = mean(s_channel, roi_mask);
         Scalar avg_v = mean(v_channel, roi_mask);
@@ -135,6 +139,45 @@ static vector<BarCandidate> detect_color_bars(const Mat& hsv) {
         bar.sat = avg_s[0];
         bar.val = avg_v[0];
         bar.aspect = aspect;
+        bar.color = RED;
+        bars.push_back(bar);
+    }
+
+    // Detect blue bars
+    Mat mask_blue;
+    inRange(hsv, BLUE_LOW, BLUE_HIGH, mask_blue);
+    morphologyEx(mask_blue, mask_blue, MORPH_CLOSE, kernel, Point(-1, -1), 2);
+    morphologyEx(mask_blue, mask_blue, MORPH_OPEN, kernel, Point(-1, -1), 1);
+
+    vector<vector<Point>> contours_blue;
+    findContours(mask_blue, contours_blue, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    for (auto& cnt : contours_blue) {
+        double area = contourArea(cnt);
+        if (area < MIN_BAR_AREA || area > MAX_BAR_AREA) continue;
+
+        Rect bbox = boundingRect(cnt);
+        double aspect = (double)bbox.width / max(bbox.height, 1);
+        if (aspect < MIN_ASPECT_RATIO) continue;
+
+        Mat roi_mask = Mat::zeros(mask_blue.size(), CV_8UC1);
+        drawContours(roi_mask, vector<vector<Point>>{cnt}, -1, Scalar(255), FILLED);
+        Scalar avg_s = mean(s_channel, roi_mask);
+        Scalar avg_v = mean(v_channel, roi_mask);
+
+        BarCandidate bar;
+        bar.idx = bar_idx++;
+        bar.cx = bbox.x + bbox.width / 2;
+        bar.cy = bbox.y + bbox.height / 2;
+        bar.x = bbox.x;
+        bar.y = bbox.y;
+        bar.w = bbox.width;
+        bar.h = bbox.height;
+        bar.area = area;
+        bar.sat = avg_s[0];
+        bar.val = avg_v[0];
+        bar.aspect = aspect;
+        bar.color = BLUE;
         bars.push_back(bar);
     }
 
@@ -160,6 +203,8 @@ static vector<ScoredPair> find_pairs(const vector<BarCandidate>& bars,
         for (size_t j = i + 1; j < bars.size(); j++) {
             const auto& b1 = bars[i];
             const auto& b2 = bars[j];
+
+            if (b1.color != b2.color) continue;
 
             double vgap = abs(b1.cy - b2.cy);
             double hsep = abs(b1.cx - b2.cx);
@@ -257,18 +302,22 @@ public:
         this->declare_parameter<bool>("write_video", false);
         this->declare_parameter<string>("output_path", "output.mp4");
         this->declare_parameter<double>("score_threshold", SCORE_THRESHOLD);
+        this->declare_parameter<std::string>("team_color", "red");
         this->get_parameter("debug", flag_debug_);
         this->get_parameter("write_video", flag_write_video_);
         this->get_parameter("output_path", output_video_path_);
         this->get_parameter("score_threshold", score_threshold_);
+        this->get_parameter("team_color", team_color_);
         subscription_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
             "/robot/rs2/color/image_raw/compressed", 10, std::bind(&CVNode::topic_callback, this, _1));
 
         detections_publisher_ = this->create_publisher<Detection3DArray>("detections", 10);
+        detections_all_publisher_ = this->create_publisher<Detection3DArray>("detections_all", 10);
     }
 
 private:
     rclcpp::Publisher<Detection3DArray>::SharedPtr detections_publisher_;
+    rclcpp::Publisher<Detection3DArray>::SharedPtr detections_all_publisher_;
     bool writer_initialized;
     cv::VideoWriter writer_;
     rclcpp::Time last_frame_time;
@@ -278,6 +327,7 @@ private:
     bool flag_write_video_;
     std::string output_video_path_;
     double score_threshold_;
+    std::string team_color_;
 
     int frame_number = 0;
 
@@ -298,9 +348,12 @@ private:
             // Find up to MAX_PAIRS pairs via greedy consume
             vector<ScoredPair> pairs = find_pairs(bars, score_threshold_);
 
-            // Build detections message
+            // Build detections messages
+            Detection3DArray detections_all_msg;
+            detections_all_msg.header = msg.header;
             Detection3DArray detections_msg;
             detections_msg.header = msg.header;
+            Color opponent_color = (team_color_ == "red") ? BLUE : RED;
 
             for (int rank = 0; rank < (int)pairs.size(); rank++) {
                 const auto& sp = pairs[rank];
@@ -315,7 +368,11 @@ private:
                 detection.bbox.center.position.y = static_cast<double>(mid_y);
                 detection.bbox.center.position.z = dist_m;
                 detection.bbox.size.x = pixel_sep;
-                detections_msg.detections.push_back(detection);
+                detections_all_msg.detections.push_back(detection);
+
+                if (sp.left.color == opponent_color) {
+                    detections_msg.detections.push_back(detection);
+                }
 
                 RCLCPP_INFO(this->get_logger(),
                     "Frame %d: pair #%d target=(%d,%d) sep=%.0fpx dist=%.2fm score=%.1e",
@@ -347,6 +404,7 @@ private:
                 }
             }
 
+            detections_all_publisher_->publish(detections_all_msg);
             detections_publisher_->publish(detections_msg);
 
             last_frame_time = this->now();
