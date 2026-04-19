@@ -27,39 +27,32 @@ public:
         this->declare_parameter<int>("vendor_id", 0x0403);    // this is the first part of the usb id run lsusb to get the list of active usb ids
         this->declare_parameter<int>("product_id", 0x6014);   // FT232H default (second part of the usb id)
         this->declare_parameter<int>("clock_divisor", 29);    // ~1 MHz for 60 MHz base
-        this->declare_parameter<int>("poll_ms", 10);
         this->declare_parameter<int>("transfer_len", 1);
         this->declare_parameter<int>("start_byte", 70);
         this->declare_parameter<int>("end_byte", 57);
         this->declare_parameter<int>("max_message_len", 13);
 
-
-        
-
-
         vendor_id_ = this->get_parameter("vendor_id").as_int();
         product_id_ = this->get_parameter("product_id").as_int();
         clock_divisor_ = this->get_parameter("clock_divisor").as_int();
-        poll_ms_ = this->get_parameter("poll_ms").as_int();
         transfer_len_ = this->get_parameter("transfer_len").as_int();
         start_byte_ = this->get_parameter("start_byte").as_int();
         end_byte_ = this->get_parameter("end_byte").as_int();
         max_message_len_ = this->get_parameter("max_message_len").as_int();
 
-        bool in_message = false;
-        std::vector<uint8_t> recieved_data;
-
         publisher_ = this->create_publisher<std_msgs::msg::ByteMultiArray>("spi_rx", 10);
 
         open_and_configure();
 
-        timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(poll_ms_),
-            std::bind(&FtdiSpiNode::poll_once, this));
+        packing_sub_ = this->create_subscription<std_msgs::msg::ByteMultiArray>(
+            "spi_tx", 10,
+            [this](const std_msgs::msg::ByteMultiArray::SharedPtr msg) {
+                spi_tx_callback(msg);
+            });
 
         RCLCPP_INFO(this->get_logger(),
-                    "FTDI SPI node started. VID=0x%04X PID=0x%04X len=%d poll=%d ms",
-                    vendor_id_, product_id_, transfer_len_, poll_ms_);
+                    "FTDI SPI node started. VID=0x%04X PID=0x%04X transfer_len=%d",
+                    vendor_id_, product_id_, transfer_len_);
     }
 
     ~FtdiSpiNode() override
@@ -190,15 +183,15 @@ private:
         return read_exact(static_cast<int>(tx.size()));
     }
 
-    void poll_once()
+    void spi_tx_callback(const std_msgs::msg::ByteMultiArray::SharedPtr msg)
     {
-        try {
-            std::vector<uint8_t> tx(transfer_len_, counter_++); // this is the data that we are sending back
-            auto rx = spi_exchange(tx);
+        if (msg->data.empty()) {
+            RCLCPP_WARN(this->get_logger(), "spi_tx received empty message, ignoring");
+            return;
+        }
 
-            // std_msgs::msg::ByteMultiArray msg;
-            // msg.data.assign(rx.begin(), rx.end());
-            // publisher_->publish(msg);
+        try {
+            auto rx = spi_exchange(msg->data);
 
             std::ostringstream hex_line;
             hex_line << "RAW HEX:";
@@ -207,39 +200,31 @@ private:
                          << std::uppercase << std::hex << std::setw(2)
                          << std::setfill('0') << static_cast<int>(b);
             }
-            // RCLCPP_INFO(this->get_logger(), "%s", hex_line.str().c_str());
-            if (!in_message && static_cast<int>(rx[0]) == start_byte_){
-                RCLCPP_INFO(this->get_logger(), "BEGINNING MESSAGE STREAM");
-                in_message = true;
-            } else if (in_message && static_cast<int>(rx[0]) == end_byte_){
-                RCLCPP_INFO(this->get_logger(), "END OF MESSAGE STREAM");
-                in_message = false;
-                std_msgs::msg::ByteMultiArray msg;
-                msg.data.assign(recieved_data.begin(), recieved_data.end());
-                publisher_->publish(msg);
-                recieved_data.clear();
-            } else if (in_message && recieved_data.size() > max_message_len_){
-                in_message = false;
-                RCLCPP_WARN(this->get_logger(), "Message too long, resetting. Received data: %s", hex_line.str().c_str());
-                recieved_data.clear();
-            } else if (in_message) {
-                RCLCPP_INFO(this->get_logger(), "byte[%zu] = 0x%02X = %s = %d", recieved_data.size(), rx[0], bits(rx[0]).c_str(), static_cast<int>(rx[0]));
-                recieved_data.push_back(rx[0]);
+
+            for (const auto& byte : rx) {
+                if (!in_message_ && static_cast<int>(byte) == start_byte_) {
+                    RCLCPP_INFO(this->get_logger(), "BEGINNING MESSAGE STREAM");
+                    in_message_ = true;
+                } else if (in_message_ && static_cast<int>(byte) == end_byte_) {
+                    RCLCPP_INFO(this->get_logger(), "END OF MESSAGE STREAM");
+                    in_message_ = false;
+                    std_msgs::msg::ByteMultiArray out_msg;
+                    out_msg.data.assign(received_data_.begin(), received_data_.end());
+                    publisher_->publish(out_msg);
+                    received_data_.clear();
+                } else if (in_message_ && received_data_.size() >= static_cast<size_t>(max_message_len_)) {
+                    in_message_ = false;
+                    RCLCPP_WARN(this->get_logger(), "Message too long, resetting. Received data: %s",
+                                hex_line.str().c_str());
+                    received_data_.clear();
+                } else if (in_message_) {
+                    RCLCPP_INFO(this->get_logger(), "byte[%zu] = 0x%02X = %s = %d",
+                                received_data_.size(), byte, bits(byte).c_str(), static_cast<int>(byte));
+                    received_data_.push_back(byte);
+                }
             }
-
-            
-            
-            
-
-
-            std::ostringstream bitstream;
-            bitstream << "BITSTREAM:";
-            for (auto b : rx) {
-                bitstream << " " << bits(b);
-            }
-            // RCLCPP_INFO(this->get_logger(), "%s", bitstream.str().c_str());
         } catch (const std::exception& e) {
-            RCLCPP_ERROR(this->get_logger(), "poll_once failed: %s", e.what());
+            RCLCPP_ERROR(this->get_logger(), "spi_tx_callback failed: %s", e.what());
         }
     }
 
@@ -257,18 +242,15 @@ private:
     int vendor_id_ = 0;
     int product_id_ = 0;
     int clock_divisor_ = 29;
-    int poll_ms_ = 10;
     int transfer_len_ = 1;
-    uint8_t counter_ = 0;
     int start_byte_ = 70;
     int end_byte_ = 57;
     int max_message_len_ = 13;
-    bool in_message = false;
-    std::vector<uint8_t> recieved_data;
-
+    bool in_message_ = false;
+    std::vector<uint8_t> received_data_;
 
     rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr publisher_;
-    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::Subscription<std_msgs::msg::ByteMultiArray>::SharedPtr packing_sub_;
 };
 
 int main(int argc, char* argv[])
