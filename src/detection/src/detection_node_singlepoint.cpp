@@ -1,15 +1,14 @@
 #include <cstdio>
 #include <cmath>
 #include <vector>
-#include <set>
 #include <algorithm>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/compressed_image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
-#include <vision_msgs/msg/detection3_d_array.hpp>
-#include <vision_msgs/msg/detection3_d.hpp>
+#include <vision_msgs/msg/detection2_d_array.hpp>
+#include <vision_msgs/msg/detection2_d.hpp>
 #include <vision_msgs/msg/object_hypothesis_with_pose.hpp>
 #include <opencv2/videoio.hpp>
 #include <rclcpp/parameter.hpp>
@@ -17,8 +16,8 @@
 using std::placeholders::_1;
 using namespace cv;
 using namespace std;
-using vision_msgs::msg::Detection3DArray;
-using vision_msgs::msg::Detection3D;
+using vision_msgs::msg::Detection2DArray;
+using vision_msgs::msg::Detection2D;
 using vision_msgs::msg::ObjectHypothesisWithPose;
 
 // ──────────────────────────────────────────────────────────────────
@@ -40,41 +39,13 @@ static const double MIN_HORIZONTAL_SEP = 5.0;
 // Distance estimation: distance = K / pixel_separation
 static const double K_DISTANCE = 116.5;
 
-// Robot physical dimensions (mm)
-static const double ROBOT_SEP_SMALL_MM = 130.0;  // center-to-center, small config
-static const double ROBOT_SEP_BIG_MM   = 226.0;  // center-to-center, big config
-static const double FOCAL_LENGTH_PX    = 922.0;  // RealSense D435 color @ 1280x720
-
-static const double K_SMALL = (ROBOT_SEP_SMALL_MM / 1000.0) * FOCAL_LENGTH_PX;  // ~119.9
-static const double K_BIG   = (ROBOT_SEP_BIG_MM   / 1000.0) * FOCAL_LENGTH_PX;  // ~208.4
-
-// Geometric constraint: pixel_sep / avg_bar_pixel_width must be below this.
-// Real pairs are ~1.5 to 3.0; junk pairs (tiny blobs far apart) blow up to 100+.
-static const double MAX_SEP_TO_SIZE_RATIO = 8.0;
-
-// Multi-pair parameters
-static const int MAX_PAIRS = 3;
-static const double SAT_EXPONENT = 10.0;
-static const double SCORE_THRESHOLD = 1e21;  // tune empirically, e.g. 1e22
-
 // ──────────────────────────────────────────────────────────────────
 // BAR CANDIDATE STRUCT
 // ──────────────────────────────────────────────────────────────────
 
 struct BarCandidate {
-    int idx;  // unique index for greedy tracking
     int cx, cy, x, y, w, h;
     double area, sat, val, aspect;
-};
-
-// ──────────────────────────────────────────────────────────────────
-// SCORED PAIR (for sorting + greedy consume)
-// ──────────────────────────────────────────────────────────────────
-
-struct ScoredPair {
-    BarCandidate left;
-    BarCandidate right;
-    double score;
 };
 
 // ──────────────────────────────────────────────────────────────────
@@ -100,13 +71,13 @@ static vector<BarCandidate> detect_color_bars(const Mat& hsv) {
     vector<vector<Point>> contours;
     findContours(mask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
+    // Split HSV channels once for mean calculations
     vector<Mat> hsv_channels;
     split(hsv, hsv_channels);
     const Mat& s_channel = hsv_channels[1];
     const Mat& v_channel = hsv_channels[2];
 
     vector<BarCandidate> bars;
-    int bar_idx = 0;
     for (auto& cnt : contours) {
         double area = contourArea(cnt);
         if (area < MIN_BAR_AREA || area > MAX_BAR_AREA)
@@ -118,13 +89,13 @@ static vector<BarCandidate> detect_color_bars(const Mat& hsv) {
         if (aspect < MIN_ASPECT_RATIO)
             continue;
 
+        // Compute average saturation and value within contour
         Mat roi_mask = Mat::zeros(mask.size(), CV_8UC1);
         drawContours(roi_mask, vector<vector<Point>>{cnt}, -1, Scalar(255), FILLED);
         Scalar avg_s = mean(s_channel, roi_mask);
         Scalar avg_v = mean(v_channel, roi_mask);
 
         BarCandidate bar;
-        bar.idx = bar_idx++;
         bar.cx = bbox.x + bbox.width / 2;
         bar.cy = bbox.y + bbox.height / 2;
         bar.x = bbox.x;
@@ -142,19 +113,16 @@ static vector<BarCandidate> detect_color_bars(const Mat& hsv) {
 }
 
 /**
- * Find up to MAX_PAIRS left-right pairs using greedy consume + threshold.
- *
- * 1. Score every valid (i,j) candidate pair
- * 2. Sort by score descending
- * 3. Greedily pick the top pair, mark both bars as consumed
- * 4. Pick next highest-scoring pair whose bars are both unconsumed
- * 5. Repeat until MAX_PAIRS selected or no valid pairs remain
- * 6. Reject any pair below SCORE_THRESHOLD
+ * Find the best left-right pair of LED bars.
+ * Returns true if a valid pair was found; populates left/right and midpoint.
  */
-static vector<ScoredPair> find_pairs(const vector<BarCandidate>& bars,
-                                     double score_threshold = SCORE_THRESHOLD) {
-    // Build and score all valid candidate pairs
-    vector<ScoredPair> candidates;
+static bool find_best_pair(const vector<BarCandidate>& bars,
+                           BarCandidate& out_left,
+                           BarCandidate& out_right) {
+    if (bars.size() < 2) return false;
+
+    double best_score = -1.0;
+    bool found = false;
 
     for (size_t i = 0; i < bars.size(); i++) {
         for (size_t j = i + 1; j < bars.size(); j++) {
@@ -171,79 +139,29 @@ static vector<ScoredPair> find_pairs(const vector<BarCandidate>& bars,
             if (area_ratio > MAX_AREA_RATIO)
                 continue;
 
-            // Geometric constraint: pixel_sep / avg_bar_width must be reasonable.
-            // On a real robot this equals real_sep / real_bar_length (fixed constant).
-            // Two tiny blobs far apart blow this ratio up and get rejected.
-            double pixel_sep = sqrt(pow(b1.cx - b2.cx, 2) + pow(b1.cy - b2.cy, 2));
-            double avg_bar_w = (b1.w + b2.w) / 2.0;
-            if (avg_bar_w < 1.0) avg_bar_w = 1.0;
-            double sep_size_ratio = pixel_sep / avg_bar_w;
-            if (sep_size_ratio > MAX_SEP_TO_SIZE_RATIO)
-                continue;
-
             double sat_avg = (b1.sat + b2.sat) / 2.0;
             double area_sim = 1.0 / (1.0 + area_ratio);
             double vert_score = 1.0 / (1.0 + vgap);
             double min_area = min(b1.area, b2.area);
 
-            double score = pow(sat_avg, SAT_EXPONENT) * area_sim * vert_score * min_area;
+            double score = pow(sat_avg, 10.0) * area_sim * vert_score * min_area;
 
-            if (score < score_threshold)
-                continue;
-
-            ScoredPair sp;
-            if (b1.cx < b2.cx) {
-                sp.left = b1;
-                sp.right = b2;
-            } else {
-                sp.left = b2;
-                sp.right = b1;
+            if (score > best_score) {
+                best_score = score;
+                if (b1.cx < b2.cx) {
+                    out_left = b1;
+                    out_right = b2;
+                } else {
+                    out_left = b2;
+                    out_right = b1;
+                }
+                found = true;
             }
-            sp.score = score;
-            candidates.push_back(sp);
         }
     }
 
-    // Sort by score descending
-    sort(candidates.begin(), candidates.end(),
-         [](const ScoredPair& a, const ScoredPair& b) {
-             return a.score > b.score;
-         });
-
-    // Greedy consume
-    set<int> used;
-    vector<ScoredPair> selected;
-
-    for (const auto& sp : candidates) {
-        if ((int)selected.size() >= MAX_PAIRS)
-            break;
-
-        if (used.count(sp.left.idx) || used.count(sp.right.idx))
-            continue;
-
-        used.insert(sp.left.idx);
-        used.insert(sp.right.idx);
-        selected.push_back(sp);
-    }
-
-    return selected;
+    return found;
 }
-
-// ──────────────────────────────────────────────────────────────────
-// PAIR COLORS (for video overlay, up to 3 pairs)
-// ──────────────────────────────────────────────────────────────────
-
-static const Scalar PAIR_COLORS[] = {
-    Scalar(255, 0, 255),  // magenta
-    Scalar(0, 255, 0),    // green
-    Scalar(0, 165, 255),  // orange
-};
-
-static const Scalar BOX_COLORS[] = {
-    Scalar(255, 255, 0),  // cyan
-    Scalar(0, 255, 128),  // spring green
-    Scalar(0, 128, 255),  // dark orange
-};
 
 // ──────────────────────────────────────────────────────────────────
 // ROS2 NODE
@@ -256,19 +174,17 @@ public:
         this->declare_parameter<bool>("debug", false);
         this->declare_parameter<bool>("write_video", false);
         this->declare_parameter<string>("output_path", "output.mp4");
-        this->declare_parameter<double>("score_threshold", SCORE_THRESHOLD);
         this->get_parameter("debug", flag_debug_);
         this->get_parameter("write_video", flag_write_video_);
         this->get_parameter("output_path", output_video_path_);
-        this->get_parameter("score_threshold", score_threshold_);
         subscription_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
             "/robot/rs2/color/image_raw/compressed", 10, std::bind(&CVNode::topic_callback, this, _1));
 
-        detections_publisher_ = this->create_publisher<Detection3DArray>("detections", 10);
+        detections_publisher_ = this->create_publisher<Detection2DArray>("detections", 10);
     }
 
 private:
-    rclcpp::Publisher<Detection3DArray>::SharedPtr detections_publisher_;
+    rclcpp::Publisher<Detection2DArray>::SharedPtr detections_publisher_;
     bool writer_initialized;
     cv::VideoWriter writer_;
     rclcpp::Time last_frame_time;
@@ -277,7 +193,6 @@ private:
     bool flag_debug_;
     bool flag_write_video_;
     std::string output_video_path_;
-    double score_threshold_;
 
     int frame_number = 0;
 
@@ -295,55 +210,52 @@ private:
             // Detect LED bar candidates
             vector<BarCandidate> bars = detect_color_bars(hsv);
 
-            // Find up to MAX_PAIRS pairs via greedy consume
-            vector<ScoredPair> pairs = find_pairs(bars, score_threshold_);
+            // Find the best left-right pair
+            BarCandidate left, right;
+            bool pair_found = find_best_pair(bars, left, right);
 
             // Build detections message
-            Detection3DArray detections_msg;
+            Detection2DArray detections_msg;
             detections_msg.header = msg.header;
 
-            for (int rank = 0; rank < (int)pairs.size(); rank++) {
-                const auto& sp = pairs[rank];
-                int mid_x = (sp.left.cx + sp.right.cx) / 2;
-                int mid_y = (sp.left.cy + sp.right.cy) / 2;
-                double pixel_sep = sqrt(pow(sp.right.cx - sp.left.cx, 2) +
-                                        pow(sp.right.cy - sp.left.cy, 2));
+            if (pair_found) {
+                int mid_x = (left.cx + right.cx) / 2;
+                int mid_y = (left.cy + right.cy) / 2;
+                double pixel_sep = sqrt(pow(right.cx - left.cx, 2) + pow(right.cy - left.cy, 2));
                 double dist_m = estimate_distance(pixel_sep);
 
-                Detection3D detection;
+                Detection2D detection;
                 detection.bbox.center.position.x = static_cast<double>(mid_x);
                 detection.bbox.center.position.y = static_cast<double>(mid_y);
-                detection.bbox.center.position.z = dist_m;
-                detection.bbox.size.x = pixel_sep;
+                // Store pixel separation in bbox size_x and distance in size_y
+                detection.bbox.size_x = pixel_sep;
+                detection.bbox.size_y = dist_m;
                 detections_msg.detections.push_back(detection);
 
                 RCLCPP_INFO(this->get_logger(),
-                    "Frame %d: pair #%d target=(%d,%d) sep=%.0fpx dist=%.2fm score=%.1e",
-                    frame_number, rank + 1, mid_x, mid_y, pixel_sep, dist_m, sp.score);
+                    "Frame %d: target=(%d,%d) sep=%.0fpx dist=%.2fm",
+                    frame_number, mid_x, mid_y, pixel_sep, dist_m);
 
                 // Draw on frame for video output
                 if (flag_write_video_) {
-                    Scalar pair_color = PAIR_COLORS[rank % 3];
-                    Scalar box_color = BOX_COLORS[rank % 3];
-
-                    rectangle(frame, Point(sp.left.x, sp.left.y),
-                              Point(sp.left.x + sp.left.w, sp.left.y + sp.left.h),
-                              box_color, 2);
-                    rectangle(frame, Point(sp.right.x, sp.right.y),
-                              Point(sp.right.x + sp.right.w, sp.right.y + sp.right.h),
-                              box_color, 2);
-                    line(frame, Point(sp.left.cx, sp.left.cy),
-                         Point(sp.right.cx, sp.right.cy), Scalar(0, 255, 255), 1);
-                    circle(frame, Point(mid_x, mid_y), 5, pair_color, -1);
+                    rectangle(frame, Point(left.x, left.y),
+                              Point(left.x + left.w, left.y + left.h),
+                              Scalar(255, 255, 0), 2);
+                    rectangle(frame, Point(right.x, right.y),
+                              Point(right.x + right.w, right.y + right.h),
+                              Scalar(255, 255, 0), 2);
+                    line(frame, Point(left.cx, left.cy),
+                         Point(right.cx, right.cy), Scalar(0, 255, 255), 1);
+                    circle(frame, Point(mid_x, mid_y), 5, Scalar(255, 0, 255), -1);
                     circle(frame, Point(mid_x, mid_y), 7, Scalar(255, 255, 255), 2);
                     int cs = 20;
                     line(frame, Point(mid_x - cs, mid_y), Point(mid_x + cs, mid_y),
-                         pair_color, 1);
+                         Scalar(255, 0, 255), 1);
                     line(frame, Point(mid_x, mid_y - cs), Point(mid_x, mid_y + cs),
-                         pair_color, 1);
-                    putText(frame, format("#%d %.2fm", rank + 1, dist_m),
+                         Scalar(255, 0, 255), 1);
+                    putText(frame, format("%.2fm", dist_m),
                             Point(mid_x + 15, mid_y - 15),
-                            FONT_HERSHEY_SIMPLEX, 0.6, pair_color, 2);
+                            FONT_HERSHEY_SIMPLEX, 0.7, Scalar(255, 0, 255), 2);
                 }
             }
 
