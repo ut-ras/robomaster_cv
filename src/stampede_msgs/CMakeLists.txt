@@ -36,6 +36,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Uart.msg"
   "msg/TurretData.msg"
   "msg/OdometryData.msg"
+  "msg/SpiEnemyData.msg"
+  "msg/SpiHealthData.msg"
+  "msg/SpiOdometryData.msg"
+  "msg/SpiPositionData.msg"
   DEPENDENCIES std_msgs geometry_msgs vision_msgs
 )
 ament_export_dependencies(rosidl_default_runtime)

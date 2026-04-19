@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <bit>
 
 using namespace std::chrono_literals;
 
@@ -28,6 +29,10 @@ public:
         this->declare_parameter<int>("clock_divisor", 29);    // ~1 MHz for 60 MHz base
         this->declare_parameter<int>("poll_ms", 10);
         this->declare_parameter<int>("transfer_len", 1);
+        this->declare_parameter<int>("start_byte", 70);
+        this->declare_parameter<int>("end_byte", 57);
+        this->declare_parameter<int>("max_message_len", 13);
+
 
         
 
@@ -37,6 +42,12 @@ public:
         clock_divisor_ = this->get_parameter("clock_divisor").as_int();
         poll_ms_ = this->get_parameter("poll_ms").as_int();
         transfer_len_ = this->get_parameter("transfer_len").as_int();
+        start_byte_ = this->get_parameter("start_byte").as_int();
+        end_byte_ = this->get_parameter("end_byte").as_int();
+        max_message_len_ = this->get_parameter("max_message_len").as_int();
+
+        bool in_message = false;
+        std::vector<uint8_t> recieved_data;
 
         publisher_ = this->create_publisher<std_msgs::msg::ByteMultiArray>("spi_rx", 10);
 
@@ -185,9 +196,9 @@ private:
             std::vector<uint8_t> tx(transfer_len_, counter_++); // this is the data that we are sending back
             auto rx = spi_exchange(tx);
 
-            std_msgs::msg::ByteMultiArray msg;
-            msg.data.assign(rx.begin(), rx.end());
-            publisher_->publish(msg);
+            // std_msgs::msg::ByteMultiArray msg;
+            // msg.data.assign(rx.begin(), rx.end());
+            // publisher_->publish(msg);
 
             std::ostringstream hex_line;
             hex_line << "RAW HEX:";
@@ -197,20 +208,29 @@ private:
                          << std::setfill('0') << static_cast<int>(b);
             }
             // RCLCPP_INFO(this->get_logger(), "%s", hex_line.str().c_str());
-
-            for (size_t i = 0; i < rx.size(); ++i) {
-                if (static_cast<int>(rx[i]) == 70){
-                    RCLCPP_INFO(this->get_logger(), "BEGINNING MESSAGE STREAM");
-                }
-
-                RCLCPP_INFO(this->get_logger(),
-                            "byte[%zu] = 0x%02X = %s = %d",
-                            i, rx[i], bits(rx[i]).c_str(), static_cast<int>(rx[i]));
-                
-                if (static_cast<int>(rx[i]) == 57){
-                    RCLCPP_INFO(this->get_logger(), "END OF MESSAGE STREAM");
-                }
+            if (!in_message && static_cast<int>(rx[0]) == start_byte_){
+                RCLCPP_INFO(this->get_logger(), "BEGINNING MESSAGE STREAM");
+                in_message = true;
+            } else if (in_message && static_cast<int>(rx[0]) == end_byte_){
+                RCLCPP_INFO(this->get_logger(), "END OF MESSAGE STREAM");
+                in_message = false;
+                std_msgs::msg::ByteMultiArray msg;
+                msg.data.assign(recieved_data.begin(), recieved_data.end());
+                publisher_->publish(msg);
+                recieved_data.clear();
+            } else if (in_message && recieved_data.size() > max_message_len_){
+                in_message = false;
+                RCLCPP_WARN(this->get_logger(), "Message too long, resetting. Received data: %s", hex_line.str().c_str());
+                recieved_data.clear();
+            } else if (in_message) {
+                RCLCPP_INFO(this->get_logger(), "byte[%zu] = 0x%02X = %s = %d", recieved_data.size(), rx[0], bits(rx[0]).c_str(), static_cast<int>(rx[0]));
+                recieved_data.push_back(rx[0]);
             }
+
+            
+            
+            
+
 
             std::ostringstream bitstream;
             bitstream << "BITSTREAM:";
@@ -240,6 +260,12 @@ private:
     int poll_ms_ = 10;
     int transfer_len_ = 1;
     uint8_t counter_ = 0;
+    int start_byte_ = 70;
+    int end_byte_ = 57;
+    int max_message_len_ = 13;
+    bool in_message = false;
+    std::vector<uint8_t> recieved_data;
+
 
     rclcpp::Publisher<std_msgs::msg::ByteMultiArray>::SharedPtr publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
