@@ -23,6 +23,9 @@ find_package(std_msgs REQUIRED)
 add_executable(localization_node
     src/localization_node.cpp
     src/TagDeclaration.cpp
+    src/tag_detection.cpp
+    src/position_calculator.cpp
+    src/frame_analyzer.cpp
 )
 target_include_directories(localization_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
