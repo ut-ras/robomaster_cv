@@ -4,6 +4,26 @@
 
 using namespace cv;
 
+namespace {
+// Predefined super-rotation matrices for common firmware coordinate conventions.
+// Columns are the images of the tag-frame basis vectors (tag-x, tag-y).
+const cv::Matx22d positiveXIsRight_positiveYIsUp = cv::Matx22d::eye();
+const cv::Matx22d positiveXIsLeft_positiveYIsUp  = cv::Matx22d(-1.0, 0.0,
+                                                              0.0, 1.0);
+const cv::Matx22d positiveXIsRight_positiveYIsDown = cv::Matx22d(1.0, 0.0,
+                                                               0.0, -1.0);
+const cv::Matx22d positiveXIsLeft_positiveYIsDown  = cv::Matx22d(-1.0, 0.0,
+                                                              0.0, -1.0);
+const cv::Matx22d positiveXIsUp_positiveYIsRight   = cv::Matx22d(0.0, 1.0,
+                                                              1.0, 0.0);
+const cv::Matx22d positiveXIsUp_positiveYIsLeft    = cv::Matx22d(0.0, -1.0,
+                                                              1.0, 0.0);
+const cv::Matx22d positiveXIsDown_positiveYIsRight = cv::Matx22d(0.0, 1.0,
+                                                              -1.0, 0.0);
+const cv::Matx22d positiveXIsDown_positiveYIsLeft  = cv::Matx22d(0.0, -1.0,
+                                                              -1.0, 0.0);
+}
+
 PositionCalculator::PositionCalculator(const cv::Mat& cameraMatrix,
                                        const cv::Mat& distCoeffs,
                                        float markerSizeMeters)
@@ -265,30 +285,45 @@ cv::Vec3d PositionCalculator::rotationMatrixToEulerAngles(const cv::Mat& R) {
 void PositionCalculator::initializeDefaultMarkerFieldPoses_() {
     markerFieldPoses_.clear();
 
-    // Temporary field map: replace with measured values for competition field.
-    markerFieldPoses_[3] = {
-        cv::Vec2d(1.0, 0.0),
-        cv::Matx22d::eye()
+    // ===== THIS IS WHAT CAN BE CHANGED!!! CHANGING ANYTHING ELSE COULD ALTER THE SYSTEM =====
+    // Change only these two values to match firmware coordinate system:
+    // 1) originMeters: origin location in meters (from bottom-left on the map in ReadMe)
+    // 2) superRotation: choose one of the predefined matrices below
+    const cv::Vec2d originMeters(0.0, 0.0); // set origin in meters here
+
+    // Default selection: positive X is right, positive Y is up
+    const cv::Matx22d superRotation = positiveXIsRight_positiveYIsUp;
+
+    // ===== THIS IS WHERE EDITS SHOULD STOP BEING MADE!!! FROM HERE TO THE "===== TEXT =====" ABOVE =====
+
+
+    // Define marker-facing base rotations (in tag frame):
+    // facingDown = identity, facingLeft = 90deg CW, facingUp = 180deg, facingRight = 90deg CCW
+    const cv::Matx22d facingDown = cv::Matx22d::eye();
+    const cv::Matx22d facingLeft = cv::Matx22d(0.0, 1.0, -1.0, 0.0);
+    const cv::Matx22d facingUp = cv::Matx22d(-1.0, 0.0, 0.0, -1.0);
+    const cv::Matx22d facingRight = cv::Matx22d(0.0, -1.0, 1.0, 0.0);
+
+    // Helper to add marker entries: translation is adjusted by origin then rotated
+    auto addMarker = [&](int id, const cv::Vec2d& rawTranslation, const cv::Matx22d& rawRotation) {
+        cv::Vec2d translated = rawTranslation - originMeters;
+        cv::Vec2d finalTranslation = superRotation * translated;
+        cv::Matx22d finalRotation = superRotation * rawRotation;
+        markerFieldPoses_[id] = { finalTranslation, finalRotation };
     };
 
-    markerFieldPoses_[4] = {
-        cv::Vec2d(0.0, 1.0),
-        cv::Matx22d(
-            0.0, -1.0,
-            1.0, 0.0)
-    };
+    // These raw translations are specified in meters in the (map) coordinate system
+    // before origin adjustment and super-rotation.
+    addMarker(0, cv::Vec2d(2.25, 3.679), facingLeft);
+    addMarker(1, cv::Vec2d(2.420, 2.666), facingRight);
+    addMarker(2, cv::Vec2d(4.999, 1.200), facingLeft);
+    addMarker(3, cv::Vec2d(7.001, 1.200), facingRight);
+    addMarker(4, cv::Vec2d(9.580, 2.666), facingLeft);
+    addMarker(5, cv::Vec2d(9.750, 3.679), facingRight);
+    addMarker(6, cv::Vec2d(11.000, 7.999), facingDown);
+    addMarker(7, cv::Vec2d(6.000, 1.701), facingUp);
+    addMarker(8, cv::Vec2d(6.000, 6.9839), facingDown);
+    addMarker(9, cv::Vec2d(1.000, 7.999), facingDown);
 
-    markerFieldPoses_[5] = {
-        cv::Vec2d(-1.0, 0.0),
-        cv::Matx22d(
-            -1.0, 0.0,
-            0.0, -1.0)
-    };
-
-    markerFieldPoses_[6] = {
-        cv::Vec2d(0.0, -1.0),
-        cv::Matx22d(
-            0.0, 1.0,
-            -1.0, 0.0)
-    };
+    // ===== END USER-CONFIGURABLE BLOCK =====
 }

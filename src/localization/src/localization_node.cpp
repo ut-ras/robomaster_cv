@@ -11,9 +11,12 @@
 #include <fstream>
 #include <opencv2/aruco.hpp>
 #include <opencv2/aruco/charuco.hpp>
+#include <algorithm>
+#include <deque>
 #include "TagDeclaration.hpp"
 #include "../include/frame_analyzer.hpp"
 #include <bitset>
+#include <std_msgs/msg/string.hpp>
 
 // #include <opencv2/objdetect/aruco_detector.hpp>
 
@@ -27,6 +30,8 @@ static const float fid_size_m = 0.135f; // meters
 // Original calibration done on 640x480 landscape image
 static const int CALIB_WIDTH = 640;
 static const int CALIB_HEIGHT = 480;
+static bool hasAdjustedCam = false;
+static bool hasScaledCam = false;
 
 static const Mat cameraMatrixCalib = (Mat_<float>(3,3) <<
     5.17082019e+02f, 0.f, 3.16535550e+02f,
@@ -73,22 +78,24 @@ static Mat getScaledCameraMatrix(int runtimeWidth, int runtimeHeight) {
     float fy = cameraMatrixCalib.at<float>(1, 1) * scale_y;
     float cx = cameraMatrixCalib.at<float>(0, 2) * scale_x;
     float cy = cameraMatrixCalib.at<float>(1, 2) * scale_y;
-    
-    std::cout << "\n=== CAMERA MATRIX SCALING ===" << std::endl;
-    std::cout << "Calibration: " << CALIB_WIDTH << "x" << CALIB_HEIGHT << std::endl;
-    std::cout << "Runtime: " << runtimeWidth << "x" << runtimeHeight << std::endl;
-    std::cout << "Scale factors: x=" << scale_x << ", y=" << scale_y << std::endl;
-    std::cout << "Original focal length: fx=" << cameraMatrixCalib.at<float>(0, 0) 
-              << ", fy=" << cameraMatrixCalib.at<float>(1, 1) << std::endl;
-    std::cout << "Scaled focal length: fx=" << fx << ", fy=" << fy << std::endl;
-    std::cout << "Tag size: " << fid_size_m << " meters" << std::endl;
-    std::cout << "=========================" << std::endl;
-    
     Mat scaled = (Mat_<float>(3,3) <<
-        fx, 0.f, cx,
-        0.f, fy, cy,
-        0.f, 0.f, 1.f);
-    
+            fx, 0.f, cx,
+            0.f, fy, cy,
+            0.f, 0.f, 1.f);
+    if (!hasScaledCam)
+    {
+        std::cout << "\n=== CAMERA MATRIX SCALING ===" << std::endl;
+        std::cout << "Calibration: " << CALIB_WIDTH << "x" << CALIB_HEIGHT << std::endl;
+        std::cout << "Runtime: " << runtimeWidth << "x" << runtimeHeight << std::endl;
+        std::cout << "Scale factors: x=" << scale_x << ", y=" << scale_y << std::endl;
+        std::cout << "Original focal length: fx=" << cameraMatrixCalib.at<float>(0, 0) 
+                << ", fy=" << cameraMatrixCalib.at<float>(1, 1) << std::endl;
+        std::cout << "Scaled focal length: fx=" << fx << ", fy=" << fy << std::endl;
+        std::cout << "Tag size: " << fid_size_m << " meters" << std::endl;
+        std::cout << "=========================" << std::endl;
+         
+        hasScaledCam = true;
+    }
     return scaled;
 }
 
@@ -126,10 +133,13 @@ static Mat prepareImageForProcessing(const Mat& inputFrame, Mat& adjustedCameraM
         processedFrame = inputFrame.clone();
         adjustedCameraMatrix = getScaledCameraMatrix(width, height);
     }
-    
-    std::cout << "Calibration: " << CALIB_WIDTH << "x" << CALIB_HEIGHT << std::endl;
-    std::cout << "Runtime (after prep): " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
-    std::cout << "Adjusted camera matrix:\n" << adjustedCameraMatrix << std::endl;
+
+    if (!hasAdjustedCam) {
+        std::cout << "Calibration: " << CALIB_WIDTH << "x" << CALIB_HEIGHT << std::endl;
+        std::cout << "Runtime (after prep): " << processedFrame.cols << "x" << processedFrame.rows << std::endl;
+        std::cout << "Adjusted camera matrix:\n" << adjustedCameraMatrix << std::endl;
+        hasAdjustedCam = true;
+    }
     
     return processedFrame;
 }
@@ -143,14 +153,23 @@ static Mat prepareImageForProcessing(const Mat& inputFrame, Mat& adjustedCameraM
 
 class LocalNode : public rclcpp::Node {
 public:
-    LocalNode() : Node("LocalNode"), dim_(175) {
-        
-        RCLCPP_INFO(this->get_logger(), "Localization node started");
-        RCLCPP_INFO(this->get_logger(), "Input video: %s", input_video_path_.c_str());
+    LocalNode() : Node("localization_node"), dim_(175) {
+        processing_mode_ = this->declare_parameter<std::string>("processing_mode", "video_median5");
+        input_video_path_ = this->declare_parameter<std::string>("input_video_path", input_video_path_);
+        input_image_path_ = this->declare_parameter<std::string>("input_image_path", input_image_path_);
+        output_video_path_ = this->declare_parameter<std::string>("output_video_path", output_video_path_);
+        camera_index_ = this->declare_parameter<int>("camera_index", camera_index_);
+        timer_period_ms_ = this->declare_parameter<int>("timer_period_ms", timer_period_ms_);
+
+        result_publisher_ = this->create_publisher<std_msgs::msg::String>("localization/result", 10);
+
+        RCLCPP_INFO(this->get_logger(), "Localization node started in mode: %s", processing_mode_.c_str());
+        RCLCPP_INFO(this->get_logger(), "Video input: %s", input_video_path_.c_str());
+        RCLCPP_INFO(this->get_logger(), "Image input: %s", input_image_path_.c_str());
         RCLCPP_INFO(this->get_logger(), "Output video: %s", output_video_path_.c_str());
-        
+
         t_prev_ = std::chrono::steady_clock::now();
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&LocalNode::callback, this));
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(timer_period_ms_), std::bind(&LocalNode::callback, this));
     }
     
     ~LocalNode() {
@@ -160,72 +179,270 @@ public:
         if (video_input_.isOpened()) {
             video_input_.release();
         }
+        if (camera_input_.isOpened()) {
+            camera_input_.release();
+        }
     }
 
-    private:
+private:
+
+    enum class ProcessingMode {
+        Video,
+        Image,
+        Camera,
+        VideoMedian5
+    };
 
     VideoCapture cap_;
     VideoCapture video_input_;  // For input video file
+    VideoCapture camera_input_;  // For live camera input
     VideoWriter video_output_;   // For output video with overlay
     const int dim_;
     std::chrono::steady_clock::time_point t_prev_;
     std::string input_video_path_ = "test_videos/rosbag2_2026_03_29-16_32_11.mp4";
+    std::string input_image_path_ = "test_images/test.jpg";
     std::string output_video_path_ = "result_videos/output_with_overlay.mp4";
+    std::string processing_mode_ = "video_median5";
+    int camera_index_ = 0;
+    int timer_period_ms_ = 33;
+
+    struct PositionSample {
+        cv::Vec3d relative;
+        cv::Vec2d absolute;
+    };
+
+    std::deque<PositionSample> position_history_;
     
     // Frame analyzer (reused across frames)
     std::unique_ptr<FrameAnalyzer> analyzer_;
+    cv::Size analyzer_frame_size_;
+    bool analyzer_ready_ = false;
+    bool image_processed_ = false;
+    bool video_initialized_ = false;
+
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr result_publisher_;
 
     void callback() {
-        // Initialize video input and analyzer on first run
-        if (!analyzer_) {
-            auto dict = createCustomDictionary();
-            analyzer_ = std::make_unique<FrameAnalyzer>(
-                dict,
-                cameraMatrixCalib,
-                distCoeffs,
-                fid_size_m
-            );
+        const ProcessingMode mode = parseProcessingMode_();
+
+        switch (mode) {
+        case ProcessingMode::Video:
+            processVideoFrame_(false);
+            break;
+        case ProcessingMode::VideoMedian5:
+            processVideoFrame_(true);
+            break;
+        case ProcessingMode::Image:
+            processSingleImage_();
+            break;
+        case ProcessingMode::Camera:
+            processCameraFrame_();
+            break;
+        }
+    }
+
+    ProcessingMode parseProcessingMode_() const {
+        if (processing_mode_ == "image") {
+            return ProcessingMode::Image;
+        }
+        if (processing_mode_ == "camera") {
+            return ProcessingMode::Camera;
+        }
+        if (processing_mode_ == "video_median5" || processing_mode_ == "median5") {
+            return ProcessingMode::VideoMedian5;
+        }
+        return ProcessingMode::Video;
+    }
+
+    void ensureAnalyzer_(const cv::Mat& frame) {
+        if (analyzer_ && analyzer_ready_ && analyzer_frame_size_ == frame.size()) {
+            return;
         }
 
-        // Initialize video capture on first run
+        auto dict = createCustomDictionary();
+        cv::Mat adjustedCameraMatrix = getScaledCameraMatrix(frame.cols, frame.rows);
+        analyzer_ = std::make_unique<FrameAnalyzer>(
+            dict,
+            adjustedCameraMatrix,
+            distCoeffs,
+            fid_size_m
+        );
+        analyzer_frame_size_ = frame.size();
+        analyzer_ready_ = true;
+    }
+
+    std::string buildResultMessage_(const std::string& modeLabel, const PositionSample* sample) const {
+        std::ostringstream oss;
+        oss << "mode=" << modeLabel << "; ";
+
+        if (sample == nullptr) {
+            oss << "detection=false";
+            return oss.str();
+        }
+
+        oss << "detection=true";
+        if (analyzer_) {
+            oss << "; markers=" << analyzer_->getMarkerCount();
+        }
+        oss << "; rel_xyz_m=[" << sample->relative[0] << "," << sample->relative[1] << "," << sample->relative[2] << "]"
+            << "; abs_xy_m=[" << sample->absolute[0] << "," << sample->absolute[1] << "]";
+        return oss.str();
+    }
+
+    std::string buildOverlayText_(const std::string& label, const PositionSample& sample) const {
+        std::ostringstream oss;
+        oss << label
+    << "\nrel=[" << std::round(sample.relative[0] * 100)
+    << ", " << std::round(sample.relative[1] * 100)
+    << ", " << std::round(sample.relative[2] * 100) << "]"
+    << "\nabs=[" << std::round(sample.absolute[0] * 100)
+    << ", " << std::round(sample.absolute[1] * 100) << "]";
+
+return oss.str();
+    }
+
+    void publishResult_(const std::string& modeLabel, const PositionSample* sample) {
+        if (!result_publisher_) {
+            return;
+        }
+
+        std_msgs::msg::String msg;
+        msg.data = buildResultMessage_(modeLabel, sample);
+        result_publisher_->publish(msg);
+    }
+
+    bool analyzeFrame_(const cv::Mat& frame, const std::string& modeLabel, cv::Mat& processedFrame, PositionSample& sampleOut) {
+        if (frame.empty()) {
+            RCLCPP_WARN(this->get_logger(), "Received empty frame for mode %s", modeLabel.c_str());
+            return false;
+        }
+
+        Mat adjustedCameraMatrix;
+        processedFrame = prepareImageForProcessing(frame, adjustedCameraMatrix);
+        ensureAnalyzer_(processedFrame);
+
+        const bool detection_valid = analyzer_->analyzeFrame(processedFrame);
+        if (detection_valid && analyzer_->hasValidDetection()) {
+            sampleOut.relative = analyzer_->getCameraPosition();
+            sampleOut.absolute = analyzer_->getAbsolutePosition();
+
+            RCLCPP_INFO(this->get_logger(),
+                       "[%s] Detected %zu marker(s) - Relative(avg): x=%.3f m, y=%.3f m, z=%.3f m | Absolute2D(avg): x=%.3f m, y=%.3f m",
+                       modeLabel.c_str(),
+                       analyzer_->getMarkerCount(),
+                       sampleOut.relative[0], sampleOut.relative[1], sampleOut.relative[2],
+                       sampleOut.absolute[0], sampleOut.absolute[1]);
+            return true;
+        }
+
+        RCLCPP_DEBUG(this->get_logger(), "[%s] No markers detected", modeLabel.c_str());
+        return false;
+    }
+
+    cv::Mat renderAnnotatedFrame_(const cv::Mat& processedFrame, const std::string& overlayText) {
+        cv::Mat vizFrame = analyzer_->generatePositionOverlay(processedFrame, overlayText);
+        cv::Mat markerViz = analyzer_->visualizeMarkers(vizFrame);
+
+        auto t_now = std::chrono::steady_clock::now();
+        double dt = std::chrono::duration<double>(t_now - t_prev_).count();
+        t_prev_ = t_now;
+        int fps = (dt > 0.0) ? (int)std::round(1.0 / dt) : 0;
+        cv::putText(markerViz, std::to_string(fps) + " FPS", {7, 25},
+                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+
+        return markerViz;
+    }
+
+    PositionSample medianPositionSample_() const {
+        PositionSample medianSample{};
+        if (position_history_.empty()) {
+            return medianSample;
+        }
+
+        std::vector<double> relX;
+        std::vector<double> relY;
+        std::vector<double> relZ;
+        std::vector<double> absX;
+        std::vector<double> absY;
+        relX.reserve(position_history_.size());
+        relY.reserve(position_history_.size());
+        relZ.reserve(position_history_.size());
+        absX.reserve(position_history_.size());
+        absY.reserve(position_history_.size());
+
+        for (const auto& sample : position_history_) {
+            relX.push_back(sample.relative[0]);
+            relY.push_back(sample.relative[1]);
+            relZ.push_back(sample.relative[2]);
+            absX.push_back(sample.absolute[0]);
+            absY.push_back(sample.absolute[1]);
+        }
+
+        auto medianOf = [](std::vector<double> values) {
+            std::sort(values.begin(), values.end());
+            return values[values.size() / 2];
+        };
+
+        medianSample.relative = cv::Vec3d(
+            medianOf(relX),
+            medianOf(relY),
+            medianOf(relZ));
+        medianSample.absolute = cv::Vec2d(
+            medianOf(absX),
+            medianOf(absY));
+        return medianSample;
+    }
+
+    void appendPositionSample_(const PositionSample& sample) {
+        position_history_.push_back(sample);
+        if (position_history_.size() > 5) {
+            position_history_.pop_front();
+        }
+    }
+
+    bool openVideoIfNeeded_() {
+        if (video_initialized_) {
+            return true;
+        }
+
+        video_input_.open(input_video_path_);
         if (!video_input_.isOpened()) {
-            // Use member variable for input video path
-            video_input_.open(input_video_path_);
-            
-            if (!video_input_.isOpened()) {
-                RCLCPP_ERROR(this->get_logger(), "Failed to open video: %s", input_video_path_.c_str());
-                timer_->cancel();
-                return;
-            }
-
-            RCLCPP_INFO(this->get_logger(), "Opened video: %s", input_video_path_.c_str());
-            
-            // Get video properties
-            int frame_width = static_cast<int>(video_input_.get(cv::CAP_PROP_FRAME_WIDTH));
-            int frame_height = static_cast<int>(video_input_.get(cv::CAP_PROP_FRAME_HEIGHT));
-            double fps = video_input_.get(cv::CAP_PROP_FPS);
-            int total_frames = static_cast<int>(video_input_.get(cv::CAP_PROP_FRAME_COUNT));
-            
-            RCLCPP_INFO(this->get_logger(), 
-                       "Video properties: %dx%d @ %.1f fps, %d total frames",
-                       frame_width, frame_height, fps, total_frames);
-            
-            // Initialize video writer if output is needed
-            int fourcc = cv::VideoWriter::fourcc('m', 'p', '4', 'v');
-            video_output_.open(output_video_path_, fourcc, fps, 
-                              cv::Size(frame_width, frame_height), true);
-            
-            if (!video_output_.isOpened()) {
-                RCLCPP_WARN(this->get_logger(), "Could not open video writer for output");
-            } else {
-                RCLCPP_INFO(this->get_logger(), "Opened output video: %s", output_video_path_.c_str());
-            }
+            RCLCPP_ERROR(this->get_logger(), "Failed to open video: %s", input_video_path_.c_str());
+            timer_->cancel();
+            return false;
         }
-        
-        // Read one frame from video
+
+        RCLCPP_INFO(this->get_logger(), "Opened video: %s", input_video_path_.c_str());
+
+        const int frame_width = static_cast<int>(video_input_.get(cv::CAP_PROP_FRAME_WIDTH));
+        const int frame_height = static_cast<int>(video_input_.get(cv::CAP_PROP_FRAME_HEIGHT));
+        const double fps = video_input_.get(cv::CAP_PROP_FPS);
+        const int total_frames = static_cast<int>(video_input_.get(cv::CAP_PROP_FRAME_COUNT));
+
+        RCLCPP_INFO(this->get_logger(),
+                   "Video properties: %dx%d @ %.1f fps, %d total frames",
+                   frame_width, frame_height, fps, total_frames);
+
+        const int fourcc = cv::VideoWriter::fourcc('m', 'p', '4', 'v');
+        video_output_.open(output_video_path_, fourcc, fps,
+                          cv::Size(frame_width, frame_height), true);
+        if (!video_output_.isOpened()) {
+            RCLCPP_WARN(this->get_logger(), "Could not open video writer for output");
+        } else {
+            RCLCPP_INFO(this->get_logger(), "Opened output video: %s", output_video_path_.c_str());
+        }
+
+        video_initialized_ = true;
+        return true;
+    }
+
+    void processVideoFrame_(bool useMedianLast5) {
+        if (!openVideoIfNeeded_()) {
+            return;
+        }
+
         Mat frame;
         if (!video_input_.read(frame)) {
-            // End of video reached
             RCLCPP_INFO(this->get_logger(), "End of video reached");
             if (video_output_.isOpened()) {
                 video_output_.release();
@@ -234,58 +451,85 @@ public:
             timer_->cancel();
             return;
         }
-        
-        // Prepare image and get adjusted camera matrix
-        Mat adjustedCameraMatrix;
-        Mat processedFrame = prepareImageForProcessing(frame, adjustedCameraMatrix);
-        
-        // Update analyzer with new camera matrix if dimensions changed
-        if (adjustedCameraMatrix.data) {
-            auto dict = createCustomDictionary();
-            analyzer_ = std::make_unique<FrameAnalyzer>(
-                dict,
-                adjustedCameraMatrix,
-                distCoeffs,
-                fid_size_m
-            );
-        }
-        
-        // ========== ANALYZE FRAME ==========
-        bool detection_valid = analyzer_->analyzeFrame(processedFrame);
-        
-        if (detection_valid && analyzer_->hasValidDetection()) {
-            const auto& relPos = analyzer_->getCameraPosition();
-            const auto& absPos = analyzer_->getAbsolutePosition();
-            
-            RCLCPP_INFO(this->get_logger(),
-                       "Detected %zu marker(s) - Relative(avg): x=%.3f m, y=%.3f m, z=%.3f m | Absolute2D(avg): x=%.3f m, y=%.3f m",
-                       analyzer_->getMarkerCount(),
-                       relPos[0], relPos[1], relPos[2],
-                       absPos[0], absPos[1]);
-        } else {
-            RCLCPP_DEBUG(this->get_logger(), "No markers detected in this frame");
-        }
-        
-        // Visualize and optionally write to output video
-        cv::Mat vizFrame = analyzer_->generatePositionOverlay();
-        cv::Mat markerViz = analyzer_->visualizeMarkers(vizFrame);
-        
-        // FPS overlay (small text in top-right)
-        auto t_now = std::chrono::steady_clock::now();
-        double dt = std::chrono::duration<double>(t_now - t_prev_).count();
-        t_prev_ = t_now;
-        int fps = (dt > 0.0) ? (int)std::round(1.0 / dt) : 0;
-        cv::putText(markerViz, std::to_string(fps) + " FPS", {7, 25}, 
-                    cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
 
-        // Write frame to output video
+        cv::Mat processedFrame;
+        PositionSample currentSample{};
+        const bool valid = analyzeFrame_(frame, useMedianLast5 ? "video_median5" : "video", processedFrame, currentSample);
+
+        if (useMedianLast5) {
+            if (!valid) {
+                return;
+            }
+
+            appendPositionSample_(currentSample);
+            if (position_history_.size() < 5) {
+                RCLCPP_INFO(this->get_logger(), "Waiting for 5 valid position samples before median output starts (%zu/5)", position_history_.size());
+                return;
+            }
+
+            const PositionSample medianSample = medianPositionSample_();
+            cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, buildOverlayText_("video_median5 median", medianSample));
+            publishResult_("video_median5", &medianSample);
+            if (video_output_.isOpened()) {
+                video_output_.write(markerViz);
+            }
+            return;
+        }
+
+        cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, valid ? buildOverlayText_("video", currentSample) : std::string());
+        publishResult_(valid ? "video" : "video", valid ? &currentSample : nullptr);
         if (video_output_.isOpened()) {
             video_output_.write(markerViz);
         }
-        
-        // Also save latest frame for debugging
-        cv::imwrite("latest_frame.png", markerViz);
     }
+
+    void processSingleImage_() {
+        if (image_processed_) {
+            timer_->cancel();
+            return;
+        }
+
+        Mat frame = cv::imread(input_image_path_);
+        if (frame.empty()) {
+            RCLCPP_ERROR(this->get_logger(), "Failed to open image: %s", input_image_path_.c_str());
+            timer_->cancel();
+            return;
+        }
+
+        cv::Mat processedFrame;
+        PositionSample sample{};
+        const bool valid = analyzeFrame_(frame, "image", processedFrame, sample);
+        cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, valid ? buildOverlayText_("image", sample) : std::string());
+        publishResult_("image", valid ? &sample : nullptr);
+        image_processed_ = true;
+        timer_->cancel();
+    }
+
+    void processCameraFrame_() {
+        if (!camera_input_.isOpened()) {
+            camera_input_.open(camera_index_);
+            if (!camera_input_.isOpened()) {
+                RCLCPP_ERROR(this->get_logger(), "Failed to open camera index %d", camera_index_);
+                timer_->cancel();
+                return;
+            }
+
+            RCLCPP_INFO(this->get_logger(), "Opened camera index %d", camera_index_);
+        }
+
+        Mat frame;
+        if (!camera_input_.read(frame) || frame.empty()) {
+            RCLCPP_WARN(this->get_logger(), "Camera frame read failed");
+            return;
+        }
+
+        cv::Mat processedFrame;
+        PositionSample sample{};
+        const bool valid = analyzeFrame_(frame, "camera", processedFrame, sample);
+        cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, valid ? buildOverlayText_("camera", sample) : std::string());
+        publishResult_("camera", valid ? &sample : nullptr);
+    }
+
     rclcpp::TimerBase::SharedPtr timer_;
 };
 

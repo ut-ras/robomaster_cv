@@ -21,6 +21,13 @@ public:
         cv::Matx22d rotationTagToField2D;
     };
 
+    struct markerRotMatrices{
+        cv::Matx22d facingUp;
+        cv::Matx22d facingDown;
+        cv::Matx22d facingLeft;
+        cv::Matx22d facingRight;
+    };
+
     /**
      * @brief Initialize with camera calibration and marker size
      * @param cameraMatrix OpenCV camera intrinsic matrix

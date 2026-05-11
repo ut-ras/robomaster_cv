@@ -167,10 +167,10 @@ std::string FrameAnalyzer::getPositionText(bool unitCm) const
     std::ostringstream oss;
     
     // Convert meters to inches (1 meter = 39.3701 inches)
-    int x_inches = static_cast<int>(std::round(averagedAbsolutePosition2D_[0] * 39.3701));
-    int z_inches = static_cast<int>(std::round(averagedAbsolutePosition2D_[2] * 39.3701));
+    int x_inches = static_cast<int>(std::round(averagedAbsolutePosition2D_[0] * 100));
+    int z_inches = static_cast<int>(std::round(averagedAbsolutePosition2D_[1] * 100));
     
-    oss << "X: " << x_inches << " in, Z: " << z_inches << " in";
+    oss << "X: " << x_inches << " cm, Z: " << z_inches << " cm";
 
     return oss.str();
 }
@@ -188,7 +188,7 @@ cv::Mat FrameAnalyzer::generatePositionOverlay(const cv::Mat& sourceFrame,
     if (!customText.empty()) {
         // Use custom text
         cv::putText(viz, customText, cv::Point(10, 40),
-                    cv::FONT_HERSHEY_SIMPLEX, 1.2, cv::Scalar(0, 255, 0), 2);
+                    cv::FONT_HERSHEY_SIMPLEX, .6, cv::Scalar(0, 255, 0), 2);
     } else if (hasValidDetection_) {
         // Use auto-generated position text
         std::string posText = getPositionText(true); // Display in inches
