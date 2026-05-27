@@ -5,6 +5,13 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Add optimization flags for better performance
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -13,15 +20,28 @@ find_package(std_msgs REQUIRED)
 
 
 
-add_executable(localization_node src/localization_node.cpp)
+add_executable(localization_node
+    src/localization_node.cpp
+    src/TagDeclaration.cpp
+    src/tag_detection.cpp
+    src/position_calculator.cpp
+    src/frame_analyzer.cpp
+)
 target_include_directories(localization_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>   
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(localization_node rclcpp OpenCV std_msgs)
 target_compile_features(localization_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 install(TARGETS localization_node
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY
+  launch
+  config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

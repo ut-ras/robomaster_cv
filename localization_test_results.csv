@@ -1,0 +1,2 @@
+Test#,Filename,Expected_X,Expected_Z,Calculated_X,Calculated_Z,Error_X,Error_Z,Distance_Error,Status
+1,test_images/first_frame_png_0001.png,-0.05,0.355,-0.00916612,0.383727,0.0408339,0.0287275,0.0499267,SUCCESS

@@ -7,3 +7,7 @@ src/ros2_benchmark/
 CMakeFiles
 rosbags/
 /docker-compose.yml
+*.jpg
+*.jpeg
+*.png
+*.mp4

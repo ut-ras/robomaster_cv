@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "name": "ROS2: Debug localization_node",
+      "type": "cppdbg",
+      "request": "launch",
+
+      // Path to your built node inside the workspace
+      "program": "${workspaceFolder}/install/localization/lib/localization/localization_node",
+      "args": [],
+
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+
+      // Use gdb inside the container
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+
+      "environment": [
+        {
+          "name": "COLCON_CURRENT_PREFIX",
+          "value": "${workspaceFolder}/install"
+        }
+      ],
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}
