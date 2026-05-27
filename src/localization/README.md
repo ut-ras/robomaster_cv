@@ -22,6 +22,8 @@ Example payload:
 `mode=camera_median; detection=true; markers=2; rel_xyz_m=[0.12,-0.03,1.84]; abs_xy_m=[2.55,1.32]`
 
 If there are no detections/it can't find any of the visual markers to find its position on the field, it returns this payload:
+
+
 `detection=false`
 
 ## Run The Node (Not really important unless you wanna test localization which is fair, also discord message me if (I'm Jason in software) you need help pls)
