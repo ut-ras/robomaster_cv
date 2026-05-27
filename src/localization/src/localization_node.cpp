@@ -154,12 +154,16 @@ static Mat prepareImageForProcessing(const Mat& inputFrame, Mat& adjustedCameraM
 class LocalNode : public rclcpp::Node {
 public:
     LocalNode() : Node("localization_node"), dim_(175) {
-        processing_mode_ = this->declare_parameter<std::string>("processing_mode", "video_median5");
+        processing_mode_ = this->declare_parameter<std::string>("processing_mode", processing_mode_);
         input_video_path_ = this->declare_parameter<std::string>("input_video_path", input_video_path_);
         input_image_path_ = this->declare_parameter<std::string>("input_image_path", input_image_path_);
         output_video_path_ = this->declare_parameter<std::string>("output_video_path", output_video_path_);
         camera_index_ = this->declare_parameter<int>("camera_index", camera_index_);
         timer_period_ms_ = this->declare_parameter<int>("timer_period_ms", timer_period_ms_);
+        numFramesForMedian_ = this->declare_parameter<int>("numFramesForMedian", 5);
+        originMetersX_ = this->declare_parameter<double>("originMetersX", originMetersX_);
+        originMetersY_ = this->declare_parameter<double>("originMetersY", originMetersY_);
+        superRotation_ = this->declare_parameter<std::string>("superRotation", superRotation_);
 
         result_publisher_ = this->create_publisher<std_msgs::msg::String>("localization/result", 10);
 
@@ -167,6 +171,8 @@ public:
         RCLCPP_INFO(this->get_logger(), "Video input: %s", input_video_path_.c_str());
         RCLCPP_INFO(this->get_logger(), "Image input: %s", input_image_path_.c_str());
         RCLCPP_INFO(this->get_logger(), "Output video: %s", output_video_path_.c_str());
+        RCLCPP_INFO(this->get_logger(), "numFramesForMedian=%zu originMetersX=%.3f originMetersY=%.3f superRotation=%s",
+            numFramesForMedian_, originMetersX_, originMetersY_, superRotation_.c_str());
 
         t_prev_ = std::chrono::steady_clock::now();
         timer_ = this->create_wall_timer(std::chrono::milliseconds(timer_period_ms_), std::bind(&LocalNode::callback, this));
@@ -190,7 +196,8 @@ private:
         Video,
         Image,
         Camera,
-        VideoMedian5
+        CameraMedian,
+        VideoMedian
     };
 
     VideoCapture cap_;
@@ -200,15 +207,76 @@ private:
     const int dim_;
     std::chrono::steady_clock::time_point t_prev_;
     std::string input_video_path_ = "test_videos/rosbag2_2026_03_29-16_32_11.mp4";
-    std::string input_image_path_ = "test_images/test.jpg";
+    std::string input_image_path_ = "test_images/61d_-28t_1.jpeg";
     std::string output_video_path_ = "result_videos/output_with_overlay.mp4";
-    std::string processing_mode_ = "video_median5";
+    std::string processing_mode_ = "camera_median";
+    size_t numFramesForMedian_;
+    double originMetersX_ = 0.0;
+    double originMetersY_ = 0.0;
+    std::string superRotation_ = "positiveXIsRight_positiveYIsUp";
     int camera_index_ = 0;
     int timer_period_ms_ = 33;
 
     struct PositionSample {
         cv::Vec3d relative;
         cv::Vec2d absolute;
+    };
+
+    struct FrameDeltaDiagnostics {
+        bool has_previous = false;
+        PositionSample previous_sample{};
+        size_t delta_count = 0;
+        double mean_jump_m = 0.0;
+        double m2_jump_m = 0.0;
+        double max_jump_m = 0.0;
+
+        void reset() {
+            has_previous = false;
+            previous_sample = PositionSample{};
+            delta_count = 0;
+            mean_jump_m = 0.0;
+            m2_jump_m = 0.0;
+            max_jump_m = 0.0;
+        }
+
+        void addSample(const PositionSample& sample) {
+            if (!has_previous) {
+                previous_sample = sample;
+                has_previous = true;
+                return;
+            }
+
+            const double dx = sample.relative[0] - previous_sample.relative[0];
+            const double dz = sample.relative[2] - previous_sample.relative[2];
+            const double jump_m = std::sqrt(dx * dx + dz * dz);
+
+            ++delta_count;
+            const double delta = jump_m - mean_jump_m;
+            mean_jump_m += delta / static_cast<double>(delta_count);
+            m2_jump_m += delta * (jump_m - mean_jump_m);
+            if (jump_m > max_jump_m) {
+                max_jump_m = jump_m;
+            }
+            previous_sample = sample;
+        }
+
+        std::string summaryString() const {
+            std::ostringstream oss;
+            if (delta_count == 0) {
+                oss << "frame_delta=no_consecutive_samples";
+                return oss.str();
+            }
+
+            const double stddev_m = (delta_count > 1)
+                ? std::sqrt(m2_jump_m / static_cast<double>(delta_count - 1))
+                : 0.0;
+
+            oss << "frame_delta_avg_m=" << mean_jump_m
+                << "; frame_delta_stddev_m=" << stddev_m
+                << "; frame_delta_max_m=" << max_jump_m
+                << "; frame_delta_pairs=" << delta_count;
+            return oss.str();
+        }
     };
 
     std::deque<PositionSample> position_history_;
@@ -222,21 +290,55 @@ private:
 
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr result_publisher_;
 
+    // Callback timing / counting
+    bool callbacks_started_ = false;
+    std::chrono::steady_clock::time_point callbacks_start_time_;
+    std::chrono::steady_clock::time_point callbacks_end_time_;
+    size_t callback_count_ = 0;
+    FrameDeltaDiagnostics frame_delta_diagnostics_;
+
+    void endCallbacks_(const std::string& reason = "") {
+        if (callbacks_started_) {
+            callbacks_end_time_ = std::chrono::steady_clock::now();
+            auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(callbacks_end_time_ - callbacks_start_time_).count();
+            double avg_per_callback = (callback_count_ > 0) ? static_cast<double>(total_ms) / static_cast<double>(callback_count_) : 0.0;
+            RCLCPP_INFO(this->get_logger(), "endCallbacks: reason=%s count=%zu total_ms=%lld avg_ms_per_callback=%.2f",
+                        reason.c_str(), callback_count_, (long long)total_ms, avg_per_callback);
+            callbacks_started_ = false;
+            frame_delta_diagnostics_.reset();
+        } else {
+            RCLCPP_INFO(this->get_logger(), "endCallbacks called but callbacks had not started. reason=%s", reason.c_str());
+        }
+        if (timer_) {
+            timer_->cancel();
+        }
+    }
     void callback() {
+        if (!callbacks_started_) {
+            callbacks_started_ = true;
+            callbacks_start_time_ = std::chrono::steady_clock::now();
+            callback_count_ = 0;
+            frame_delta_diagnostics_.reset();
+        }
+        ++callback_count_;
+
         const ProcessingMode mode = parseProcessingMode_();
 
         switch (mode) {
         case ProcessingMode::Video:
             processVideoFrame_(false);
             break;
-        case ProcessingMode::VideoMedian5:
+        case ProcessingMode::VideoMedian:
             processVideoFrame_(true);
             break;
         case ProcessingMode::Image:
             processSingleImage_();
             break;
         case ProcessingMode::Camera:
-            processCameraFrame_();
+            processCameraFrame_(false);
+            break;
+        case ProcessingMode::CameraMedian:
+            processCameraFrame_(true);
             break;
         }
     }
@@ -248,8 +350,11 @@ private:
         if (processing_mode_ == "camera") {
             return ProcessingMode::Camera;
         }
-        if (processing_mode_ == "video_median5" || processing_mode_ == "median5") {
-            return ProcessingMode::VideoMedian5;
+        if (processing_mode_ == "camera_median") {
+            return ProcessingMode::CameraMedian;
+        }
+        if (processing_mode_ == "video_median") {
+            return ProcessingMode::VideoMedian;
         }
         return ProcessingMode::Video;
     }
@@ -265,7 +370,9 @@ private:
             dict,
             adjustedCameraMatrix,
             distCoeffs,
-            fid_size_m
+            fid_size_m,
+            cv::Vec2d(originMetersX_, originMetersY_),
+            superRotation_
         );
         analyzer_frame_size_ = frame.size();
         analyzer_ready_ = true;
@@ -302,6 +409,10 @@ return oss.str();
     }
 
     void publishResult_(const std::string& modeLabel, const PositionSample* sample) {
+        if (sample != nullptr) {
+            //doDiagnostics_(*sample);
+        }
+
         if (!result_publisher_) {
             return;
         }
@@ -309,6 +420,10 @@ return oss.str();
         std_msgs::msg::String msg;
         msg.data = buildResultMessage_(modeLabel, sample);
         result_publisher_->publish(msg);
+    }
+
+    void doDiagnostics_(const PositionSample& sample) {
+        frame_delta_diagnostics_.addSample(sample);
     }
 
     bool analyzeFrame_(const cv::Mat& frame, const std::string& modeLabel, cv::Mat& processedFrame, PositionSample& sampleOut) {
@@ -395,9 +510,18 @@ return oss.str();
 
     void appendPositionSample_(const PositionSample& sample) {
         position_history_.push_back(sample);
-        if (position_history_.size() > 5) {
+        if (position_history_.size() > numFramesForMedian_) {
             position_history_.pop_front();
         }
+    }
+
+    PositionSample popPositionSample_() {
+        PositionSample sample{};
+        if (!position_history_.empty()) {
+            sample = position_history_.front();
+            position_history_.pop_front();
+        }
+        return sample;
     }
 
     bool openVideoIfNeeded_() {
@@ -408,7 +532,7 @@ return oss.str();
         video_input_.open(input_video_path_);
         if (!video_input_.isOpened()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open video: %s", input_video_path_.c_str());
-            timer_->cancel();
+            endCallbacks_("open_video_failed");
             return false;
         }
 
@@ -436,7 +560,7 @@ return oss.str();
         return true;
     }
 
-    void processVideoFrame_(bool useMedianLast5) {
+    void processVideoFrame_(bool useMedian) {
         if (!openVideoIfNeeded_()) {
             return;
         }
@@ -448,36 +572,34 @@ return oss.str();
                 video_output_.release();
                 RCLCPP_INFO(this->get_logger(), "Output video saved");
             }
-            timer_->cancel();
+            endCallbacks_("video_end");
             return;
         }
 
         cv::Mat processedFrame;
         PositionSample currentSample{};
-        const bool valid = analyzeFrame_(frame, useMedianLast5 ? "video_median5" : "video", processedFrame, currentSample);
+        const bool valid = analyzeFrame_(frame, useMedian ? "video_median" : "video", processedFrame, currentSample);
+        cv::Mat markerViz;
 
-        if (useMedianLast5) {
-            if (!valid) {
-                return;
+        if (useMedian) {
+            if (!valid)
+            {
+                popPositionSample_();
+                publishResult_("NO_POSITION", nullptr);
+                markerViz = renderAnnotatedFrame_(processedFrame, "NO DETECTIONS");
             }
-
-            appendPositionSample_(currentSample);
-            if (position_history_.size() < 5) {
-                RCLCPP_INFO(this->get_logger(), "Waiting for 5 valid position samples before median output starts (%zu/5)", position_history_.size());
-                return;
+            else {
+                appendPositionSample_(currentSample);
+                PositionSample medianSample = medianPositionSample_();
+                publishResult_("video_median", &medianSample);
+                markerViz = renderAnnotatedFrame_(processedFrame, buildOverlayText_("video_M5", currentSample));
             }
-
-            const PositionSample medianSample = medianPositionSample_();
-            cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, buildOverlayText_("video_median5 median", medianSample));
-            publishResult_("video_median5", &medianSample);
-            if (video_output_.isOpened()) {
-                video_output_.write(markerViz);
-            }
-            return;
+        }
+        else {
+            markerViz = renderAnnotatedFrame_(processedFrame, valid ? buildOverlayText_("video", currentSample) : std::string());
+            publishResult_(valid ? "video" : "NO_POSITION", valid ? &currentSample : nullptr);
         }
 
-        cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, valid ? buildOverlayText_("video", currentSample) : std::string());
-        publishResult_(valid ? "video" : "video", valid ? &currentSample : nullptr);
         if (video_output_.isOpened()) {
             video_output_.write(markerViz);
         }
@@ -485,32 +607,31 @@ return oss.str();
 
     void processSingleImage_() {
         if (image_processed_) {
-            timer_->cancel();
+            endCallbacks_("image_already_processed");
             return;
         }
 
         Mat frame = cv::imread(input_image_path_);
         if (frame.empty()) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open image: %s", input_image_path_.c_str());
-            timer_->cancel();
+            endCallbacks_("image_open_failed");
             return;
         }
 
         cv::Mat processedFrame;
         PositionSample sample{};
         const bool valid = analyzeFrame_(frame, "image", processedFrame, sample);
-        cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, valid ? buildOverlayText_("image", sample) : std::string());
-        publishResult_("image", valid ? &sample : nullptr);
+        publishResult_(valid ? "image" : "NO_POSITION", valid ? &sample : nullptr);
         image_processed_ = true;
-        timer_->cancel();
+        endCallbacks_("image_done");
     }
 
-    void processCameraFrame_() {
+    void processCameraFrame_(bool useMedian) {
         if (!camera_input_.isOpened()) {
             camera_input_.open(camera_index_);
             if (!camera_input_.isOpened()) {
                 RCLCPP_ERROR(this->get_logger(), "Failed to open camera index %d", camera_index_);
-                timer_->cancel();
+                endCallbacks_("camera_open_failed");
                 return;
             }
 
@@ -525,9 +646,22 @@ return oss.str();
 
         cv::Mat processedFrame;
         PositionSample sample{};
-        const bool valid = analyzeFrame_(frame, "camera", processedFrame, sample);
-        cv::Mat markerViz = renderAnnotatedFrame_(processedFrame, valid ? buildOverlayText_("camera", sample) : std::string());
-        publishResult_("camera", valid ? &sample : nullptr);
+        const bool valid = analyzeFrame_(frame, useMedian ? "camera_median" : "camera", processedFrame, sample);
+
+        if (useMedian) {
+            if (!valid)
+            {
+                popPositionSample_();
+                publishResult_("NO_POSITION", nullptr);
+                return;
+            }
+
+            appendPositionSample_(sample);
+            PositionSample medianSample = medianPositionSample_();
+            publishResult_("camera_median", &medianSample);
+            return;
+        }
+        publishResult_(valid ? "camera" : "NO_POSITION", valid ? &sample : nullptr);
     }
 
     rclcpp::TimerBase::SharedPtr timer_;

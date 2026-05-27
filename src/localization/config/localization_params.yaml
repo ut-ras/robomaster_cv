@@ -1,0 +1,38 @@
+localization_node:
+  ros__parameters:
+    # Processing mode for this node: image, camera, video, camera_median, video_median.
+    processing_mode: camera_median
+
+    # Input/output media paths used by image/video modes. THESE ARE NOT NEEDED TO BE CHANGED
+    input_video_path: test_videos/rosbag2_2026_03_29-16_32_11.mp4
+    input_image_path: test_images/61d_-28t_1.jpeg
+    output_video_path: result_videos/output_with_overlay.mp4
+
+    # Camera and timing settings. SHOULDN'T NEED TO BE CHANGED UNLESS YOU WANT
+    camera_index: 0
+    timer_period_ms: 33
+
+    # Number of recent position samples used for median filtering. 
+    ##### MOST LIKELY THING TO CHANGE!! IF THE ROBOT RESPONSE TO CHANGES IS SLOW, LOWER THIS VALUE, IF THE ROBOT JERKS AROUND, RAISE IT!! #####
+    numFramesForMedian: 5
+
+    # Global X origin offset in meters applied by downstream localization math.
+    ##### CHANGE THIS TO BE THE LEFT/RIGHT ORIGIN OFFSET FROM THE BOTTOM LEFT OF THE IMAGE UPLOADED IN THE README!! #####
+    originMetersX: 0.0
+
+    # Global Y origin offset in meters applied by downstream localization math.
+    ##### CHANGE THIS TO BE THE UP/DOWN ORIGIN OFFSET FROM THE BOTTOM LEFT OF THE IMAGE UPLOADED IN THE README!! #####
+    originMetersY: 0.0
+
+    # Extra global rotation offset (radians) for final orientation alignment.
+    ##### CHANGE THIS TO ACCOMODATE TO WHATEVER ORIENTATION YOU VIEW THE FIELD AND HOW YOU WILL PROCESS THE RETURNED LOCATION #####
+    ##### ALL OF THE FOLLOWING PREDEFINED POSITIONS ARE (AGAIN) USING THE MAP IMAGE IN THE README AS REFERENCE: OPTIONS ARE BELOW #####
+    ##### positiveXIsRight_positiveYIsUp
+    ##### positiveXIsLeft_positiveYIsUp
+    ##### positiveXIsRight_positiveYIsDown
+    ##### positiveXIsLeft_positiveYIsDown
+    ##### positiveXIsUp_positiveYIsRight
+    ##### positiveXIsUp_positiveYIsLeft
+    ##### positiveXIsDown_positiveYIsRight
+    ##### positiveXIsDown_positiveYIsLeft
+    superRotation: positiveXIsRight_positiveYIsUp

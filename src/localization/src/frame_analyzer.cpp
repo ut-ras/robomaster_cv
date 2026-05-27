@@ -7,9 +7,11 @@
 FrameAnalyzer::FrameAnalyzer(const cv::Ptr<cv::aruco::Dictionary>& dict,
                              const cv::Mat& cameraMatrix,
                              const cv::Mat& distCoeffs,
-                             float markerSizeMeters)
+                     float markerSizeMeters,
+                     const cv::Vec2d& originMeters,
+                     const std::string& superRotationName)
     : detector_(std::make_unique<TagDetection>(dict, cameraMatrix, distCoeffs)),
-      posCalc_(std::make_unique<PositionCalculator>(cameraMatrix, distCoeffs, markerSizeMeters)),
+    posCalc_(std::make_unique<PositionCalculator>(cameraMatrix, distCoeffs, markerSizeMeters, originMeters, superRotationName)),
     averagedRelativePosition_(0, 0, 0),
     averagedAbsolutePosition2D_(0, 0),
       hasValidDetection_(false)

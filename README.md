@@ -117,3 +117,7 @@ You can also run `build_all`, but this is likely broken in the current version o
 ## Coding
 
 All of our source code is located within the `src` directory. You can feel free to poke around the [packages](http://wiki.ros.org/Packages), or check out the [software wiki](https://github.com/ut-ras/robomaster_cv/wiki) which goes more in depth.
+
+## Package Docs
+
+- Localization package usage and parameter tuning guide: [src/localization/README.md](src/localization/README.md)

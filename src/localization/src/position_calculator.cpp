@@ -16,20 +16,62 @@ const cv::Matx22d positiveXIsLeft_positiveYIsDown  = cv::Matx22d(-1.0, 0.0,
                                                               0.0, -1.0);
 const cv::Matx22d positiveXIsUp_positiveYIsRight   = cv::Matx22d(0.0, 1.0,
                                                               1.0, 0.0);
-const cv::Matx22d positiveXIsUp_positiveYIsLeft    = cv::Matx22d(0.0, -1.0,
-                                                              1.0, 0.0);
-const cv::Matx22d positiveXIsDown_positiveYIsRight = cv::Matx22d(0.0, 1.0,
+const cv::Matx22d positiveXIsUp_positiveYIsLeft    = cv::Matx22d(0.0, 1.0,
                                                               -1.0, 0.0);
+const cv::Matx22d positiveXIsDown_positiveYIsRight = cv::Matx22d(0.0, -1.0,
+                                                              1.0, 0.0);
 const cv::Matx22d positiveXIsDown_positiveYIsLeft  = cv::Matx22d(0.0, -1.0,
                                                               -1.0, 0.0);
+
+cv::Matx22d superRotationMatrixFromName(const std::string& name) {
+    if (name == "positiveXIsRight_positiveYIsUp") {
+        return positiveXIsRight_positiveYIsUp;
+    }
+    if (name == "positiveXIsLeft_positiveYIsUp") {
+        return positiveXIsLeft_positiveYIsUp;
+    }
+    if (name == "positiveXIsRight_positiveYIsDown") {
+        return positiveXIsRight_positiveYIsDown;
+    }
+    if (name == "positiveXIsLeft_positiveYIsDown") {
+        return positiveXIsLeft_positiveYIsDown;
+    }
+    if (name == "positiveXIsUp_positiveYIsRight") {
+        return positiveXIsUp_positiveYIsRight;
+    }
+    if (name == "positiveXIsUp_positiveYIsLeft") {
+        return positiveXIsUp_positiveYIsLeft;
+    }
+    if (name == "positiveXIsDown_positiveYIsRight") {
+        return positiveXIsDown_positiveYIsRight;
+    }
+    if (name == "positiveXIsDown_positiveYIsLeft") {
+        return positiveXIsDown_positiveYIsLeft;
+    }
+
+    std::cerr << "PositionCalculator: unknown superRotation name '" << name
+              << "', defaulting to positiveXIsRight_positiveYIsUp" << std::endl;
+    return positiveXIsRight_positiveYIsUp;
+}
+
+cv::Matx22d rotationMatrixFromRadians(double radians) {
+        const double c = std::cos(radians);
+        const double s = std::sin(radians);
+        return cv::Matx22d(c, -s,
+                                             s,  c);
+}
 }
 
 PositionCalculator::PositionCalculator(const cv::Mat& cameraMatrix,
                                        const cv::Mat& distCoeffs,
-                                       float markerSizeMeters)
+                           float markerSizeMeters,
+                           const cv::Vec2d& originMeters,
+                           const std::string& superRotationName)
     : cameraMatrix_(cameraMatrix),
       distCoeffs_(distCoeffs),
-      markerSizeMeters_(markerSizeMeters) {
+    markerSizeMeters_(markerSizeMeters),
+    originMeters_(originMeters),
+    superRotationName_(superRotationName) {
         initializeDefaultMarkerFieldPoses_();
 }
 
@@ -286,13 +328,11 @@ void PositionCalculator::initializeDefaultMarkerFieldPoses_() {
     markerFieldPoses_.clear();
 
     // ===== THIS IS WHAT CAN BE CHANGED!!! CHANGING ANYTHING ELSE COULD ALTER THE SYSTEM =====
-    // Change only these two values to match firmware coordinate system:
-    // 1) originMeters: origin location in meters (from bottom-left on the map in ReadMe)
-    // 2) superRotation: choose one of the predefined matrices below
-    const cv::Vec2d originMeters(0.0, 0.0); // set origin in meters here
-
-    // Default selection: positive X is right, positive Y is up
-    const cv::Matx22d superRotation = positiveXIsRight_positiveYIsUp;
+    // These values come from `localization_node` launch parameters.
+    // originMeters shifts the entire field map before applying the field rotation.
+    // superRotation is a named coordinate convention applied after the origin shift.
+    const cv::Vec2d originMeters = originMeters_;
+    const cv::Matx22d superRotation = superRotationMatrixFromName_(superRotationName_);
 
     // ===== THIS IS WHERE EDITS SHOULD STOP BEING MADE!!! FROM HERE TO THE "===== TEXT =====" ABOVE =====
 
@@ -326,4 +366,8 @@ void PositionCalculator::initializeDefaultMarkerFieldPoses_() {
     addMarker(9, cv::Vec2d(1.000, 7.999), facingDown);
 
     // ===== END USER-CONFIGURABLE BLOCK =====
+}
+
+cv::Matx22d PositionCalculator::superRotationMatrixFromName_(const std::string& name) const {
+    return superRotationMatrixFromName(name);
 }

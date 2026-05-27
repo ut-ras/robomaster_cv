@@ -1,6 +1,7 @@
 #pragma once
 
 #include <opencv2/opencv.hpp>
+#include <string>
 #include <vector>
 #include <unordered_map>
 
@@ -36,7 +37,9 @@ public:
      */
     PositionCalculator(const cv::Mat& cameraMatrix,
                        const cv::Mat& distCoeffs,
-                       float markerSizeMeters);
+                       float markerSizeMeters,
+                       const cv::Vec2d& originMeters = cv::Vec2d(0.0, 0.0),
+                       const std::string& superRotationName = "positiveXIsRight_positiveYIsUp");
 
     /**
      * @brief Solve pose (translation + rotation) from marker corners
@@ -104,9 +107,12 @@ private:
     cv::Mat cameraMatrix_;
     cv::Mat distCoeffs_;
     float markerSizeMeters_;
+    cv::Vec2d originMeters_;
+    std::string superRotationName_;
     std::unordered_map<int, MarkerFieldPose> markerFieldPoses_;
 
     // Helper methods
     cv::Vec3d rotationMatrixToEulerAngles(const cv::Mat& R);
+    cv::Matx22d superRotationMatrixFromName_(const std::string& name) const;
     void initializeDefaultMarkerFieldPoses_();
 };

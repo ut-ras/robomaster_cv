@@ -34,7 +34,9 @@ public:
     FrameAnalyzer(const cv::Ptr<cv::aruco::Dictionary>& dict,
                   const cv::Mat& cameraMatrix,
                   const cv::Mat& distCoeffs,
-                  float markerSizeMeters);
+                  float markerSizeMeters,
+                  const cv::Vec2d& originMeters = cv::Vec2d(0.0, 0.0),
+                  const std::string& superRotationName = "positiveXIsRight_positiveYIsUp");
 
     /**
      * @brief Analyze a new frame (main entry point)
